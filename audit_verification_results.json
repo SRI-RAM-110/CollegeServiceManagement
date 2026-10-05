@@ -1,0 +1,254 @@
+{
+  "results": {
+    "loginTests": [
+      {
+        "userId": "AO001",
+        "category": "AO Admin",
+        "role": "AO_ADMIN",
+        "department": "ADMIN",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "CSE001",
+        "category": "Department User",
+        "role": "DEPARTMENT_USER",
+        "department": "CSE",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "ECE001",
+        "category": "Department User",
+        "role": "DEPARTMENT_USER",
+        "department": "ECE",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "EEE001",
+        "category": "Department User",
+        "role": "DEPARTMENT_USER",
+        "department": "EEE",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "ME001",
+        "category": "Department User",
+        "role": "DEPARTMENT_USER",
+        "department": "ME",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "CIVIL001",
+        "category": "Department User",
+        "role": "DEPARTMENT_USER",
+        "department": "CIVIL",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "AI001",
+        "category": "Department User",
+        "role": "DEPARTMENT_USER",
+        "department": "AI",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "MBA001",
+        "category": "Department User",
+        "role": "DEPARTMENT_USER",
+        "department": "MBA",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "PHARM001",
+        "category": "Department User",
+        "role": "DEPARTMENT_USER",
+        "department": "PHARM",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "csehod",
+        "category": "HOD User",
+        "role": "DEPARTMENT_HOD",
+        "department": "CSE",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "ecehod",
+        "category": "HOD User",
+        "role": "DEPARTMENT_HOD",
+        "department": "ECE",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "eeehod",
+        "category": "HOD User",
+        "role": "DEPARTMENT_HOD",
+        "department": "EEE",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "mechhod",
+        "category": "HOD User",
+        "role": "DEPARTMENT_HOD",
+        "department": "ME",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "civilhod",
+        "category": "HOD User",
+        "role": "DEPARTMENT_HOD",
+        "department": "CIVIL",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "aihod",
+        "category": "HOD User",
+        "role": "DEPARTMENT_HOD",
+        "department": "AI",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "mbahod",
+        "category": "HOD User",
+        "role": "DEPARTMENT_HOD",
+        "department": "MBA",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "pharmhod",
+        "category": "HOD User",
+        "role": "DEPARTMENT_HOD",
+        "department": "PHARM",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "SEM001",
+        "category": "Service Admin",
+        "role": "SEMINAR_ADMIN",
+        "department": "SEMINAR",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "ACC001",
+        "category": "Service Admin",
+        "role": "ACCOMMODATION_ADMIN",
+        "department": "HOSTEL",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "TRN001",
+        "category": "Service Admin",
+        "role": "TRANSPORT_ADMIN",
+        "department": "TRANSPORT",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "STA001",
+        "category": "Service Admin",
+        "role": "STATIONERY_ADMIN",
+        "department": "STORE",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "MEA001",
+        "category": "Service Admin",
+        "role": "MEALS_ADMIN",
+        "department": "CANTEEN",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "seminarcoordinator1",
+        "category": "Seminar Coordinator",
+        "role": "SEMINAR_COORDINATOR",
+        "department": "CSE",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "seminarcoordinator2",
+        "category": "Seminar Coordinator",
+        "role": "SEMINAR_COORDINATOR",
+        "department": "ECE",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "seminarcoordinator3",
+        "category": "Seminar Coordinator",
+        "role": "SEMINAR_COORDINATOR",
+        "department": "ME",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "seminarcoordinator4",
+        "category": "Seminar Coordinator",
+        "role": "SEMINAR_COORDINATOR",
+        "department": "PHARM",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      },
+      {
+        "userId": "seminarcoordinator5",
+        "category": "Seminar Coordinator",
+        "role": "SEMINAR_COORDINATOR",
+        "department": "AI",
+        "status": "PASS",
+        "details": "Token: true, RoleMatch: true, DeptMatch: true, Dashboard: 200"
+      }
+    ],
+    "authTests": [
+      {
+        "test": "Department User blocked from /api/admin/users",
+        "expected": "403 Forbidden",
+        "actual": 403,
+        "pass": true
+      },
+      {
+        "test": "AO Admin can access /api/admin/users",
+        "expected": "200 OK",
+        "actual": 200,
+        "pass": true
+      },
+      {
+        "test": "Transport Admin blocked from /api/admin/users",
+        "expected": "403 Forbidden",
+        "actual": 403,
+        "pass": true
+      },
+      {
+        "test": "Seminar Coordinator 1 receives assigned hall SH-1",
+        "expected": "Contains SH-1",
+        "actual": "SH-1",
+        "pass": true
+      }
+    ],
+    "deptConsistency": [],
+    "isolationTests": []
+  },
+  "totalUsersTested": 27,
+  "loginPassCount": 27,
+  "authPassCount": 4,
+  "totalUnifiedRequests": 45
+}

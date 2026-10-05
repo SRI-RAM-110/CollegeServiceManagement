@@ -1,0 +1,259 @@
+/* ============================================================
+   FORMS & INPUTS — ARCTIC BLUE GLASS
+   ============================================================ */
+
+.form-group {
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.01em;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.form-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 480px) {
+  .form-row-2col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.form-column {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Themed Dark Inputs */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+input[type="date"],
+input[type="time"],
+select,
+textarea {
+  font-family: inherit;
+  color: var(--text-primary);
+  background-color: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 0.88rem;
+  outline: none;
+  width: 100%;
+  transition: all var(--transition-fast);
+  backdrop-filter: var(--glass-blur-sm);
+  -webkit-backdrop-filter: var(--glass-blur-sm);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--primary-color);
+  box-shadow:
+    0 0 0 3px rgba(37, 99, 235, 0.20),
+    0 0 16px rgba(37, 99, 235, 0.12);
+  background-color: rgba(15, 23, 42, 0.95);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+}
+
+select {
+  cursor: pointer;
+}
+
+select option {
+  background-color: var(--arctic-bg-secondary);
+  color: var(--text-primary);
+  padding: 8px;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 85px;
+}
+
+/* Date Pickers Accent */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.8) sepia(0.2) saturate(2) hue-rotate(180deg);
+  cursor: pointer;
+}
+
+/* Checkbox & Radio Controls */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--arctic-blue);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.checkbox-label,
+.radio-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Form Helper / Error Messages */
+.form-helper {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+.form-error-alert {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background-color: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  color: #ff9da6;
+  font-size: 0.84rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.form-success-alert {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background-color: var(--success-bg);
+  border: 1px solid var(--success-border);
+  color: #a4deb9;
+  font-size: 0.84rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+/* Service Navigation Tabs */
+.tabs-container {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tab-pill-btn {
+  border-radius: var(--radius-pill) !important;
+  padding: 8px 18px !important;
+  font-size: 0.85rem !important;
+}
+
+/* Filter and Search Toolbars */
+.filter-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-search-form {
+  position: relative;
+  width: 320px;
+}
+
+.filter-search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.filter-search-input {
+  height: 36px !important;
+  padding-left: 38px !important;
+  font-size: 0.84rem !important;
+  box-sizing: border-box;
+}
+
+.filter-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.filter-label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.filter-select {
+  height: 36px !important;
+  width: 140px !important;
+  font-size: 0.84rem !important;
+  box-sizing: border-box;
+}
+
+.service-badge-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-primary);
+  font-size: 0.84rem;
+}
+
+.table-cell-desc {
+  max-width: 320px;
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+}
+
+.table-action-btn {
+  padding: 6px 14px !important;
+  font-size: 0.78rem !important;
+}
+
+/* Compact Admin & Table Filter Controls */
+.filter-input,
+.filter-select,
+.input-sm,
+.select-sm,
+.py-1\.5 {
+  height: 36px !important;
+  box-sizing: border-box;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 768px) {
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="number"],
+  input[type="date"],
+  input[type="time"],
+  select {
+    min-height: 42px;
+  }
+}

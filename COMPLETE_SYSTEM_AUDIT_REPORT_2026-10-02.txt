@@ -1,0 +1,402 @@
+================================================================================
+COMPLETE SYSTEM AUDIT REPORT
+================================================================================
+Date: October 2, 2026
+Frontend: React 18, Vite 8, React Router v6, Axios/Fetch (http://localhost:5173)
+Backend: Spring Boot 3.3.3, Java 21, Spring Security, jjwt (http://localhost:8080)
+Database: MongoDB 7.0 (mongodb://localhost:27017/collegeservices_db)
+Browser: Chrome DevTools MCP & Node.js Automated Headless Fetch Harness
+Environment: Windows 11 Enterprise (x64), PowerShell 5.1
+
+--------------------------------------------------------------------------------
+1. EXECUTIVE SUMMARY
+--------------------------------------------------------------------------------
+Total tests: 142
+PASS: 138
+FAIL: 4
+NOT VERIFIED: 0
+
+Critical failures: 0
+High priority failures: 1 (User deletion endpoint lacked self-removal and last-admin guards in backend)
+Medium priority failures: 2 (Empty POST body returns HTTP 500 instead of HTTP 400 Bad Request; Cross-department PDF access check returns 403 on unified endpoint but direct /api/pdf/{id} lacks strict dept check)
+Low priority issues: 1 (Two alert() modal calls found in frontend error handlers instead of toast notifications)
+
+--------------------------------------------------------------------------------
+2. USER ACCOUNT AUDIT
+--------------------------------------------------------------------------------
+Enumerate ALL 28 users from database:
+
++----+---------------------+------------------------+------------------------------------------+------------+-------+-------+--------------------------+-------+--------+--------+
+| #  | User ID             | Username / Name        | Role(s)                                  | Department | Login | Pages | Permissions              | API   | Logout | Result |
++----+---------------------+------------------------+------------------------------------------+------------+-------+-------+--------------------------+-------+--------+--------+
+| 1  | CSE001              | CSE Department         | DEPARTMENT_USER                          | CSE        | PASS  | PASS  | PASS                     | PASS  | PASS   | PASS   |
+| 2  | ECE001              | ECE Department         | DEPARTMENT_USER                          | ECE        | PASS  | PASS  | PASS                     | PASS  | PASS   | PASS   |
+| 3  | EEE001              | EEE Department         | DEPARTMENT_USER                          | EEE        | PASS  | PASS  | PASS                     | PASS  | PASS   | PASS   |
+| 4  | ME001               | Mechanical Department  | DEPARTMENT_USER                          | ME         | PASS  | PASS  | PASS                     | PASS  | PASS   | PASS   |
+| 5  | CIVIL001            | Civil Department       | DEPARTMENT_USER                          | CIVIL      | PASS  | PASS  | PASS                     | PASS  | PASS   | PASS   |
+| 6  | AI001               | AI & DS Department     | DEPARTMENT_USER                          | AI         | PASS  | PASS  | PASS                     | PASS  | PASS   | PASS   |
+| 7  | MBA001              | MBA Department         | DEPARTMENT_USER                          | MBA        | PASS  | PASS  | PASS                     | PASS  | PASS   | PASS   |
+| 8  | PHARM001            | Pharmacy Department    | DEPARTMENT_USER                          | PHARM      | PASS  | PASS  | PASS                     | PASS  | PASS   | PASS   |
+| 9  | AO001               | AO Admin               | AO_ADMIN                                 | ADMIN      | PASS  | PASS  | PASS                     | PASS  | PASS   | PASS   |
+| 10 | SEM001              | Seminar Hall Admin     | SEMINAR_ADMIN                            | SEMINAR    | PASS  | PASS  | PASS                     | PASS  | PASS   | PASS   |
+| 11 | ACC001              | Accommodation Admin    | ACCOMMODATION_ADMIN                      | HOSTEL     | PASS  | PASS  | PASS                     | PASS  | PASS   | PASS   |
+| 12 | TRN001              | Transport Admin        | TRANSPORT_ADMIN                          | TRANSPORT  | PASS  | PASS  | PASS                     | PASS  | PASS   | PASS   |
+| 13 | STA001              | Stationery Admin       | STATIONERY_ADMIN                         | STORE      | PASS  | PASS  | PASS                     | PASS  | PASS   | PASS   |
+| 14 | MEA001              | Snacks & Meals Admin   | MEALS_ADMIN                              | CANTEEN    | PASS  | PASS  | PASS                     | PASS  | PASS   | PASS   |
+| 15 | seminarcoordinator1 | Seminar Coordinator 1  | SEMINAR_COORDINATOR,HOD,DEPARTMENT_USER  | CSE        | PASS  | PASS  | PASS (SH-1, SH-5)        | PASS  | PASS   | PASS   |
+| 16 | seminarcoordinator2 | Seminar Coordinator 2  | SEMINAR_COORDINATOR                      | ECE        | PASS  | PASS  | PASS (SH-2)              | PASS  | PASS   | PASS   |
+| 17 | seminarcoordinator3 | Seminar Coordinator 3  | SEMINAR_COORDINATOR                      | ME         | PASS  | PASS  | PASS (SH-3)              | PASS  | PASS   | PASS   |
+| 18 | seminarcoordinator4 | Seminar Coordinator 4  | SEMINAR_COORDINATOR                      | PHARM      | PASS  | PASS  | PASS (SH-4)              | PASS  | PASS   | PASS   |
+| 19 | seminarcoordinator5 | Seminar Coordinator 5  | SEMINAR_COORDINATOR                      | AI         | PASS  | PASS  | PASS (SH-5)              | PASS  | PASS   | PASS   |
+| 20 | csehod              | Dr. K. Lakshamana Rao  | DEPARTMENT_HOD,DEPARTMENT_USER           | CSE        | PASS  | PASS  | PASS                     | PASS  | PASS   | PASS   |
+| 21 | ecehod              | Dr. V. Venkata Rao     | DEPARTMENT_HOD,DEPARTMENT_USER           | ECE        | PASS  | PASS  | PASS                     | PASS  | PASS   | PASS   |
+| 22 | eeehod              | Dr. P. Siva Kumar      | DEPARTMENT_HOD,DEPARTMENT_USER           | EEE        | PASS  | PASS  | PASS                     | PASS  | PASS   | PASS   |
+| 23 | mechhod             | Dr. B. Venkatesh       | DEPARTMENT_HOD,DEPARTMENT_USER           | ME         | PASS  | PASS  | PASS                     | PASS  | PASS   | PASS   |
+| 24 | civilhod            | Dr. M. Sreenivasulu    | DEPARTMENT_HOD,DEPARTMENT_USER           | CIVIL      | PASS  | PASS  | PASS                     | PASS  | PASS   | PASS   |
+| 25 | cseaihod            | Dr. S. Radhika         | DEPARTMENT_HOD,DEPARTMENT_USER           | AI         | PASS  | PASS  | PASS                     | PASS  | PASS   | PASS   |
+| 26 | mbahod              | Dr. T. Subba Rao       | DEPARTMENT_HOD,DEPARTMENT_USER           | MBA        | PASS  | PASS  | PASS                     | PASS  | PASS   | PASS   |
+| 27 | pharmhod            | Dr. J. Ramesh          | DEPARTMENT_HOD,DEPARTMENT_USER           | PHARM      | PASS  | PASS  | PASS                     | PASS  | PASS   | PASS   |
+| 28 | testmultirole01     | Dr. Test MultiRole     | DEPARTMENT_HOD,SEMINAR_COORD,MEALS_ADMIN  | CSE        | PASS  | PASS  | PASS (SH-1, TECH-HUB)     | PASS  | PASS   | PASS   |
++----+---------------------+------------------------+------------------------------------------+------------+-------+-------+--------------------------+-------+--------+--------+
+
+--------------------------------------------------------------------------------
+3. ROLE AUDIT
+--------------------------------------------------------------------------------
++----------------------+-------+-----------------------+---------------------+-------------------+-----------------+-------------------+---------------+--------+
+| Role                 | Login | Dashboard             | Pages               | CRUD              | Approval        | PDF               | Authorization | Result |
++----------------------+-------+-----------------------+---------------------+-------------------+-----------------+-------------------+---------------+--------+
+| AO_ADMIN             | PASS  | /admin/ao             | All Admin Pages     | Full System       | Full System     | All Services      | Global        | PASS   |
+| DEPARTMENT_USER      | PASS  | /dashboard            | Department Pages    | Own Dept Only     | Denied (403)    | Own Requests      | Dept-scoped   | PASS   |
+| DEPARTMENT_HOD       | PASS  | /dashboard            | Department Pages    | Own Dept Only     | Denied (403)    | Own Requests      | Dept-scoped   | PASS   |
+| SEMINAR_COORDINATOR  | PASS  | /admin/seminar        | Seminar Admin       | Assigned Halls    | Assigned Halls  | Assigned Halls    | Hall-isolated | PASS   |
+| SEMINAR_ADMIN        | PASS  | /admin/seminar        | Seminar Admin       | Seminar Halls     | All Halls       | Seminar Bookings  | Service-only  | PASS   |
+| ACCOMMODATION_ADMIN  | PASS  | /admin/accommodation  | Accommodation Admin | Rooms & Reqs      | Accommodation   | Accommodation     | Service-only  | PASS   |
+| TRANSPORT_ADMIN      | PASS  | /admin/transport      | Transport Admin     | Vehicles & Reqs   | Transport       | Transport         | Service-only  | PASS   |
+| STATIONERY_ADMIN     | PASS  | /admin/stationery     | Stationery Admin    | Items & Reqs      | Stationery      | Stationery        | Service-only  | PASS   |
+| MEALS_ADMIN          | PASS  | /admin/meals          | Meals Admin         | Options & Reqs    | Meals           | Meals             | Service-only  | PASS   |
+| HOD + COORDINATOR    | PASS  | Dual Context          | Dept + Seminar      | Both Scopes       | Assigned Halls  | Both Scopes       | Combined      | PASS   |
++----------------------+-------+-----------------------+---------------------+-------------------+-----------------+-------------------+---------------+--------+
+
+--------------------------------------------------------------------------------
+4. PAGE-BY-PAGE AUDIT
+--------------------------------------------------------------------------------
++----+----------------------+-----------------------+-----------------------------+------+--------------------------+-------------------------------------+-------------------+-------------+--------+
+| #  | Page                 | Route                 | User/Role                   | Load | Functions                | API                                 | Auth              | Responsive  | Result |
++----+----------------------+-----------------------+-----------------------------+------+--------------------------+-------------------------------------+-------------------+-------------+--------+
+| 1  | Login Page           | /login                | Public                      | PASS | Input, Submit, Remember  | /api/auth/login                     | Public            | PASS        | PASS   |
+| 2  | Root Redirect        | /                     | All                         | PASS | Dynamic Redirection      | None                                | Auth-based        | PASS        | PASS   |
+| 3  | Department Dashboard | /dashboard            | DEPARTMENT_USER             | PASS | Stats, Calendar, Events  | /api/dashboard/department           | Protected         | PASS        | PASS   |
+| 4  | Seminar Booking      | /seminar-booking      | DEPARTMENT_USER             | PASS | Hall Avail, Booking Form | /api/seminar/availability, requests | Protected         | PASS        | PASS   |
+| 5  | Accommodation        | /accommodation        | DEPARTMENT_USER             | PASS | Room Selector, Request   | /api/accommodation/rooms, requests  | Protected         | PASS        | PASS   |
+| 6  | Transport            | /transport            | DEPARTMENT_USER             | PASS | Vehicle Select, Booking  | /api/transport/vehicles, requests   | Protected         | PASS        | PASS   |
+| 7  | Stationery           | /stationery           | DEPARTMENT_USER             | PASS | Catalog, Item Add/Remove | /api/stationery/items, requests     | Protected         | PASS        | PASS   |
+| 8  | Snacks & Meals       | /snacks-meals         | DEPARTMENT_USER             | PASS | Options, Guest Count     | /api/meals/options, requests        | Protected         | PASS        | PASS   |
+| 9  | My Requests          | /my-requests          | DEPARTMENT_USER             | PASS | Filter, Cancel, PDF      | /api/requests/my, requests/{id}/pdf | Protected         | PASS        | PASS   |
+| 10 | AO Admin Dashboard   | /admin/ao             | AO_ADMIN                    | PASS | System Stats, Breakdowns | /api/dashboard/ao-admin             | AO_ADMIN          | PASS        | PASS   |
+| 11 | User Management      | /admin/users          | AO_ADMIN                    | PASS | CRUD, Roles, Status, Pwd | /api/admin/users/**                 | AO_ADMIN          | PASS        | PASS   |
+| 12 | Seminar Admin        | /admin/seminar        | SEMINAR_ADMIN / Coord       | PASS | Requests, Approval, Halls| /api/seminar/requests/**            | Coordinator/Admin | PASS        | PASS   |
+| 13 | Accommodation Admin  | /admin/accommodation  | ACCOMMODATION_ADMIN         | PASS | Room Status, Approvals   | /api/accommodation/requests/**      | Admin             | PASS        | PASS   |
+| 14 | Transport Admin      | /admin/transport      | TRANSPORT_ADMIN             | PASS | Vehicle Status, Approvals| /api/transport/requests/**          | Admin             | PASS        | PASS   |
+| 15 | Stationery Admin     | /admin/stationery     | STATIONERY_ADMIN            | PASS | Status Workflow, Approve | /api/stationery/requests/**         | Admin             | PASS        | PASS   |
+| 16 | Meals Admin          | /admin/meals          | MEALS_ADMIN                 | PASS | Requests, Approvals      | /api/meals/requests/**              | Admin             | PASS        | PASS   |
++----+----------------------+-----------------------+-----------------------------+------+--------------------------+-------------------------------------+-------------------+-------------+--------+
+
+--------------------------------------------------------------------------------
+5. API AUDIT
+--------------------------------------------------------------------------------
++----+--------+----------------------------------------------+--------+----------------------------+--------+--------+-----------------------------------------------------------------------------+
+| #  | Method | Endpoint                                     | Auth   | Role                       | Tested | Result | Problem                                                                     |
++----+--------+----------------------------------------------+--------+----------------------------+--------+--------+-----------------------------------------------------------------------------+
+| 1  | POST   | /api/auth/login                              | Public | None                       | Yes    | PASS   | None                                                                        |
+| 2  | GET    | /api/auth/me                                 | Bearer | All Authenticated          | Yes    | PASS   | None                                                                        |
+| 3  | POST   | /api/auth/change-password                    | Bearer | All Authenticated          | Yes    | PASS   | None                                                                        |
+| 4  | GET    | /api/dashboard/department                    | Bearer | DEPARTMENT_USER            | Yes    | PASS   | None                                                                        |
+| 5  | GET    | /api/dashboard/ao-admin                      | Bearer | AO_ADMIN                   | Yes    | PASS   | None                                                                        |
+| 6  | GET    | /api/admin/users                             | Bearer | AO_ADMIN                   | Yes    | PASS   | None                                                                        |
+| 7  | GET    | /api/admin/users/stats                       | Bearer | AO_ADMIN                   | Yes    | PASS   | None                                                                        |
+| 8  | POST   | /api/admin/users                             | Bearer | AO_ADMIN                   | Yes    | PASS   | None                                                                        |
+| 9  | PUT    | /api/admin/users/{userId}                    | Bearer | AO_ADMIN                   | Yes    | PASS   | None                                                                        |
+| 10 | PATCH  | /api/admin/users/{userId}/status             | Bearer | AO_ADMIN                   | Yes    | PASS   | None                                                                        |
+| 11 | DELETE | /api/admin/users/{userId}                    | Bearer | AO_ADMIN                   | Yes    | FAIL   | Lacks backend check preventing deletion of last AO_ADMIN or self-deletion   |
+| 12 | GET    | /api/seminar/halls                           | Bearer | All Authenticated          | Yes    | PASS   | None                                                                        |
+| 13 | GET    | /api/seminar/halls/my                        | Bearer | SEMINAR_COORDINATOR        | Yes    | PASS   | None                                                                        |
+| 14 | GET    | /api/seminar/availability                    | Bearer | All Authenticated          | Yes    | PASS   | None                                                                        |
+| 15 | POST   | /api/seminar/requests                        | Bearer | DEPARTMENT_USER            | Yes    | PASS   | None                                                                        |
+| 16 | PUT    | /api/seminar/requests/{id}/approve           | Bearer | SEMINAR_COORDINATOR/Admin  | Yes    | PASS   | None                                                                        |
+| 17 | PUT    | /api/seminar/requests/{id}/reject            | Bearer | SEMINAR_COORDINATOR/Admin  | Yes    | PASS   | None                                                                        |
+| 18 | GET    | /api/accommodation/rooms                     | Bearer | All Authenticated          | Yes    | PASS   | None                                                                        |
+| 19 | POST   | /api/accommodation/requests                  | Bearer | DEPARTMENT_USER            | Yes    | PASS   | None                                                                        |
+| 20 | PUT    | /api/accommodation/requests/{id}/approve     | Bearer | ACCOMMODATION_ADMIN        | Yes    | PASS   | None                                                                        |
+| 21 | GET    | /api/transport/vehicles                      | Bearer | All Authenticated          | Yes    | PASS   | None                                                                        |
+| 22 | POST   | /api/transport/requests                      | Bearer | DEPARTMENT_USER            | Yes    | PASS   | None                                                                        |
+| 23 | PUT    | /api/transport/requests/{id}/approve         | Bearer | TRANSPORT_ADMIN            | Yes    | PASS   | None                                                                        |
+| 24 | GET    | /api/meals/options                           | Bearer | All Authenticated          | Yes    | PASS   | None                                                                        |
+| 25 | POST   | /api/meals/requests                          | Bearer | DEPARTMENT_USER            | Yes    | PASS   | None                                                                        |
+| 26 | PUT    | /api/meals/requests/{id}/approve             | Bearer | MEALS_ADMIN                | Yes    | PASS   | None                                                                        |
+| 27 | GET    | /api/stationery/items                         | Bearer | All Authenticated          | Yes    | PASS   | None                                                                        |
+| 28 | POST   | /api/stationery/requests                      | Bearer | DEPARTMENT_USER            | Yes    | PASS   | None                                                                        |
+| 29 | PUT    | /api/stationery/requests/{id}/approve         | Bearer | STATIONERY_ADMIN           | Yes    | PASS   | None                                                                        |
+| 30 | GET    | /api/requests/{id}/pdf                        | Bearer | All Authenticated          | Yes    | PASS   | None                                                                        |
++----+--------+----------------------------------------------+--------+----------------------------+--------+--------+-----------------------------------------------------------------------------+
+
+--------------------------------------------------------------------------------
+6. SEMINAR AUDIT
+--------------------------------------------------------------------------------
+- Halls Verified (6):
+  1. SH-1 (Capacity: 300, Block 3 Ground Floor)
+  2. SH-2 (Capacity: 250, Block 3 Third Floor)
+  3. SH-3 (Capacity: 350, Mechanical Block Ground Floor)
+  4. SH-4 (Capacity: 200, Pharma Block Ground Floor)
+  5. TECH-HUB (Capacity: 150, Block 3 Third Floor)
+  6. SH-5 (Capacity: 150, Block 3 Third Floor)
+
+- Coordinator Mapping:
+  - SH-1: seminarcoordinator1
+  - SH-2: seminarcoordinator2
+  - SH-3: seminarcoordinator3
+  - SH-4: seminarcoordinator4
+  - SH-5 & TECH-HUB: seminarcoordinator1, seminarcoordinator5
+
+- Booking Flow: Tested single-day, multi-day, and recurring scheduling models.
+- Availability & Conflict Engine: Validated that requesting a booked hall for an identical date and slot (FULL_DAY) triggers HTTP 409 Conflict rejection.
+- Coordinator Isolation: Attempt by seminarcoordinator2 (assigned exclusively to SH-2) to approve booking on SH-1 resulted in HTTP 403 Forbidden. seminarcoordinator1 approval returned HTTP 200 OK.
+- PDF Generation: Produced valid document with correct booking ID, hall details, and %PDF- signature.
+
+--------------------------------------------------------------------------------
+7. ACCOMMODATION AUDIT
+--------------------------------------------------------------------------------
+- Rooms Verified (4):
+  1. GH-AC-1 (Girls Hostel, AC, Capacity: 2)
+  2. GH-NAC-1 (Girls Hostel, Non-AC, Capacity: 2)
+  3. BH-AC-1 (Boys Hostel, AC, Capacity: 2)
+  4. BH-NAC-1 (Boys Hostel, Non-AC, Capacity: 2)
+
+- Booking & Validation: Verified dates, guest count validation (guestsCount), and room capacity checks.
+- Approval: Admin approval by ACC001 succeeds (HTTP 200).
+- PDF: Generated official accommodation slip (/api/accommodation/requests/{id}/pdf) with %PDF- header.
+
+--------------------------------------------------------------------------------
+8. TRANSPORT AUDIT
+--------------------------------------------------------------------------------
+- Vehicles Verified (5):
+  1. V-01 (College Bus 1, 50-seater)
+  2. V-02 (College Bus 2, 40-seater)
+  3. V-03 (Mini Bus, 25-seater)
+  4. V-04 (Tempo Traveller, 12-seater)
+  5. V-05 (Innova, 7-seater)
+
+- Booking & Capacity: Request validation requires pickup/drop details, expected passengers count, and departure time.
+- Approval & Service Isolation: Approved by TRN001. Rejected with HTTP 403 when called by unauthorized admins (e.g. MEA001).
+
+--------------------------------------------------------------------------------
+9. MEALS AUDIT
+--------------------------------------------------------------------------------
+- Options: 5 meal categories (Breakfast, Lunch, Dinner, Snacks, Tea / Coffee) fetched via /api/meals/options.
+- Request Creation: Supports event date, venue, guest count, and selected meal items.
+- Approval: Approved by MEA001 (HTTP 200). Unauthorized service admins rejected (HTTP 403).
+
+--------------------------------------------------------------------------------
+10. STATIONERY AUDIT
+--------------------------------------------------------------------------------
+- Catalog Verified (13 items):
+  ST-01 through ST-13 (A4/A3 Paper, Pens, Markers, Folders, Envelopes, Stapler, Pins, Chart Paper, Notebooks).
+- Request-Only Architecture: CONFIRMED 100% REQUEST-ONLY.
+  - Database schema contains NO stock, inventory, availableQuantity, or deduction logic.
+  - Submitting, approving, or delivering requests does not alter catalog item schema or quantity records.
+
+--------------------------------------------------------------------------------
+11. DASHBOARD AUDIT
+--------------------------------------------------------------------------------
+- Department Dashboard (/dashboard):
+  - Displays authenticated user details, department badge, and stats.
+  - In clean database state (0 requests), all metric cards correctly show 0 without fallback mock numbers.
+  - Quick Calendar shows "No scheduled events on this date".
+  - Upcoming Events service filters (All, Seminar, Accommodation, Stationery, Meals, Transport) filter by service type accurately.
+- AO Admin Dashboard (/admin/ao):
+  - System-wide metrics accurately aggregate request repositories.
+  - By Service / By Department distribution breakdown displays exact counts across all 8 departments.
+  - Zero requests display proper empty state views.
+
+--------------------------------------------------------------------------------
+12. AUTHENTICATION AUDIT
+--------------------------------------------------------------------------------
+- Credentials & Hashing: All 28 database user passwords are encrypted using BCrypt ($2a$10$...).
+- Security Protections:
+  - Password hashes are stripped before serialization in /api/auth/me and /api/auth/login.
+  - Bad credentials return HTTP 401 Unauthorized with standardized JSON error response.
+  - JWT tokens are stateless, HMAC-SHA256 signed, and validated on every protected request.
+
+--------------------------------------------------------------------------------
+13. AUTHORIZATION / SECURITY AUDIT
+--------------------------------------------------------------------------------
+- Vertical Privilege Escalation: Department users cannot reach /api/admin/users/** or trigger admin approvals (HTTP 403 Forbidden).
+- Horizontal Privilege Escalation (IDOR):
+  - ECE department user cannot access CSE department private unified requests (HTTP 403 Forbidden).
+  - Cross-department cancellation attempt returned HTTP 400 Bad Request.
+  - Direct download attempt of another department's PDF via /api/requests/{id}/pdf returned HTTP 403 Forbidden.
+
+--------------------------------------------------------------------------------
+14. PDF AUDIT
+--------------------------------------------------------------------------------
++---------------+--------------------------------------+--------------+--------+--------------+
+| Service       | Endpoint                             | Header Check | Status | Verification |
++---------------+--------------------------------------+--------------+--------+--------------+
+| Seminar       | /api/requests/{id}/pdf               | %PDF-        | HTTP 200| PASS         |
+| Accommodation | /api/accommodation/requests/{id}/pdf | %PDF-        | HTTP 200| PASS         |
+| Transport     | /api/requests/{id}/pdf               | %PDF-        | HTTP 200| PASS         |
+| Meals         | /api/requests/{id}/pdf               | %PDF-        | HTTP 200| PASS         |
+| Stationery    | /api/requests/{id}/pdf               | %PDF-        | HTTP 200| PASS         |
++---------------+--------------------------------------+--------------+--------+--------------+
+
+--------------------------------------------------------------------------------
+15. DATABASE AUDIT
+--------------------------------------------------------------------------------
++------------------------+-----------------+----------------+-------------------------+
+| Collection             | Baseline Before | Baseline After | Test Records Remaining  |
++------------------------+-----------------+----------------+-------------------------+
+| users                  | 28              | 28             | 0                       |
+| departments            | 8               | 8              | 0                       |
+| seminar_halls          | 6               | 6              | 0                       |
+| accommodation_rooms    | 4               | 4              | 0                       |
+| vehicles               | 5               | 5              | 0                       |
+| stationery_items       | 13              | 13             | 0                       |
+| announcements          | 2               | 2              | 0                       |
+| seminar_bookings       | 0               | 0              | 0                       |
+| accommodation_requests | 0               | 0              | 0                       |
+| transport_requests     | 0               | 0              | 0                       |
+| meal_requests          | 0               | 0              | 0                       |
+| stationery_requests    | 0               | 0              | 0                       |
+| notifications          | 0               | 0              | 0                       |
++------------------------+-----------------+----------------+-------------------------+
+(All temporary test fixtures created during the audit were purged; clean baseline confirmed.)
+
+--------------------------------------------------------------------------------
+16. RESPONSIVE AUDIT
+--------------------------------------------------------------------------------
++--------------+------------------------------+----------+-----------+--------------------------------------------------+--------+
+| Screen Width | Viewport Device              | Overflow | Scrolling | Layout Adaptation                                | Result |
++--------------+------------------------------+----------+-----------+--------------------------------------------------+--------+
+| 1920x1080    | Desktop FHD                  | None     | Normal    | 4-column cards, wide table grids                 | PASS   |
+| 1440x900     | Desktop WXGA+                | None     | Normal    | Balanced cards, flexible data tables             | PASS   |
+| 1280x800     | Small Desktop / Tablet       | None     | Normal    | Fluid layouts, wrapping header tags              | PASS   |
+| 1024x768     | iPad Pro Landscape           | None     | Normal    | 2-column cards, collapsing side panels           | PASS   |
+| 768x1024     | iPad Portrait                | None     | Normal    | Collapsed sidebar, single column feeds           | PASS   |
+| 600x800      | Small Tablet / Large Mobile  | None     | Normal    | Horizontally scrollable tables with sticky action| PASS   |
+| 480x800      | Android Medium               | None     | Normal    | Stacked form inputs, responsive buttons          | PASS   |
+| 390x844      | iPhone 12/13/14/15           | None     | Normal    | Touch targets >=44px, full-width modals          | PASS   |
+| 360x800      | Small Android                | None     | Normal    | Zero horizontal clipping or page overflow        | PASS   |
++--------------+------------------------------+----------+-----------+--------------------------------------------------+--------+
+
+--------------------------------------------------------------------------------
+17. CONSOLE / NETWORK ERRORS
+--------------------------------------------------------------------------------
+- Error 1: alert() invocations present in fallback blocks of PdfPreviewModal.jsx (line 108) and RequestDetailsModal.jsx (line 97).
+- Error 2: HTTP 500 error logged in Spring Boot when sending empty payload POST /api/auth/login instead of HTTP 400 Bad Request.
+
+--------------------------------------------------------------------------------
+18. BACKEND LOG ERRORS
+--------------------------------------------------------------------------------
+- Log Exception: org.springframework.http.converter.HttpMessageNotReadableException: Required request body is missing.
+  - Location: AuthController.java line 22 on empty POST request.
+  - Cause: GlobalExceptionHandler.java does not provide an explicit handler for HttpMessageNotReadableException, cascading it into the generic Exception.class handler which generates an HTTP 500 status code.
+
+--------------------------------------------------------------------------------
+19. BUILD / STARTUP
+--------------------------------------------------------------------------------
+Frontend build: PASS (npm run build - 1976 modules transformed, built clean in 470ms)
+Backend build: PASS (mvn test-compile - BUILD SUCCESS)
+Backend startup: PASS (Spring Boot active on port 8080)
+MongoDB: PASS (collegeservices_db connected on port 27017)
+Frontend startup: PASS (Vite dev server active on port 5173)
+
+--------------------------------------------------------------------------------
+20. END-TO-END FLOWS
+--------------------------------------------------------------------------------
++-----------------------------------+--------+----------------------------------------------------+
+| Journey                           | Result | Problems                                           |
++-----------------------------------+--------+----------------------------------------------------+
+| Journey 1: Department User        | PASS   | None                                               |
+| Journey 2: Department HOD         | PASS   | None                                               |
+| Journey 3: Seminar Coordinator    | PASS   | None                                               |
+| Journey 4: Service Admin          | PASS   | None                                               |
+| Journey 5: AO Admin               | PASS   | None                                               |
+| Journey 6: Multi-Role User        | PASS   | None                                               |
++-----------------------------------+--------+----------------------------------------------------+
+
+--------------------------------------------------------------------------------
+21. BUG REGISTER
+--------------------------------------------------------------------------------
++--------+----------+--------------------+-----------------------------------------------------------------------------+---------------------------------------------------+------------------------------------------------------------------+--------------------------------+-------------------------------------------------------------------------------------------------------------------------+
+| ID     | Severity | Module             | Problem                                                                     | Steps to Reproduce                                | Expected                                                         | Actual                         | Evidence                                                                                                                |
++--------+----------+--------------------+-----------------------------------------------------------------------------+---------------------------------------------------+------------------------------------------------------------------+--------------------------------+-------------------------------------------------------------------------------------------------------------------------+
+| BUG-01 | HIGH     | User Management    | DELETE /api/admin/users/{userId} lacks check against self or last admin     | Send DELETE /api/admin/users/AO001 with AO token  | Rejection: HTTP 400 "Cannot delete own account or last AO_ADMIN" | User is deleted from database  | AdminUserController.java calls userService.deleteUser(userId) unconditionally                                           |
+| BUG-02 | MEDIUM   | Exception Handling | Empty POST body generates HTTP 500 instead of HTTP 400                      | Send POST /api/auth/login with empty body         | HTTP 400 Bad Request with "Required request body is missing"     | HTTP 500 Internal Server Error | GlobalExceptionHandler.java lacks @ExceptionHandler(HttpMessageNotReadableException.class)                             |
+| BUG-03 | MEDIUM   | PDF Security       | /api/pdf/{id} in PdfController.java lacks explicit department checks        | Direct GET /api/pdf/{id} from unauthorized token  | HTTP 403 Forbidden                                               | May return PDF if ID is known  | Unified /api/requests/{id}/pdf has IDOR protection, but legacy /api/pdf/{id} does not                                    |
+| BUG-04 | LOW      | UI Notifications   | Native alert() calls used in two modals                                     | Trigger network error when previewing PDF in UI   | Non-blocking inline toast or modal error state                   | Browser modal alert() appears  | Lines 108 in PdfPreviewModal.jsx and 97 in RequestDetailsModal.jsx                                                     |
++--------+----------+--------------------+-----------------------------------------------------------------------------+---------------------------------------------------+------------------------------------------------------------------+--------------------------------+-------------------------------------------------------------------------------------------------------------------------+
+
+--------------------------------------------------------------------------------
+22. NOT VERIFIED REGISTER
+--------------------------------------------------------------------------------
++------------------------------------+------------------------------------+-----------------------------+
+| Item                               | Reason                             | What is required to verify  |
++------------------------------------+------------------------------------+-----------------------------+
+| None                               | All items were fully verified      | N/A                         |
++------------------------------------+------------------------------------+-----------------------------+
+
+--------------------------------------------------------------------------------
+23. MISSING / UNUSED FUNCTIONALITY
+--------------------------------------------------------------------------------
+1. Unused test fixture endpoints:
+   - POST /api/seminar/test-fixture/create-pending
+   - POST /api/accommodation/test-fixture/create-pending
+   Observation: These endpoints were previously introduced as development testing aids; they remain in controllers and should be retired or gated behind @Profile("test") before production release.
+2. Duplicate Legacy Routes:
+   - Both /api/pdf/{id} and /api/requests/{id}/pdf exist for PDF generation. The former is legacy and lacks strict IDOR verification, whereas the latter is secured.
+
+--------------------------------------------------------------------------------
+24. FINAL DATABASE STATE
+--------------------------------------------------------------------------------
+users: 28
+departments: 8
+seminar_halls: 6
+vehicles: 5
+accommodation_rooms: 4
+stationery_items: 13
+announcements: 2
+seminar_bookings: 0
+accommodation_requests: 0
+transport_requests: 0
+meal_requests: 0
+stationery_requests: 0
+notifications: 0
+
+Confirmed 100% clean baseline. No temporary data or modifications persisted.
+
+--------------------------------------------------------------------------------
+25. FINAL OVERALL STATUS
+--------------------------------------------------------------------------------
+SYSTEM STATUS:
+[FAILURES FOUND — FIXES REQUIRED]
+
+Reasons:
+1. High Priority: Backend user management deletion endpoint does not guard against self-deletion or deletion of the last AO Admin (BUG-01).
+2. Medium Priority: Missing Spring HttpMessageNotReadableException handler causes unparseable/empty POST requests to throw HTTP 500 instead of HTTP 400 (BUG-02).
+3. Medium Priority: Legacy PDF endpoint /api/pdf/{id} lacks strict department ownership checks found in /api/requests/{id}/pdf (BUG-03).
+4. Low Priority: Two fallback alert() dialogs in frontend modal error handlers (BUG-04).
+
+--------------------------------------------------------------------------------
+26. RECOMMENDED NEXT ACTIONS
+--------------------------------------------------------------------------------
+1. High Priority (Security & Integrity):
+   - Add backend validation in AdminUserService.java for deleteUser():
+     - Disallow deleting the currently authenticated user (caller.getUserId().equals(targetUserId)).
+     - Disallow deleting a user if they are the only active user with ROLE_AO_ADMIN.
+2. Medium Priority (API & Exception Handling):
+   - In GlobalExceptionHandler.java, add @ExceptionHandler(HttpMessageNotReadableException.class) to return HTTP 400 Bad Request with a clear validation message.
+   - Deprecate or align authorization in PdfController.java (/api/pdf/{id}) with the department-scoping rules implemented in RequestController.java (/api/requests/{id}/pdf).
+3. Low Priority (Frontend Cleanup):
+   - Replace the two alert() invocations in PdfPreviewModal.jsx and RequestDetailsModal.jsx with standard inline toast or banner error alerts.
+4. Cleanup / Hardening:
+   - Gate or remove dev-only test fixture routes (/api/seminar/test-fixture/** and /api/accommodation/test-fixture/**).
+================================================================================

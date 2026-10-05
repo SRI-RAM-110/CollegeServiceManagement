@@ -1,0 +1,312 @@
+/* ============================================================
+   LAYOUT STYLES — ARCTIC BLUE GLASS
+   ============================================================ */
+
+/* Desktop Shell: 100vh fixed container with independent panels */
+@media (min-width: 835px) {
+  .main-layout-container {
+    display: flex;
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
+    background-color: var(--arctic-bg);
+    position: relative;
+  }
+
+  .main-layout-content-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    max-height: 100vh;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    background-color: var(--arctic-bg);
+  }
+
+  .main-content-layout {
+    flex: 1;
+    padding: 22px 28px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-width: 0;
+    min-height: 0;
+    overscroll-behavior: auto;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+}
+
+/* Mobile & Tablet Layout Defaults: Natural Document Page Scrolling */
+@media (max-width: 834px) {
+  .main-layout-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    min-height: 100dvh;
+    max-height: none;
+    overflow: visible;
+    position: relative;
+    background-color: var(--arctic-bg);
+  }
+
+  .main-layout-content-wrapper {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    min-height: auto;
+    max-height: none;
+    overflow: visible;
+    background-color: var(--arctic-bg);
+  }
+
+  .main-content-layout {
+    flex: 1 0 auto;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    min-height: auto;
+    max-height: none;
+    overflow: visible;
+    overflow-y: visible;
+    overscroll-behavior: auto;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px 14px;
+  }
+}
+
+/* Mobile Drawer Backdrop */
+.mobile-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(7, 17, 31, 0.82);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 45;
+}
+
+.main-content-layout::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.main-content-layout > * {
+  max-width: 1600px;
+  margin-inline: auto;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+/* Page Hero / Welcome Banner */
+.page-banner,
+.welcome-banner {
+  border-radius: var(--radius-lg);
+  background: linear-gradient(110deg, rgba(15, 23, 42, 0.96) 0%, rgba(30, 58, 95, 0.85) 50%, rgba(15, 23, 42, 0.98) 100%);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  padding: 26px 32px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: var(--glass-shadow);
+  margin-bottom: 24px;
+}
+
+.page-banner-glow {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 45%;
+  background: radial-gradient(circle at 70% 50%, rgba(37, 99, 235, 0.18), rgba(30, 58, 95, 0.08) 45%, transparent 70%);
+  pointer-events: none;
+}
+
+.page-banner-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.page-banner-subtitle {
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+  margin-top: 5px;
+  max-width: 680px;
+}
+
+.page-banner-quote {
+  font-style: italic;
+  font-size: 0.86rem;
+  color: var(--arctic-blue);
+  margin-top: 14px;
+  font-weight: 500;
+}
+
+.page-banner-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: rgba(16, 40, 68, 0.75);
+  border: 1px solid var(--glass-border);
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 0.84rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  box-shadow: var(--glass-shadow-subtle);
+}
+
+/* Two-column View Grid (Main content + Sidebar widgets) */
+.page-grid-2col,
+.two-column-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 24px;
+  align-items: start;
+  min-width: 0;
+}
+
+.two-column-layout.support-wide {
+  grid-template-columns: minmax(0, 1fr) 380px;
+}
+
+.column-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.banner-meta {
+  z-index: 2;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.banner-tagline {
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.details-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.details-modal-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.details-modal-label {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.details-modal-value {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.details-modal-section {
+  border-top: 1px solid var(--glass-border);
+  padding-top: 12px;
+  margin-top: 4px;
+}
+
+.details-modal-desc {
+  color: var(--text-secondary);
+  margin-top: 4px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.action-view-btn {
+  background: none;
+  border: none;
+  color: var(--arctic-blue);
+  font-weight: 600;
+  font-size: 0.84rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.action-view-btn:hover {
+  color: var(--arctic-blue-hover);
+}
+
+.table-empty-cell {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 24px;
+  font-size: 0.88rem;
+}
+
+.table-cell-date {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.table-cell-service {
+  color: var(--arctic-blue);
+  font-weight: 500;
+}
+
+.rejection-box {
+  padding: 10px 14px;
+  background-color: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-sm);
+  margin-top: 6px;
+}
+
+.rejection-label {
+  color: var(--danger);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.rejection-text {
+  color: #fca5a5;
+  font-size: 0.82rem;
+  margin-top: 4px;
+}
+
+.modal-desc-box {
+  margin-top: 4px;
+  padding: 10px 12px;
+  background-color: rgba(11, 27, 48, 0.75);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}

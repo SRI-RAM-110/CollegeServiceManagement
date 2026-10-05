@@ -1,0 +1,609 @@
+{
+  "users": [
+    {
+      "id": "6ac2378436f295564f3e41bb",
+      "userId": "aihod",
+      "name": "AI HOD",
+      "email": "aihod@nrtec.local",
+      "phone": "+91 90000 00016",
+      "department": "AI",
+      "designation": null,
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T16:54:52.176",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d8c",
+      "userId": "seminarcoordinator5",
+      "name": "Seminar Coordinator 5",
+      "email": "seminarcoordinator5@nrtec.local",
+      "phone": "+91 90000 00035",
+      "department": "AI",
+      "designation": null,
+      "role": "SEMINAR_COORDINATOR",
+      "roles": [
+        "SEMINAR_COORDINATOR"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [
+        "SH-5"
+      ],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.805",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d8b",
+      "userId": "seminarcoordinator4",
+      "name": "Seminar Coordinator 4",
+      "email": "seminarcoordinator4@nrtec.local",
+      "phone": "+91 90000 00034",
+      "department": "PHARM",
+      "designation": null,
+      "role": "SEMINAR_COORDINATOR",
+      "roles": [
+        "SEMINAR_COORDINATOR"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [
+        "SH-4"
+      ],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.8",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d8a",
+      "userId": "seminarcoordinator3",
+      "name": "Seminar Coordinator 3",
+      "email": "seminarcoordinator3@nrtec.local",
+      "phone": "+91 90000 00033",
+      "department": "ME",
+      "designation": null,
+      "role": "SEMINAR_COORDINATOR",
+      "roles": [
+        "SEMINAR_COORDINATOR"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [
+        "SH-3"
+      ],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.796",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d89",
+      "userId": "seminarcoordinator2",
+      "name": "Seminar Coordinator 2",
+      "email": "seminarcoordinator2@nrtec.local",
+      "phone": "+91 90000 00032",
+      "department": "ECE",
+      "designation": null,
+      "role": "SEMINAR_COORDINATOR",
+      "roles": [
+        "SEMINAR_COORDINATOR"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [
+        "SH-2"
+      ],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.791",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d88",
+      "userId": "seminarcoordinator1",
+      "name": "Seminar Coordinator 1",
+      "email": "seminarcoordinator1@nrtec.local",
+      "phone": "+91 90000 00031",
+      "department": "CSE",
+      "designation": null,
+      "role": "SEMINAR_COORDINATOR",
+      "roles": [
+        "SEMINAR_COORDINATOR"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [
+        "SH-1"
+      ],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.788",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d87",
+      "userId": "MEA001",
+      "name": "Meals Administrator",
+      "email": "mea001@nrtec.local",
+      "phone": "+91 90000 00025",
+      "department": "CANTEEN",
+      "designation": null,
+      "role": "MEALS_ADMIN",
+      "roles": [
+        "MEALS_ADMIN"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.785",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d86",
+      "userId": "STA001",
+      "name": "Stationery Administrator",
+      "email": "sta001@nrtec.local",
+      "phone": "+91 90000 00024",
+      "department": "STORE",
+      "designation": null,
+      "role": "STATIONERY_ADMIN",
+      "roles": [
+        "STATIONERY_ADMIN"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.782",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d85",
+      "userId": "TRN001",
+      "name": "Transport Administrator",
+      "email": "trn001@nrtec.local",
+      "phone": "+91 90000 00023",
+      "department": "TRANSPORT",
+      "designation": null,
+      "role": "TRANSPORT_ADMIN",
+      "roles": [
+        "TRANSPORT_ADMIN"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.779",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d84",
+      "userId": "ACC001",
+      "name": "Accommodation Administrator",
+      "email": "acc001@nrtec.local",
+      "phone": "+91 90000 00022",
+      "department": "HOSTEL",
+      "designation": null,
+      "role": "ACCOMMODATION_ADMIN",
+      "roles": [
+        "ACCOMMODATION_ADMIN"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.775",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d83",
+      "userId": "SEM001",
+      "name": "Seminar Administrator",
+      "email": "sem001@nrtec.local",
+      "phone": "+91 90000 00021",
+      "department": "SEMINAR",
+      "designation": null,
+      "role": "SEMINAR_ADMIN",
+      "roles": [
+        "SEMINAR_ADMIN"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.771",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d82",
+      "userId": "pharmhod",
+      "name": "Pharmacy HOD",
+      "email": "pharmhod@nrtec.local",
+      "phone": "+91 90000 00018",
+      "department": "PHARM",
+      "designation": null,
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.764",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d81",
+      "userId": "mbahod",
+      "name": "MBA HOD",
+      "email": "mbahod@nrtec.local",
+      "phone": "+91 90000 00017",
+      "department": "MBA",
+      "designation": null,
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.76",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d7f",
+      "userId": "civilhod",
+      "name": "Civil HOD",
+      "email": "civilhod@nrtec.local",
+      "phone": "+91 90000 00015",
+      "department": "CIVIL",
+      "designation": null,
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.75",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d7e",
+      "userId": "mechhod",
+      "name": "Mechanical HOD",
+      "email": "mechhod@nrtec.local",
+      "phone": "+91 90000 00014",
+      "department": "ME",
+      "designation": null,
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.746",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d7d",
+      "userId": "eeehod",
+      "name": "EEE HOD",
+      "email": "eeehod@nrtec.local",
+      "phone": "+91 90000 00013",
+      "department": "EEE",
+      "designation": null,
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.742",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d7c",
+      "userId": "ecehod",
+      "name": "ECE HOD",
+      "email": "ecehod@nrtec.local",
+      "phone": "+91 90000 00012",
+      "department": "ECE",
+      "designation": null,
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.738",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d7b",
+      "userId": "PHARM001",
+      "name": "Pharmacy Department User",
+      "email": "pharm001@nrtec.local",
+      "phone": "+91 90000 00008",
+      "department": "PHARM",
+      "designation": null,
+      "role": "DEPARTMENT_USER",
+      "roles": [
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.709",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d7a",
+      "userId": "MBA001",
+      "name": "MBA Department User",
+      "email": "mba001@nrtec.local",
+      "phone": "+91 90000 00007",
+      "department": "MBA",
+      "designation": null,
+      "role": "DEPARTMENT_USER",
+      "roles": [
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.705",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d79",
+      "userId": "AI001",
+      "name": "AI Department User",
+      "email": "ai001@nrtec.local",
+      "phone": "+91 90000 00006",
+      "department": "AI",
+      "designation": null,
+      "role": "DEPARTMENT_USER",
+      "roles": [
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.7",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d78",
+      "userId": "CIVIL001",
+      "name": "Civil Department User",
+      "email": "civil001@nrtec.local",
+      "phone": "+91 90000 00005",
+      "department": "CIVIL",
+      "designation": null,
+      "role": "DEPARTMENT_USER",
+      "roles": [
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.697",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d77",
+      "userId": "ME001",
+      "name": "Mechanical Department User",
+      "email": "me001@nrtec.local",
+      "phone": "+91 90000 00004",
+      "department": "ME",
+      "designation": null,
+      "role": "DEPARTMENT_USER",
+      "roles": [
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.693",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d76",
+      "userId": "EEE001",
+      "name": "EEE Department User",
+      "email": "eee001@nrtec.local",
+      "phone": "+91 90000 00003",
+      "department": "EEE",
+      "designation": null,
+      "role": "DEPARTMENT_USER",
+      "roles": [
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.688",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d75",
+      "userId": "ECE001",
+      "name": "ECE Department User",
+      "email": "ece001@nrtec.local",
+      "phone": "+91 90000 00002",
+      "department": "ECE",
+      "designation": null,
+      "role": "DEPARTMENT_USER",
+      "roles": [
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.685",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d74",
+      "userId": "CSE001",
+      "name": "CSE Department User",
+      "email": "cse001@nrtec.local",
+      "phone": "+91 90000 00001",
+      "department": "CSE",
+      "designation": null,
+      "role": "DEPARTMENT_USER",
+      "roles": [
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.652",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac0cd49b09ba374826f150a",
+      "userId": "csehod",
+      "name": "CSE HOD",
+      "email": "csehod@nrtec.local",
+      "phone": "+91 90000 00011",
+      "department": "CSE",
+      "designation": "",
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": true,
+      "createdAt": "2026-10-03T15:09:21.3",
+      "updatedAt": "2026-10-04T16:39:33.083"
+    },
+    {
+      "id": "6ab3eeae344f5a1ef4f8ef8a",
+      "userId": "AO001",
+      "name": "AO Administrator",
+      "email": "ao001@nrtec.local",
+      "phone": "+91 90000 00000",
+      "department": "ADMIN",
+      "designation": null,
+      "role": "AO_ADMIN",
+      "roles": [
+        "AO_ADMIN"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-09-23T20:52:22.231",
+      "updatedAt": null
+    }
+  ],
+  "depts": [
+    {
+      "id": "6ab3eeae344f5a1ef4f8ef90",
+      "code": "CSE",
+      "name": "Computer Science and Engineering",
+      "block": "Block 3",
+      "floor": "Second Floor",
+      "headOfDept": "CSE HOD",
+      "active": true
+    },
+    {
+      "id": "6ab3eeae344f5a1ef4f8ef91",
+      "code": "ECE",
+      "name": "Electronics and Communication Engineering",
+      "block": "Block 2",
+      "floor": "First Floor",
+      "headOfDept": "ECE HOD",
+      "active": true
+    },
+    {
+      "id": "6ab3eeae344f5a1ef4f8ef92",
+      "code": "EEE",
+      "name": "Electrical and Electronics Engineering",
+      "block": "Block 1",
+      "floor": "Ground Floor",
+      "headOfDept": "EEE HOD",
+      "active": true
+    },
+    {
+      "id": "6ab3eeae344f5a1ef4f8ef93",
+      "code": "ME",
+      "name": "Mechanical Engineering",
+      "block": "Block 4",
+      "floor": "Ground Floor",
+      "headOfDept": "Mechanical HOD",
+      "active": true
+    },
+    {
+      "id": "6ab3eeae344f5a1ef4f8ef94",
+      "code": "CIVIL",
+      "name": "Civil Engineering",
+      "block": "Block 4",
+      "floor": "First Floor",
+      "headOfDept": "Civil HOD",
+      "active": true
+    },
+    {
+      "id": "6ab3eeae344f5a1ef4f8ef95",
+      "code": "AI",
+      "name": "Artificial Intelligence and Data Science",
+      "block": "Block 3",
+      "floor": "Third Floor",
+      "headOfDept": "AI HOD",
+      "active": true
+    },
+    {
+      "id": "6ab3eeae344f5a1ef4f8ef96",
+      "code": "MBA",
+      "name": "Master of Business Administration",
+      "block": "MBA Block",
+      "floor": "Ground Floor",
+      "headOfDept": "MBA HOD",
+      "active": true
+    },
+    {
+      "id": "6ab3eeae344f5a1ef4f8ef97",
+      "code": "PHARM",
+      "name": "Pharmacy",
+      "block": "Pharma Block",
+      "floor": "Ground Floor",
+      "headOfDept": "Pharmacy HOD",
+      "active": true
+    }
+  ]
+}

@@ -1,0 +1,138 @@
+/* ============================================================
+   NARASARAOPET ENGINEERING COLLEGE — OFFICIAL BLUE/WHITE/NAVY DARK THEME
+   Visual Identity:
+   - Primary: #2563eb (Professional Blue)
+   - Secondary: #0f172a (Deep Slate Navy)
+   - Accent: #60a5fa (Sky Blue)
+   - Background Main: #020617 (Very Dark Navy / Blue-Black)
+   - Background Sidebar & Topbar: #0f172a (Dark Navy)
+   - Background Card: #111827 / rgba(17, 24, 39, 0.82) (Dark Blue-Gray)
+   - Background Card Hover: #172033
+   - Background Input: #0f172a / rgba(15, 23, 42, 0.90)
+   - Text Primary: #ffffff (Crisp White)
+   - Text Secondary: #cbd5e1 (Light Gray)
+   - Text Muted: #94a3b8
+   - Border: #1e3a5f / rgba(30, 58, 95, 0.50)
+   - Semantic Statuses: Green, Amber, Red, Cyan
+   ============================================================ */
+
+:root {
+  /* ============================================================
+     1. CORE THEME PALETTE — BLUE + WHITE + DARK NAVY
+     ============================================================ */
+  --primary-color: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-light: #3b82f6;
+  --primary-soft: rgba(37, 99, 235, 0.16);
+  --primary-glow: rgba(37, 99, 235, 0.28);
+  --primary: var(--primary-color);
+
+  --secondary-color: #0f172a;
+  --secondary-hover: #1e293b;
+  --secondary: var(--secondary-color);
+
+  --accent-color: #60a5fa;
+  --accent-hover: #93c5fd;
+  --accent-light: rgba(96, 165, 250, 0.16);
+  --accent: var(--accent-color);
+
+  /* Dark Navy Background System */
+  --bg-main: #020617;
+  --bg-secondary: #0f172a;
+  --bg-sidebar: #0f172a;
+  --bg-topbar: rgba(15, 23, 42, 0.92);
+  --bg-card: rgba(17, 24, 39, 0.85);
+  --bg-card-hover: rgba(23, 32, 51, 0.92);
+  --bg-surface: rgba(15, 23, 42, 0.80);
+  --bg-input: #0f172a;
+
+  /* Typography / Text Palette */
+  --text-primary: #ffffff;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-subtle: #64748b;
+  --text-main: var(--text-primary);
+
+  /* Borders */
+  --border-color: #1e3a5f;
+  --border: #1e3a5f;
+  --border-hover: #2563eb;
+  --border-strong: rgba(59, 130, 246, 0.45);
+  --border-subtle: rgba(30, 58, 95, 0.40);
+
+  /* Shadows */
+  --shadow-color: rgba(0, 0, 0, 0.35);
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 16px rgba(37, 99, 235, 0.10);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.50), 0 0 25px rgba(37, 99, 235, 0.15);
+  --shadow-subtle: 0 4px 12px rgba(0, 0, 0, 0.25);
+
+  /* Semantic Status Colors */
+  --success-color: #22c55e;
+  --success: var(--success-color);
+  --success-bg: rgba(34, 197, 94, 0.14);
+  --success-border: rgba(34, 197, 94, 0.30);
+
+  --warning-color: #f59e0b;
+  --warning: var(--warning-color);
+  --warning-bg: rgba(245, 158, 11, 0.14);
+  --warning-border: rgba(245, 158, 11, 0.30);
+
+  --danger-color: #ef4444;
+  --danger: var(--danger-color);
+  --danger-bg: rgba(239, 68, 68, 0.14);
+  --danger-border: rgba(239, 68, 68, 0.30);
+
+  --info-color: #38bdf8;
+  --info: var(--info-color);
+  --info-bg: rgba(56, 189, 248, 0.14);
+  --info-border: rgba(56, 189, 248, 0.30);
+
+  /* Radii */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-pill: 9999px;
+
+  /* Glassmorphic Optics */
+  --glass-blur: blur(16px);
+  --glass-blur-sm: blur(8px);
+  --glass-bg: var(--bg-card);
+  --glass-bg-hover: var(--bg-card-hover);
+  --glass-bg-subtle: var(--bg-surface);
+  --glass-bg-elevated: rgba(23, 32, 51, 0.88);
+
+  --glass-border: var(--border);
+  --glass-border-hover: var(--border-hover);
+  --glass-border-strong: var(--border-strong);
+  --glass-shadow: var(--shadow);
+  --glass-shadow-lg: var(--shadow-lg);
+  --glass-shadow-subtle: var(--shadow-subtle);
+
+  /* Transitions */
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Backward Compatibility Aliases */
+  --arctic-bg: var(--bg-main);
+  --arctic-bg-secondary: var(--bg-sidebar);
+  --arctic-bg-tertiary: #131c2e;
+
+  --arctic-blue: var(--primary);
+  --arctic-blue-hover: var(--primary-hover);
+  --arctic-blue-bright: var(--accent);
+  --arctic-blue-soft: var(--primary-soft);
+  --arctic-blue-glow: var(--primary-glow);
+  --arctic-cyan: #38bdf8;
+  --arctic-cyan-soft: rgba(56, 189, 248, 0.16);
+
+  --arctic-blue-gradient: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+  --arctic-blue-gradient-hover: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+
+  --accent-green: var(--success);
+  --accent-amber: var(--warning);
+  --accent-red: var(--danger);
+  --accent-blue: var(--primary);
+}

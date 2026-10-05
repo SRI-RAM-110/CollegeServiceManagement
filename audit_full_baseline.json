@@ -1,0 +1,648 @@
+{
+  "users": [
+    {
+      "id": "6ac21a14edf59b6d7a2d3d8c",
+      "userId": "seminarcoordinator5",
+      "name": "Seminar Coordinator 5",
+      "email": "seminarcoordinator5@nrtec.in",
+      "phone": "+91 98480 99915",
+      "department": "AI",
+      "designation": null,
+      "role": "SEMINAR_COORDINATOR",
+      "roles": [
+        "SEMINAR_COORDINATOR"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [
+        "SH-5"
+      ],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.805",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d8b",
+      "userId": "seminarcoordinator4",
+      "name": "Seminar Coordinator 4",
+      "email": "seminarcoordinator4@nrtec.in",
+      "phone": "+91 98480 99914",
+      "department": "PHARM",
+      "designation": null,
+      "role": "SEMINAR_COORDINATOR",
+      "roles": [
+        "SEMINAR_COORDINATOR"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [
+        "SH-4"
+      ],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.8",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d8a",
+      "userId": "seminarcoordinator3",
+      "name": "Seminar Coordinator 3",
+      "email": "seminarcoordinator3@nrtec.in",
+      "phone": "+91 98480 99913",
+      "department": "ME",
+      "designation": null,
+      "role": "SEMINAR_COORDINATOR",
+      "roles": [
+        "SEMINAR_COORDINATOR"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [
+        "SH-3"
+      ],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.796",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d89",
+      "userId": "seminarcoordinator2",
+      "name": "Seminar Coordinator 2",
+      "email": "seminarcoordinator2@nrtec.in",
+      "phone": "+91 98480 99912",
+      "department": "ECE",
+      "designation": null,
+      "role": "SEMINAR_COORDINATOR",
+      "roles": [
+        "SEMINAR_COORDINATOR"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [
+        "SH-2"
+      ],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.791",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d88",
+      "userId": "seminarcoordinator1",
+      "name": "Seminar Coordinator 1",
+      "email": "seminarcoordinator1@nrtec.in",
+      "phone": "+91 98480 99911",
+      "department": "CSE",
+      "designation": null,
+      "role": "SEMINAR_COORDINATOR",
+      "roles": [
+        "SEMINAR_COORDINATOR",
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [
+        "SH-1",
+        "SH-5"
+      ],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.788",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d87",
+      "userId": "MEA001",
+      "name": "Snacks & Meals Admin",
+      "email": "canteen@nec.edu.in",
+      "phone": "+91 98480 99995",
+      "department": "CANTEEN",
+      "designation": null,
+      "role": "MEALS_ADMIN",
+      "roles": [
+        "MEALS_ADMIN"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.785",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d86",
+      "userId": "STA001",
+      "name": "Stationery Admin",
+      "email": "stationery@nec.edu.in",
+      "phone": "+91 98480 99994",
+      "department": "STORE",
+      "designation": null,
+      "role": "STATIONERY_ADMIN",
+      "roles": [
+        "STATIONERY_ADMIN"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.782",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d85",
+      "userId": "TRN001",
+      "name": "Transport Admin",
+      "email": "transport@nec.edu.in",
+      "phone": "+91 98480 99993",
+      "department": "TRANSPORT",
+      "designation": null,
+      "role": "TRANSPORT_ADMIN",
+      "roles": [
+        "TRANSPORT_ADMIN"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.779",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d84",
+      "userId": "ACC001",
+      "name": "Accommodation Admin",
+      "email": "hostel@nec.edu.in",
+      "phone": "+91 98480 99992",
+      "department": "HOSTEL",
+      "designation": null,
+      "role": "ACCOMMODATION_ADMIN",
+      "roles": [
+        "ACCOMMODATION_ADMIN"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.775",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d83",
+      "userId": "SEM001",
+      "name": "Seminar Hall Admin",
+      "email": "seminar@nec.edu.in",
+      "phone": "+91 98480 99991",
+      "department": "SEMINAR",
+      "designation": null,
+      "role": "SEMINAR_ADMIN",
+      "roles": [
+        "SEMINAR_ADMIN"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.771",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d82",
+      "userId": "pharmhod",
+      "name": "Dr. J. Ramesh",
+      "email": "pharmhod@nrtec.in",
+      "phone": "+91 98480 88001",
+      "department": "PHARM",
+      "designation": null,
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.764",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d81",
+      "userId": "mbahod",
+      "name": "Dr. T. Subba Rao",
+      "email": "mbahod@nrtec.in",
+      "phone": "+91 98480 77001",
+      "department": "MBA",
+      "designation": null,
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.76",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d80",
+      "userId": "cseaihod",
+      "name": "Dr. S. Radhika",
+      "email": "cseaihod@nrtec.in",
+      "phone": "+91 98480 66001",
+      "department": "AI",
+      "designation": null,
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.755",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d7f",
+      "userId": "civilhod",
+      "name": "Dr. M. Sreenivasulu",
+      "email": "civilhod@nrtec.in",
+      "phone": "+91 98480 55001",
+      "department": "CIVIL",
+      "designation": null,
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.75",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d7e",
+      "userId": "mechhod",
+      "name": "Dr. B. Venkatesh",
+      "email": "mechhod@nrtec.in",
+      "phone": "+91 98480 44001",
+      "department": "ME",
+      "designation": null,
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.746",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d7d",
+      "userId": "eeehod",
+      "name": "Dr. P. Siva Kumar",
+      "email": "eeehod@nrtec.in",
+      "phone": "+91 98480 33001",
+      "department": "EEE",
+      "designation": null,
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.742",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d7c",
+      "userId": "ecehod",
+      "name": "Dr. V. Venkata Rao",
+      "email": "ecehod@nrtec.in",
+      "phone": "+91 98480 22001",
+      "department": "ECE",
+      "designation": null,
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.738",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d7b",
+      "userId": "PHARM001",
+      "name": "Pharmacy Department",
+      "email": "pharm@nec.edu.in",
+      "phone": "+91 98480 88888",
+      "department": "PHARM",
+      "designation": null,
+      "role": "DEPARTMENT_USER",
+      "roles": [
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.709",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d7a",
+      "userId": "MBA001",
+      "name": "MBA Department",
+      "email": "mba@nec.edu.in",
+      "phone": "+91 98480 77777",
+      "department": "MBA",
+      "designation": null,
+      "role": "DEPARTMENT_USER",
+      "roles": [
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.705",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d79",
+      "userId": "AI001",
+      "name": "AI & DS Department",
+      "email": "aids@nec.edu.in",
+      "phone": "+91 98480 66666",
+      "department": "AI",
+      "designation": null,
+      "role": "DEPARTMENT_USER",
+      "roles": [
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.7",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d78",
+      "userId": "CIVIL001",
+      "name": "Civil Department",
+      "email": "civil@nec.edu.in",
+      "phone": "+91 98480 55555",
+      "department": "CIVIL",
+      "designation": null,
+      "role": "DEPARTMENT_USER",
+      "roles": [
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.697",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d77",
+      "userId": "ME001",
+      "name": "Mechanical Department",
+      "email": "me@nec.edu.in",
+      "phone": "+91 98480 44444",
+      "department": "ME",
+      "designation": null,
+      "role": "DEPARTMENT_USER",
+      "roles": [
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.693",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d76",
+      "userId": "EEE001",
+      "name": "EEE Department",
+      "email": "eee@nec.edu.in",
+      "phone": "+91 98480 33333",
+      "department": "EEE",
+      "designation": null,
+      "role": "DEPARTMENT_USER",
+      "roles": [
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.688",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d75",
+      "userId": "ECE001",
+      "name": "ECE Department",
+      "email": "ece@nec.edu.in",
+      "phone": "+91 98480 22222",
+      "department": "ECE",
+      "designation": null,
+      "role": "DEPARTMENT_USER",
+      "roles": [
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.685",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d74",
+      "userId": "CSE001",
+      "name": "CSE Department",
+      "email": "cse@nec.edu.in",
+      "phone": "+91 98480 11111",
+      "department": "CSE",
+      "designation": null,
+      "role": "DEPARTMENT_USER",
+      "roles": [
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T14:49:16.652",
+      "updatedAt": null
+    },
+    {
+      "id": "6ac0d28ab09ba374826f151c",
+      "userId": "ithod",
+      "name": "Dr. B. Jhansi Vazram",
+      "email": "ithod@nrtec.in",
+      "phone": "",
+      "department": "CSE",
+      "designation": "",
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-03T15:31:46.087",
+      "updatedAt": "2026-10-03T15:38:03.148"
+    },
+    {
+      "id": "6ac0cd49b09ba374826f150a",
+      "userId": "csehod",
+      "name": "Dr. S. N. Thirumala Rao",
+      "email": "csehod@nrtec.in",
+      "phone": "+91 98852 71324",
+      "department": "CSE",
+      "designation": "",
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": true,
+      "createdAt": "2026-10-03T15:09:21.3",
+      "updatedAt": "2026-10-04T16:39:33.083"
+    },
+    {
+      "id": "6ab3eeae344f5a1ef4f8ef8a",
+      "userId": "AO001",
+      "name": "AO Admin",
+      "email": "ao@nec.edu.in",
+      "phone": "+91 98480 99999",
+      "department": "ADMIN",
+      "designation": null,
+      "role": "AO_ADMIN",
+      "roles": [
+        "AO_ADMIN"
+      ],
+      "servicePermissions": [],
+      "assignedHallIds": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-09-23T20:52:22.231",
+      "updatedAt": null
+    }
+  ],
+  "depts": [
+    {
+      "id": "6ab3eeae344f5a1ef4f8ef90",
+      "code": "CSE",
+      "name": "Computer Science and Engineering",
+      "block": "Block 3",
+      "floor": "Second Floor",
+      "headOfDept": "Dr. K. Lakshamana Rao",
+      "active": true
+    },
+    {
+      "id": "6ab3eeae344f5a1ef4f8ef91",
+      "code": "ECE",
+      "name": "Electronics and Communication Engineering",
+      "block": "Block 2",
+      "floor": "First Floor",
+      "headOfDept": "Dr. V. Venkata Rao",
+      "active": true
+    },
+    {
+      "id": "6ab3eeae344f5a1ef4f8ef92",
+      "code": "EEE",
+      "name": "Electrical and Electronics Engineering",
+      "block": "Block 1",
+      "floor": "Ground Floor",
+      "headOfDept": "Dr. P. Siva Kumar",
+      "active": true
+    },
+    {
+      "id": "6ab3eeae344f5a1ef4f8ef93",
+      "code": "ME",
+      "name": "Mechanical Engineering",
+      "block": "Block 4",
+      "floor": "Ground Floor",
+      "headOfDept": "Dr. B. Venkatesh",
+      "active": true
+    },
+    {
+      "id": "6ab3eeae344f5a1ef4f8ef94",
+      "code": "CIVIL",
+      "name": "Civil Engineering",
+      "block": "Block 4",
+      "floor": "First Floor",
+      "headOfDept": "Dr. M. Sreenivasulu",
+      "active": true
+    },
+    {
+      "id": "6ab3eeae344f5a1ef4f8ef95",
+      "code": "AI",
+      "name": "Artificial Intelligence and Data Science",
+      "block": "Block 3",
+      "floor": "Third Floor",
+      "headOfDept": "Dr. S. Radhika",
+      "active": true
+    },
+    {
+      "id": "6ab3eeae344f5a1ef4f8ef96",
+      "code": "MBA",
+      "name": "Master of Business Administration",
+      "block": "MBA Block",
+      "floor": "Ground Floor",
+      "headOfDept": "Dr. T. Subba Rao",
+      "active": true
+    },
+    {
+      "id": "6ab3eeae344f5a1ef4f8ef97",
+      "code": "PHARM",
+      "name": "Pharmacy",
+      "block": "Pharma Block",
+      "floor": "Ground Floor",
+      "headOfDept": "Dr. J. Ramesh",
+      "active": true
+    }
+  ],
+  "counts": {
+    "users": 28,
+    "departments": 8,
+    "seminarHalls": 6,
+    "vehicles": 5,
+    "rooms": 4,
+    "stationeryItems": 13,
+    "announcements": 2,
+    "notifications": 90,
+    "totalUnifiedRequests": 45,
+    "seminarBookings": 17,
+    "accommodationRequests": 10,
+    "transportRequests": 5,
+    "mealRequests": 7,
+    "stationeryRequests": 6
+  }
+}

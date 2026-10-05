@@ -1,0 +1,214 @@
+/* ============================================================
+   GLOBAL STYLES & RESET — ARCTIC BLUE GLASS
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+button {
+  background-color: transparent;
+  color: inherit;
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  cursor: pointer;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  width: 100%;
+  max-width: 100%;
+  min-height: 100%;
+  overflow-x: clip;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background:
+    radial-gradient(
+      circle at 10% 0%,
+      rgba(37, 99, 235, 0.08),
+      transparent 35%
+    ),
+    radial-gradient(
+      circle at 90% 20%,
+      rgba(30, 58, 95, 0.12),
+      transparent 35%
+    ),
+    linear-gradient(
+      135deg,
+      #020617 0%,
+      #0b1329 50%,
+      #020617 100%
+    );
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: clip;
+  overflow-y: auto;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+
+/* ============================================================
+   GLOBAL CROSS-BROWSER INVISIBLE SCROLLBARS
+   Scrollbars are visually hidden while scrolling remains 100% functional.
+   Supports: mouse wheel, trackpad, touch swipe, keyboard arrow keys, Page Up/Down.
+   ============================================================ */
+* {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Reusable Hidden Scrollbar Utilities */
+.hidden-scrollbar,
+.independent-scroll {
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overscroll-behavior: auto;
+}
+
+.hidden-scrollbar::-webkit-scrollbar,
+.independent-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.hidden-scrollbar-x {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overscroll-behavior: auto;
+}
+
+.hidden-scrollbar-x::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Global Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+p {
+  color: var(--text-secondary);
+}
+
+a {
+  color: var(--arctic-blue);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--arctic-blue-hover);
+}
+
+/* Accessibility / Focus Outline */
+:focus-visible {
+  outline: 2px solid var(--arctic-blue);
+  outline-offset: 2px;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out forwards;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Generic Flex/Grid Utility Helpers */
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.flex-row {
+  display: flex;
+  flex-direction: row;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.gap-sm { gap: 8px; }
+.gap-md { gap: 16px; }
+.gap-lg { gap: 24px; }
+
+/* Utilities */
+.w-full { width: 100%; }
+.flex-1 { flex: 1; }
+.flex-2 { flex: 2; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+.text-sm { font-size: 0.82rem; }
+.text-xs { font-size: 0.74rem; }
+.text-arctic-blue { color: var(--arctic-blue); }
+.text-emerald { color: #34d399; }
+.text-white { color: #ffffff; }
+.text-muted { color: var(--text-muted); }
+.text-danger { color: var(--danger); }
+.mt-1 { margin-top: 4px; }
+.mt-2 { margin-top: 8px; }
+.mt-3 { margin-top: 12px; }
+.mt-4 { margin-top: 16px; }
+.mb-2 { margin-bottom: 8px; }
+.mb-3 { margin-bottom: 12px; }
+.mb-4 { margin-bottom: 16px; }
+.cursor-pointer { cursor: pointer; }
+.page-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}

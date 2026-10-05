@@ -1,0 +1,217 @@
+/* ============================================================
+   BUTTONS — ARCTIC BLUE GLASS
+   ============================================================ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid transparent;
+  outline: none;
+  transition: all var(--transition-normal);
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* Primary Button (Professional Blue) */
+.btn-primary {
+  background: var(--primary-color);
+  color: #ffffff;
+  border: 1px solid var(--accent-color);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+  font-weight: 700;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+  border-color: var(--accent-hover);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Secondary Button (Frosted Glass Surface) */
+.btn-secondary {
+  background-color: var(--glass-bg);
+  backdrop-filter: var(--glass-blur-sm);
+  -webkit-backdrop-filter: var(--glass-blur-sm);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--glass-bg-hover);
+  border-color: var(--glass-border-hover);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+/* Outline Button */
+.btn-outline {
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--glass-border);
+}
+
+.btn-outline:hover:not(:disabled) {
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+  border-color: var(--arctic-blue) !important;
+  box-shadow: 0 0 12px rgba(77, 163, 255, 0.16);
+}
+
+.btn-outline.text-rose-400:hover:not(:disabled),
+.btn-outline[class*="text-rose"]:hover:not(:disabled) {
+  background-color: #1e293b !important;
+  color: #fda4af !important;
+  border-color: #f43f5e !important;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.20) !important;
+}
+
+.btn-outline.text-amber-400:hover:not(:disabled),
+.btn-outline[class*="text-amber"]:hover:not(:disabled) {
+  background-color: #1e293b !important;
+  color: #fde68a !important;
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.20) !important;
+}
+
+.btn-outline.text-blue-400:hover:not(:disabled),
+.btn-outline[class*="text-blue"]:hover:not(:disabled) {
+  background-color: #1e293b !important;
+  color: #bfdbfe !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.20) !important;
+}
+
+/* Success Button (Approve / Confirm) */
+.btn-success {
+  background-color: #16a34a;
+  color: #ffffff;
+  font-weight: 600;
+  border: 1px solid #15803d;
+  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.25);
+}
+
+.btn-success:hover:not(:disabled) {
+  background-color: #15803d;
+  border-color: #166534;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(22, 163, 74, 0.35);
+}
+
+/* Danger Button (Reject / Cancel) */
+.btn-danger {
+  background-color: #dc2626;
+  color: #ffffff;
+  font-weight: 600;
+  border: 1px solid #b91c1c;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.25);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: #b91c1c;
+  border-color: #991b1b;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(220, 38, 38, 0.35);
+}
+
+/* Warning Button (Maintenance / Action Alert) */
+.btn-warning {
+  background-color: #f59e0b;
+  color: #0f172a;
+  font-weight: 700;
+  border: 1px solid #d97706;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.25);
+}
+
+.btn-warning:hover:not(:disabled) {
+  background-color: #d97706;
+  border-color: #b45309;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(245, 158, 11, 0.35);
+}
+
+/* Icon-only Button */
+.btn-icon {
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon:hover:not(:disabled) {
+  background: var(--glass-bg-hover);
+  color: var(--text-primary);
+  border-color: var(--glass-border-hover);
+}
+
+/* Disabled State */
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Button Sizing Modifiers */
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+.btn-lg {
+  padding: 12px 24px;
+  font-size: 0.95rem;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+/* Accessible Focus States */
+.btn:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--arctic-blue-bright) !important;
+  outline-offset: 2px !important;
+}
+
+/* Table and Row Action Buttons */
+.table-action-btn {
+  padding: 4px 10px !important;
+  font-size: 0.78rem !important;
+  border-radius: var(--radius-sm) !important;
+  border: 1px solid var(--glass-border) !important;
+  color: var(--text-secondary);
+  background-color: transparent;
+  transition: all var(--transition-fast) !important;
+}
+
+.table-action-btn:hover:not(:disabled) {
+  background-color: rgba(37, 99, 235, 0.18) !important;
+  color: #ffffff !important;
+  border-color: var(--arctic-blue) !important;
+}
+
+.table-action-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
