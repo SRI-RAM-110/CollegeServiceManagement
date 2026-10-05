@@ -35,6 +35,8 @@ public class User {
 
     private String department; // CSE, ECE, EEE, ME, CIVIL, AI, MBA, PHARM, ADMIN, etc.
     private String designation; // e.g. Professor, Coordinator, HOD
+
+    @Indexed(unique = true)
     private String email;
     private String phone;
 

@@ -30,8 +30,30 @@ public class MealRequestDTO {
 
     private Integer totalGuests;
 
+    private String serviceTime; // FORENOON or AFTERNOON (mandatory if Snacks or Tea / Coffee is selected)
+
     private String specialRequirements;
     private String additionalNotes;
+
+    public String getEventDate() {
+        return date;
+    }
+
+    public void setEventDate(String eventDate) {
+        if (this.date == null || this.date.isBlank()) {
+            this.date = eventDate;
+        }
+    }
+
+    public String getEventName() {
+        return eventTitle;
+    }
+
+    public void setEventName(String eventName) {
+        if (this.eventTitle == null || this.eventTitle.isBlank()) {
+            this.eventTitle = eventName;
+        }
+    }
 
     @Data
     @Builder

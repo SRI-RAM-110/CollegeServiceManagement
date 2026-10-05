@@ -25,21 +25,32 @@ public class NotificationController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<Notification>>> getNotifications() {
         User user = authService.getCurrentUser();
-        List<Notification> list = notificationService.getNotificationsForUser(
-                user.getRole(), user.getDepartment(), user.getUserId());
+        List<Notification> list = notificationService.getNotificationsForUser(user);
         return ResponseEntity.ok(ApiResponse.ok("Notifications list", list));
     }
 
     @PutMapping("/{id}/read")
     public ResponseEntity<ApiResponse<Void>> markAsRead(@PathVariable String id) {
-        notificationService.markAsRead(id);
+        User user = authService.getCurrentUser();
+        notificationService.markAsRead(id, user);
         return ResponseEntity.ok(ApiResponse.ok("Notification marked as read"));
     }
 
     @PutMapping("/read-all")
     public ResponseEntity<ApiResponse<Void>> markAllAsRead() {
         User user = authService.getCurrentUser();
-        notificationService.markAllAsReadForUser(user.getRole(), user.getDepartment(), user.getUserId());
+        notificationService.markAllAsReadForUser(user);
         return ResponseEntity.ok(ApiResponse.ok("All notifications marked as read"));
+    }
+
+    @DeleteMapping
+    public ResponseEntity<ApiResponse<Void>> clearNotifications() {
+        User user = authService.getCurrentUser();
+        if (user == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Unauthorized"));
+        }
+        notificationService.clearNotificationsForUser(user);
+        return ResponseEntity.ok(ApiResponse.ok("All notifications cleared"));
     }
 }

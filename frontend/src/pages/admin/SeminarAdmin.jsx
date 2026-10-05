@@ -215,7 +215,8 @@ export default function SeminarAdmin() {
       (req.seriesId?.toLowerCase() || '').includes(q) ||
       (req.purpose?.toLowerCase() || '').includes(q) ||
       (req.requestedBy?.toLowerCase() || '').includes(q) ||
-      (req.facultyCoordinator?.toLowerCase() || '').includes(q);
+      (req.facultyCoordinator?.toLowerCase() || '').includes(q) ||
+      (req.requesterUserId?.toLowerCase() || '').includes(q);
 
     const matchesHall = hallFilter === 'ALL' || req.hallName === hallFilter;
     const matchesStatus = statusFilter === 'ALL' || req.status === statusFilter;

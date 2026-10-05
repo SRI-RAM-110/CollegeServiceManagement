@@ -134,17 +134,32 @@ public class AdminUserService {
      * Register a new user with multi-roles, service access, and optional seminar halls.
      */
     public UserDTO createUser(CreateUserRequestDTO dto, User caller) {
-        if (dto.getUserId() == null || dto.getUserId().isBlank()) {
-            throw new BadRequestException("Username / Login ID is required.");
-        }
-        String cleanUserId = dto.getUserId().trim().toLowerCase();
-
-        if (userRepository.existsByUserId(cleanUserId)) {
-            throw new BadRequestException("Username '" + cleanUserId + "' already exists. Please choose a different username.");
-        }
-
         if (dto.getName() == null || dto.getName().isBlank()) {
             throw new BadRequestException("Full Name is required.");
+        }
+
+        if (dto.getEmail() == null || dto.getEmail().isBlank()) {
+            throw new BadRequestException("Email is required.");
+        }
+        String cleanEmail = dto.getEmail().trim().toLowerCase();
+        if (userRepository.existsByEmailIgnoreCase(cleanEmail)) {
+            throw new BadRequestException("Email '" + cleanEmail + "' is already registered. Please choose a different email address.");
+        }
+
+        String cleanUserId;
+        if (dto.getUserId() != null && !dto.getUserId().isBlank()) {
+            cleanUserId = dto.getUserId().trim().toLowerCase();
+            if (userRepository.existsByUserId(cleanUserId)) {
+                throw new BadRequestException("Username / User ID '" + cleanUserId + "' already exists. Please choose a different username.");
+            }
+        } else {
+            String baseId = cleanEmail.split("@")[0].replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
+            if (baseId.isBlank()) baseId = "user";
+            cleanUserId = baseId;
+            int counter = 1;
+            while (userRepository.existsByUserId(cleanUserId)) {
+                cleanUserId = baseId + counter++;
+            }
         }
 
         if (dto.getDepartment() == null || dto.getDepartment().isBlank()) {
@@ -267,8 +282,13 @@ public class AdminUserService {
         if (dto.getName() != null && !dto.getName().isBlank()) {
             user.setName(dto.getName().trim());
         }
-        if (dto.getEmail() != null) {
-            user.setEmail(dto.getEmail().trim());
+        if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
+            String cleanEmail = dto.getEmail().trim().toLowerCase();
+            Optional<User> existingEmailUser = userRepository.findByEmailIgnoreCase(cleanEmail);
+            if (existingEmailUser.isPresent() && !existingEmailUser.get().getId().equals(user.getId())) {
+                throw new BadRequestException("Email '" + cleanEmail + "' is already in use by another user.");
+            }
+            user.setEmail(cleanEmail);
         }
         if (dto.getPhone() != null) {
             user.setPhone(dto.getPhone().trim());

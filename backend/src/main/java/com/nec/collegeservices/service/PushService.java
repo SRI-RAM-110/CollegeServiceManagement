@@ -37,7 +37,7 @@ public class PushService {
     @Value("${app.vapid.public-key:BOhTIhLV2PbraKWzqTrUOz88Q33IuzrZ-nan8jWt4zsOzHkGuE4-AE0DRC94biUAEtTusgd77hOCMM09xrgOBIU}")
     private String vapidPublicKey;
 
-    @Value("${app.vapid.private-key:nytR3vhtQgSJkKhH_UnP917jKlFUJ_EOrN614akEhvI}")
+    @Value("${app.vapid.private-key:${VAPID_PRIVATE_KEY:}}")
     private String vapidPrivateKey;
 
     @Value("${app.vapid.subject:mailto:admin@nec.edu.in}")
@@ -51,8 +51,12 @@ public class PushService {
             if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
                 Security.addProvider(new BouncyCastleProvider());
             }
-            webPushClient = new nl.martijndwars.webpush.PushService(vapidPublicKey, vapidPrivateKey, vapidSubject);
-            log.info("WebPush Service initialized successfully with VAPID subject: {}", vapidSubject);
+            if (vapidPrivateKey != null && !vapidPrivateKey.isBlank()) {
+                webPushClient = new nl.martijndwars.webpush.PushService(vapidPublicKey, vapidPrivateKey, vapidSubject);
+                log.info("WebPush Service initialized successfully with VAPID subject: {}", vapidSubject);
+            } else {
+                log.warn("WebPush Service: VAPID private key is not configured. Web push notifications disabled.");
+            }
         } catch (Exception e) {
             log.error("Failed to initialize WebPush Service: {}", e.getMessage(), e);
         }

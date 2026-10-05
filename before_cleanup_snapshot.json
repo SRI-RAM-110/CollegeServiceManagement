@@ -1,0 +1,1348 @@
+{
+  "timestamp": "2026-10-05T02:00:33.116Z",
+  "database": "collegeservices_db",
+  "collectionCounts": {
+    "vehicles": 5,
+    "seminar_halls": 6,
+    "departments": 8,
+    "seminar_bookings": 40,
+    "push_subscriptions": 0,
+    "users": 28,
+    "accommodation_requests": 13,
+    "stationery_requests": 7,
+    "accommodation_rooms": 4,
+    "stationery_items": 13,
+    "announcements": 9,
+    "meal_requests": 9,
+    "notifications": 232,
+    "transport_requests": 7
+  },
+  "users": [
+    {
+      "id": "6ab3eeae344f5a1ef4f8ef8a",
+      "userId": "AO001",
+      "name": "AO Administrator",
+      "email": "ao001@nrtec.local",
+      "phone": "+91 90000 00000",
+      "department": "ADMIN",
+      "role": "AO_ADMIN",
+      "roles": [
+        "AO_ADMIN"
+      ],
+      "assignedHallIds": [],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-09-23T15:22:22.231Z",
+      "updatedAt": "2026-10-04T12:38:47.908Z"
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d74",
+      "userId": "CSE001",
+      "name": "CSE Department User",
+      "email": "cse001@nrtec.local",
+      "phone": "+91 90000 00001",
+      "department": "CSE",
+      "role": "DEPARTMENT_USER",
+      "roles": [
+        "DEPARTMENT_USER"
+      ],
+      "assignedHallIds": [],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T09:19:16.652Z"
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d75",
+      "userId": "ECE001",
+      "name": "ECE Department User",
+      "email": "ece001@nrtec.local",
+      "phone": "+91 90000 00002",
+      "department": "ECE",
+      "role": "DEPARTMENT_USER",
+      "roles": [
+        "DEPARTMENT_USER"
+      ],
+      "assignedHallIds": [],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T09:19:16.685Z"
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d76",
+      "userId": "EEE001",
+      "name": "EEE Department User",
+      "email": "eee001@nrtec.local",
+      "phone": "+91 90000 00003",
+      "department": "EEE",
+      "role": "DEPARTMENT_USER",
+      "roles": [
+        "DEPARTMENT_USER"
+      ],
+      "assignedHallIds": [],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T09:19:16.688Z"
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d77",
+      "userId": "ME001",
+      "name": "Mechanical Department User",
+      "email": "me001@nrtec.local",
+      "phone": "+91 90000 00004",
+      "department": "ME",
+      "role": "DEPARTMENT_USER",
+      "roles": [
+        "DEPARTMENT_USER"
+      ],
+      "assignedHallIds": [],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T09:19:16.693Z"
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d78",
+      "userId": "CIVIL001",
+      "name": "Civil Department User",
+      "email": "civil001@nrtec.local",
+      "phone": "+91 90000 00005",
+      "department": "CIVIL",
+      "role": "DEPARTMENT_USER",
+      "roles": [
+        "DEPARTMENT_USER"
+      ],
+      "assignedHallIds": [],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T09:19:16.697Z"
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d79",
+      "userId": "AI001",
+      "name": "AI Department User",
+      "email": "ai001@nrtec.local",
+      "phone": "+91 90000 00006",
+      "department": "AI",
+      "role": "DEPARTMENT_USER",
+      "roles": [
+        "DEPARTMENT_USER"
+      ],
+      "assignedHallIds": [],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T09:19:16.700Z"
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d7a",
+      "userId": "MBA001",
+      "name": "MBA Department User",
+      "email": "mba001@nrtec.local",
+      "phone": "+91 90000 00007",
+      "department": "MBA",
+      "role": "DEPARTMENT_USER",
+      "roles": [
+        "DEPARTMENT_USER"
+      ],
+      "assignedHallIds": [],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T09:19:16.705Z"
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d7b",
+      "userId": "PHARM001",
+      "name": "Pharmacy Department User",
+      "email": "pharm001@nrtec.local",
+      "phone": "+91 90000 00008",
+      "department": "PHARM",
+      "role": "DEPARTMENT_USER",
+      "roles": [
+        "DEPARTMENT_USER"
+      ],
+      "assignedHallIds": [],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T09:19:16.709Z"
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d7c",
+      "userId": "ecehod",
+      "name": "ECE HOD",
+      "email": "ecehod@nrtec.local",
+      "phone": "+91 90000 00012",
+      "department": "ECE",
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "assignedHallIds": [],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T09:19:16.738Z"
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d7d",
+      "userId": "eeehod",
+      "name": "EEE HOD",
+      "email": "eeehod@nrtec.local",
+      "phone": "+91 90000 00013",
+      "department": "EEE",
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "assignedHallIds": [],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T09:19:16.742Z"
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d7e",
+      "userId": "mechhod",
+      "name": "Mechanical HOD",
+      "email": "mechhod@nrtec.local",
+      "phone": "+91 90000 00014",
+      "department": "ME",
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "assignedHallIds": [],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T09:19:16.746Z"
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d7f",
+      "userId": "civilhod",
+      "name": "Civil HOD",
+      "email": "civilhod@nrtec.local",
+      "phone": "+91 90000 00015",
+      "department": "CIVIL",
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "assignedHallIds": [],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T09:19:16.750Z"
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d81",
+      "userId": "mbahod",
+      "name": "MBA HOD",
+      "email": "mbahod@nrtec.local",
+      "phone": "+91 90000 00017",
+      "department": "MBA",
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "assignedHallIds": [],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T09:19:16.760Z"
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d82",
+      "userId": "pharmhod",
+      "name": "Pharmacy HOD",
+      "email": "pharmhod@nrtec.local",
+      "phone": "+91 90000 00018",
+      "department": "PHARM",
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "assignedHallIds": [],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T09:19:16.764Z"
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d83",
+      "userId": "SEM001",
+      "name": "Seminar Administrator",
+      "email": "sem001@nrtec.local",
+      "phone": "+91 90000 00021",
+      "department": "SEMINAR",
+      "role": "SEMINAR_ADMIN",
+      "roles": [
+        "SEMINAR_ADMIN"
+      ],
+      "assignedHallIds": [],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T09:19:16.771Z"
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d84",
+      "userId": "ACC001",
+      "name": "Accommodation Administrator",
+      "email": "acc001@nrtec.local",
+      "phone": "+91 90000 00022",
+      "department": "HOSTEL",
+      "role": "ACCOMMODATION_ADMIN",
+      "roles": [
+        "ACCOMMODATION_ADMIN"
+      ],
+      "assignedHallIds": [],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T09:19:16.775Z"
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d85",
+      "userId": "TRN001",
+      "name": "Transport Administrator",
+      "email": "trn001@nrtec.local",
+      "phone": "+91 90000 00023",
+      "department": "TRANSPORT",
+      "role": "TRANSPORT_ADMIN",
+      "roles": [
+        "TRANSPORT_ADMIN"
+      ],
+      "assignedHallIds": [],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T09:19:16.779Z"
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d86",
+      "userId": "STA001",
+      "name": "Stationery Administrator",
+      "email": "sta001@nrtec.local",
+      "phone": "+91 90000 00024",
+      "department": "STORE",
+      "role": "STATIONERY_ADMIN",
+      "roles": [
+        "STATIONERY_ADMIN"
+      ],
+      "assignedHallIds": [],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T09:19:16.782Z"
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d87",
+      "userId": "MEA001",
+      "name": "Meals Administrator",
+      "email": "mea001@nrtec.local",
+      "phone": "+91 90000 00025",
+      "department": "CANTEEN",
+      "role": "MEALS_ADMIN",
+      "roles": [
+        "MEALS_ADMIN"
+      ],
+      "assignedHallIds": [],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T09:19:16.785Z"
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d88",
+      "userId": "seminarcoordinator1",
+      "name": "Seminar Coordinator 1",
+      "email": "seminarcoordinator1@nrtec.local",
+      "phone": "+91 90000 00031",
+      "department": "CSE",
+      "role": "SEMINAR_COORDINATOR",
+      "roles": [
+        "SEMINAR_COORDINATOR"
+      ],
+      "assignedHallIds": [
+        "SH-1"
+      ],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T09:19:16.788Z"
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d89",
+      "userId": "seminarcoordinator2",
+      "name": "Seminar Coordinator 2",
+      "email": "seminarcoordinator2@nrtec.local",
+      "phone": "+91 90000 00032",
+      "department": "ECE",
+      "role": "SEMINAR_COORDINATOR",
+      "roles": [
+        "SEMINAR_COORDINATOR"
+      ],
+      "assignedHallIds": [
+        "SH-2"
+      ],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T09:19:16.791Z"
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d8a",
+      "userId": "seminarcoordinator3",
+      "name": "Seminar Coordinator 3",
+      "email": "seminarcoordinator3@nrtec.local",
+      "phone": "+91 90000 00033",
+      "department": "ME",
+      "role": "SEMINAR_COORDINATOR",
+      "roles": [
+        "SEMINAR_COORDINATOR"
+      ],
+      "assignedHallIds": [
+        "SH-3"
+      ],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T09:19:16.796Z"
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d8b",
+      "userId": "seminarcoordinator4",
+      "name": "Seminar Coordinator 4",
+      "email": "seminarcoordinator4@nrtec.local",
+      "phone": "+91 90000 00034",
+      "department": "PHARM",
+      "role": "SEMINAR_COORDINATOR",
+      "roles": [
+        "SEMINAR_COORDINATOR"
+      ],
+      "assignedHallIds": [
+        "SH-4"
+      ],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T09:19:16.800Z"
+    },
+    {
+      "id": "6ac21a14edf59b6d7a2d3d8c",
+      "userId": "seminarcoordinator5",
+      "name": "Seminar Coordinator 5",
+      "email": "seminarcoordinator5@nrtec.local",
+      "phone": "+91 90000 00035",
+      "department": "AI",
+      "role": "SEMINAR_COORDINATOR",
+      "roles": [
+        "SEMINAR_COORDINATOR"
+      ],
+      "assignedHallIds": [
+        "SH-5"
+      ],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T09:19:16.805Z"
+    },
+    {
+      "id": "6ac2378436f295564f3e41bb",
+      "userId": "aihod",
+      "name": "AI HOD",
+      "email": "aihod@nrtec.local",
+      "phone": "+91 90000 00016",
+      "department": "AI",
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "assignedHallIds": [],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T11:24:52.176Z"
+    },
+    {
+      "id": "6ac244c058d99b724ad056f8",
+      "userId": "CREATOR001",
+      "name": "System Creator",
+      "email": "creator@nrtec.in",
+      "department": "ADMIN",
+      "designation": "System Creator",
+      "role": "CREATOR",
+      "roles": [
+        "CREATOR"
+      ],
+      "assignedHallIds": [],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T12:21:20.306Z",
+      "updatedAt": "2026-10-04T12:36:05.465Z"
+    },
+    {
+      "id": "6ac244c058d99b724ad056f9",
+      "userId": "csehod",
+      "name": "CSE HOD",
+      "email": "csehod@nrtec.local",
+      "phone": "+91 90000 00011",
+      "department": "CSE",
+      "role": "DEPARTMENT_HOD",
+      "roles": [
+        "DEPARTMENT_HOD",
+        "DEPARTMENT_USER"
+      ],
+      "assignedHallIds": [],
+      "servicePermissions": [],
+      "active": true,
+      "mustChangePassword": false,
+      "createdAt": "2026-10-04T12:21:20.641Z"
+    }
+  ],
+  "transactions": {
+    "seminar_bookings": [
+      {
+        "id": "6ac082fa66b3c85fb8f3c6ae",
+        "bookingId": "SEM-2026-082665",
+        "department": "CSE",
+        "eventTitle": "kedjnn ",
+        "purpose": "kw de",
+        "hallId": "SH-2",
+        "status": "APPROVED",
+        "requestedBy": "CSE Department",
+        "createdAt": "2026-10-03T04:22:18.101Z"
+      },
+      {
+        "id": "6ac0848466b3c85fb8f3c6b2",
+        "bookingId": "SEM-2026-082666",
+        "department": "CSE",
+        "eventTitle": "ss",
+        "purpose": "sdf",
+        "hallId": "SH-1",
+        "status": "APPROVED",
+        "requestedBy": "CSE Department",
+        "createdAt": "2026-10-03T04:28:52.009Z"
+      },
+      {
+        "id": "6ac085fc66b3c85fb8f3c6b5",
+        "bookingId": "SEM-2026-082667",
+        "department": "CSE",
+        "eventTitle": "AUDIT-PERSISTENCE-TEST-001 - National AI Symposium",
+        "purpose": "Auditing data persistence across restarts",
+        "hallId": "SH-1",
+        "status": "APPROVED",
+        "requestedBy": "CSE Department",
+        "createdAt": "2026-10-03T04:35:08.877Z"
+      },
+      {
+        "id": "6ac086b45b1bfa4baf1a92b2",
+        "bookingId": "SEM-2026-220382",
+        "department": "CSE",
+        "eventTitle": "AUDIT-E2E-SEMINAR - Cloud Computing Summit",
+        "purpose": "Technical Keynotes and Research Papers",
+        "hallId": "SH-1",
+        "status": "APPROVED",
+        "requestedBy": "CSE Department",
+        "createdAt": "2026-10-03T04:38:12.349Z"
+      },
+      {
+        "id": "6ac0b1a62c7d1429097c1a70",
+        "bookingId": "SEM-2026-960725",
+        "department": "CSE",
+        "eventTitle": "CSE Tech Talk",
+        "purpose": "Technical seminar for students",
+        "hallId": "SH-1",
+        "status": "APPROVED",
+        "requestedBy": "CSE Department",
+        "createdAt": "2026-10-03T07:41:26.183Z"
+      },
+      {
+        "id": "6ac0ba4f2c7d1429097c1a7a",
+        "bookingId": "SEM-2026-960726",
+        "department": "CSE",
+        "eventTitle": "hfc nvv n",
+        "purpose": "gvjgvjhhjh",
+        "hallId": "SH-2",
+        "status": "APPROVED",
+        "requestedBy": "Dr. S. N. Thirumala Rao",
+        "createdAt": "2026-10-03T08:18:23.384Z"
+      },
+      {
+        "id": "6ac0bb4d2c7d1429097c1a7e",
+        "bookingId": "SEM-2026-960727",
+        "department": "CSE",
+        "eventTitle": "jbb",
+        "purpose": "jvhjk",
+        "hallId": "SH-1",
+        "status": "REJECTED",
+        "requestedBy": "Dr. S. N. Thirumala Rao",
+        "createdAt": "2026-10-03T08:22:37.308Z"
+      },
+      {
+        "id": "6ac21df31b055b368294a352",
+        "bookingId": "SEM-2026-438485",
+        "department": "CSE",
+        "eventTitle": "AI Workshop by CSE",
+        "purpose": "Faculty Development",
+        "hallId": "SH-1",
+        "status": "APPROVED",
+        "requestedBy": "Dr. S. N. Thirumala Rao",
+        "createdAt": "2026-10-04T09:35:47.482Z"
+      },
+      {
+        "id": "6ac21e021b055b368294a356",
+        "bookingId": "SEM-2026-438486",
+        "department": "ECE",
+        "eventTitle": "VLSI Seminar by ECE",
+        "purpose": "Technical Talk",
+        "hallId": "SH-3",
+        "status": "PENDING",
+        "requestedBy": "Dr. V. Venkata Rao",
+        "createdAt": "2026-10-04T09:36:02.686Z"
+      },
+      {
+        "id": "6ac21e2d1b055b368294a359",
+        "bookingId": "SEM-2026-438487",
+        "department": "CSE",
+        "eventTitle": "CSE National Conference",
+        "purpose": "Paper Presentations",
+        "hallId": "SH-1",
+        "status": "APPROVED",
+        "requestedBy": "Dr. S. N. Thirumala Rao",
+        "createdAt": "2026-10-04T09:36:45.586Z"
+      },
+      {
+        "id": "6ac21e2e1b055b368294a369",
+        "bookingId": "SEM-2026-438488",
+        "department": "ECE",
+        "eventTitle": "ECE Robotics Symposium",
+        "purpose": "Student Exhibition",
+        "hallId": "SH-4",
+        "status": "APPROVED",
+        "requestedBy": "Dr. V. Venkata Rao",
+        "createdAt": "2026-10-04T09:36:46.036Z"
+      },
+      {
+        "id": "6ac21e471b055b368294a379",
+        "bookingId": "SEM-2026-438489",
+        "department": "CSE",
+        "eventTitle": "CSE Cloud Workshop",
+        "purpose": "Skill Training",
+        "hallId": "SH-1",
+        "status": "APPROVED",
+        "requestedBy": "Dr. S. N. Thirumala Rao",
+        "createdAt": "2026-10-04T09:37:11.097Z"
+      },
+      {
+        "id": "6ac21e471b055b368294a38d",
+        "bookingId": "SEM-2026-438490",
+        "department": "ECE",
+        "eventTitle": "ECE Embedded Expo",
+        "purpose": "Industry Project Display",
+        "hallId": "SH-2",
+        "status": "APPROVED",
+        "requestedBy": "Dr. V. Venkata Rao",
+        "createdAt": "2026-10-04T09:37:11.280Z"
+      },
+      {
+        "id": "6ac21e721b055b368294a39d",
+        "bookingId": "SEM-2026-438491",
+        "department": "CSE",
+        "eventTitle": "CSE AI & ML Conclave",
+        "purpose": "Annual Symposium",
+        "hallId": "SH-1",
+        "status": "APPROVED",
+        "requestedBy": "Dr. S. N. Thirumala Rao",
+        "createdAt": "2026-10-04T09:37:54.302Z"
+      },
+      {
+        "id": "6ac21e721b055b368294a3b1",
+        "bookingId": "SEM-2026-438492",
+        "department": "ECE",
+        "eventTitle": "ECE 5G & IoT Summit",
+        "purpose": "Technical Summit",
+        "hallId": "SH-2",
+        "status": "APPROVED",
+        "requestedBy": "Dr. V. Venkata Rao",
+        "createdAt": "2026-10-04T09:37:54.449Z"
+      },
+      {
+        "id": "6ac21f131b055b368294a3c5",
+        "bookingId": "SEM-2026-438493",
+        "department": "CSE",
+        "eventTitle": "hfhgghj",
+        "purpose": "ghfhdfh",
+        "hallId": "SH-3",
+        "status": "APPROVED",
+        "requestedBy": "Dr. B. Jhansi Vazram",
+        "createdAt": "2026-10-04T09:40:35.709Z"
+      },
+      {
+        "id": "6ac23433590912032ccd93b8",
+        "bookingId": "SEM-2026-547739",
+        "department": "CSE",
+        "eventTitle": "gcgc",
+        "purpose": "gcfhfc",
+        "hallId": "SH-3",
+        "status": "APPROVED",
+        "requestedBy": "Dr. S. N. Thirumala Rao",
+        "createdAt": "2026-10-04T11:10:43.532Z"
+      },
+      {
+        "id": "6ac241da6af4ab7eca3b4c4a",
+        "bookingId": "SEM-2026-255497",
+        "department": "CSE",
+        "eventTitle": "gfgjj",
+        "purpose": "hgfhtyj",
+        "hallId": "SH-2",
+        "status": "APPROVED",
+        "requestedBy": "CSE Department User",
+        "createdAt": "2026-10-04T12:08:58.348Z"
+      },
+      {
+        "id": "6ac292521a876704c6d1a264",
+        "bookingId": "SEM-2026-195642",
+        "department": "CSE",
+        "eventTitle": "Test Notification Event",
+        "purpose": "Faculty Meeting TEST Notification",
+        "hallId": "SH-1",
+        "status": "PENDING",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-04T17:52:18.823Z"
+      },
+      {
+        "id": "6ac292afc97a1d39bc2f67fe",
+        "bookingId": "SEM-2026-405283",
+        "department": "CSE",
+        "eventTitle": "Notification Test",
+        "purpose": "E2E Test Notification Verification",
+        "hallId": "SH-1",
+        "status": "APPROVED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-04T17:53:51.825Z"
+      },
+      {
+        "id": "6ac293fcc97a1d39bc2f6802",
+        "bookingId": "SEM-2026-405284",
+        "department": "CSE",
+        "eventTitle": "jgvbnv",
+        "purpose": "ggfchgnb",
+        "hallId": "SH-1",
+        "status": "PENDING",
+        "requestedBy": "CSE Department User",
+        "createdAt": "2026-10-04T17:59:24.955Z"
+      },
+      {
+        "id": "6ac2940bc97a1d39bc2f6805",
+        "bookingId": "SEM-2026-405285",
+        "department": "CSE",
+        "eventTitle": "hgcgnvg ",
+        "purpose": "hgfcutjgh",
+        "hallId": "SH-1",
+        "status": "PENDING",
+        "requestedBy": "CSE Department User",
+        "createdAt": "2026-10-04T17:59:39.340Z"
+      },
+      {
+        "id": "6ac2fe8de39c4f6b0a929b31",
+        "bookingId": "SEM-2026-782032",
+        "department": "CSE",
+        "eventTitle": "AI Research Colloquium 2026",
+        "purpose": "Technical Keynotes and Research Paper Presentations",
+        "hallId": "SH-1",
+        "status": "APPROVED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-05T01:34:05.407Z"
+      },
+      {
+        "id": "6ac2feb7e39c4f6b0a929b41",
+        "bookingId": "SEM-2026-782033",
+        "department": "CSE",
+        "eventTitle": "AI Research Colloquium 2026",
+        "purpose": "Technical Keynotes and Research Paper Presentations",
+        "hallId": "SH-1",
+        "status": "APPROVED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-05T01:34:47.021Z"
+      },
+      {
+        "id": "6ac2fed3e39c4f6b0a929b45",
+        "bookingId": "SEM-2026-782034",
+        "department": "CSE",
+        "eventTitle": "AI Research Colloquium 2026",
+        "purpose": "Technical Keynotes and Research Paper Presentations",
+        "hallId": "SH-1",
+        "status": "APPROVED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-05T01:35:15.301Z"
+      },
+      {
+        "id": "6ac2feeae39c4f6b0a929b4d",
+        "bookingId": "SEM-2026-782035",
+        "department": "CSE",
+        "eventTitle": "AI Research Colloquium 2026",
+        "purpose": "Technical Keynotes and Research Paper Presentations",
+        "hallId": "SH-1",
+        "status": "APPROVED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-05T01:35:38.159Z"
+      },
+      {
+        "id": "6ac2fef9e39c4f6b0a929b51",
+        "bookingId": "SEM-2026-782036",
+        "department": "CSE",
+        "eventTitle": "AI Research Colloquium 2026",
+        "purpose": "Technical Keynotes and Research Paper Presentations",
+        "hallId": "SH-1",
+        "status": "APPROVED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-05T01:35:53.947Z"
+      },
+      {
+        "id": "6ac2ff0ae39c4f6b0a929b69",
+        "bookingId": "SEM-2026-782037",
+        "department": "CSE",
+        "eventTitle": "Event To Be Rejected",
+        "purpose": "Testing Rejection Workflow",
+        "hallId": "SH-2",
+        "status": "REJECTED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-05T01:36:10.332Z"
+      },
+      {
+        "id": "6ac2ff0ae39c4f6b0a929b6d",
+        "bookingId": "SEM-2026-782038",
+        "department": "CSE",
+        "eventTitle": "Event To Be Cancelled",
+        "purpose": "Testing Cancellation Workflow",
+        "hallId": "SH-3",
+        "status": "CANCELLED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-05T01:36:10.388Z"
+      },
+      {
+        "id": "6ac2ff0ae39c4f6b0a929b73",
+        "bookingId": "SEM-2026-782039",
+        "department": "CSE",
+        "eventTitle": "Event To Be Rescheduled",
+        "purpose": "Testing Reschedule Workflow",
+        "hallId": "SH-4",
+        "status": "APPROVED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-05T01:36:10.477Z"
+      },
+      {
+        "id": "6ac2ff1be39c4f6b0a929b77",
+        "bookingId": "SEM-2026-782040",
+        "department": "CSE",
+        "eventTitle": "Event To Be Rejected",
+        "purpose": "Testing Rejection Workflow",
+        "hallId": "SH-2",
+        "status": "REJECTED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-05T01:36:27.773Z"
+      },
+      {
+        "id": "6ac2ff1be39c4f6b0a929b7b",
+        "bookingId": "SEM-2026-782041",
+        "department": "CSE",
+        "eventTitle": "Event To Be Cancelled",
+        "purpose": "Testing Cancellation Workflow",
+        "hallId": "SH-3",
+        "status": "CANCELLED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-05T01:36:27.821Z"
+      },
+      {
+        "id": "6ac2ff1be39c4f6b0a929b81",
+        "bookingId": "SEM-2026-782042",
+        "department": "CSE",
+        "eventTitle": "Event To Be Rescheduled",
+        "purpose": "Testing Reschedule Workflow",
+        "hallId": "SH-4",
+        "status": "RESCHEDULED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-05T01:36:27.933Z"
+      },
+      {
+        "id": "6ac2ff1be39c4f6b0a929b86",
+        "bookingId": "SEM-2026-782043",
+        "department": "CSE",
+        "eventTitle": "Event To Be Rescheduled",
+        "purpose": "Testing Reschedule Workflow",
+        "hallId": "SH-4",
+        "status": "APPROVED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-05T01:36:27.992Z"
+      },
+      {
+        "id": "6ac2ff4ae39c4f6b0a929b88",
+        "bookingId": "SEM-2026-782044",
+        "department": "CSE",
+        "eventTitle": "Event To Be Rejected",
+        "purpose": "Testing Rejection Workflow",
+        "hallId": "SH-2",
+        "status": "REJECTED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-05T01:37:14.089Z"
+      },
+      {
+        "id": "6ac2ff4ae39c4f6b0a929b8c",
+        "bookingId": "SEM-2026-782045",
+        "department": "CSE",
+        "eventTitle": "Event To Be Cancelled",
+        "purpose": "Testing Cancellation Workflow",
+        "hallId": "SH-3",
+        "status": "CANCELLED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-05T01:37:14.139Z"
+      },
+      {
+        "id": "6ac2ff4ae39c4f6b0a929b92",
+        "bookingId": "SEM-2026-782046",
+        "department": "CSE",
+        "eventTitle": "Event To Be Rescheduled",
+        "purpose": "Testing Reschedule Workflow",
+        "hallId": "SH-4",
+        "status": "RESCHEDULED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-05T01:37:14.211Z"
+      },
+      {
+        "id": "6ac2ff4ae39c4f6b0a929b97",
+        "bookingId": "SEM-2026-782047",
+        "department": "CSE",
+        "eventTitle": "Event To Be Rescheduled",
+        "purpose": "Testing Reschedule Workflow",
+        "hallId": "SH-4",
+        "status": "APPROVED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-05T01:37:14.255Z"
+      },
+      {
+        "id": "6ac301fe6e51f32ce159e13a",
+        "bookingId": "SEM-2026-862898",
+        "department": "CSE",
+        "eventTitle": "hdthg",
+        "purpose": "jyjgyi",
+        "hallId": "SH-2",
+        "status": "APPROVED",
+        "requestedBy": "CSE Department User",
+        "createdAt": "2026-10-05T01:48:46.125Z"
+      },
+      {
+        "id": "6ac302746e51f32ce159e13e",
+        "bookingId": "SEM-2026-862899",
+        "department": "ECE",
+        "eventTitle": "khjb",
+        "purpose": "ujv",
+        "hallId": "SH-4",
+        "status": "APPROVED",
+        "requestedBy": "ECE Department User",
+        "createdAt": "2026-10-05T01:50:44.061Z"
+      }
+    ],
+    "accommodation_requests": [
+      {
+        "id": "6ac086b45b1bfa4baf1a92b6",
+        "requestId": "ACC-2026-20111",
+        "department": "CSE",
+        "purpose": "AUDIT-E2E-ACCOMMODATION - Research Summit Guest",
+        "status": "APPROVED",
+        "requestedBy": "CSE Department",
+        "createdAt": "2026-10-03T04:38:12.550Z"
+      },
+      {
+        "id": "6ac0b1bf2c7d1429097c1a73",
+        "requestId": "ACC-2026-60366",
+        "department": "CSE",
+        "purpose": "Conference accommodation for delegates",
+        "status": "APPROVED",
+        "requestedBy": "CSE Department",
+        "createdAt": "2026-10-03T07:41:51.021Z"
+      },
+      {
+        "id": "6ac0b1bf2c7d1429097c1a76",
+        "requestId": "ACC-2026-60367",
+        "department": "CSE",
+        "purpose": "Seminar accommodation",
+        "status": "APPROVED",
+        "requestedBy": "CSE Department",
+        "createdAt": "2026-10-03T07:41:51.065Z"
+      },
+      {
+        "id": "6ac0ce4cb09ba374826f150b",
+        "requestId": "ACC-2026-35005",
+        "department": "CSE",
+        "purpose": "exam paper correction",
+        "status": "APPROVED",
+        "requestedBy": "Dr. S. N. Thirumala Rao",
+        "createdAt": "2026-10-03T09:43:40.460Z"
+      },
+      {
+        "id": "6ac21e2d1b055b368294a35d",
+        "requestId": "ACC-2026-38075",
+        "department": "CSE",
+        "purpose": "Keynote Speaker",
+        "status": "APPROVED",
+        "requestedBy": "Dr. S. N. Thirumala Rao",
+        "createdAt": "2026-10-04T09:36:45.693Z"
+      },
+      {
+        "id": "6ac21e2e1b055b368294a36d",
+        "requestId": "ACC-2026-38076",
+        "department": "ECE",
+        "purpose": "Guest Lecture",
+        "status": "APPROVED",
+        "requestedBy": "Dr. V. Venkata Rao",
+        "createdAt": "2026-10-04T09:36:46.079Z"
+      },
+      {
+        "id": "6ac21e471b055b368294a37d",
+        "requestId": "ACC-2026-38077",
+        "department": "CSE",
+        "purpose": "Academic Auditor",
+        "status": "APPROVED",
+        "requestedBy": "Dr. S. N. Thirumala Rao",
+        "createdAt": "2026-10-04T09:37:11.124Z"
+      },
+      {
+        "id": "6ac21e471b055b368294a391",
+        "requestId": "ACC-2026-38078",
+        "department": "ECE",
+        "purpose": "External Examiner",
+        "status": "APPROVED",
+        "requestedBy": "Dr. V. Venkata Rao",
+        "createdAt": "2026-10-04T09:37:11.309Z"
+      },
+      {
+        "id": "6ac21e721b055b368294a3a1",
+        "requestId": "ACC-2026-38079",
+        "department": "CSE",
+        "purpose": "AI Conclave Chief Guest",
+        "status": "APPROVED",
+        "requestedBy": "Dr. S. N. Thirumala Rao",
+        "createdAt": "2026-10-04T09:37:54.331Z"
+      },
+      {
+        "id": "6ac21e721b055b368294a3b5",
+        "requestId": "ACC-2026-38080",
+        "department": "ECE",
+        "purpose": "5G Summit Keynote",
+        "status": "APPROVED",
+        "requestedBy": "Dr. V. Venkata Rao",
+        "createdAt": "2026-10-04T09:37:54.480Z"
+      },
+      {
+        "id": "6ac2fe8de39c4f6b0a929b35",
+        "requestId": "ACC-2026-81271",
+        "department": "CSE",
+        "purpose": "Guest Lecture on Computational Intelligence",
+        "status": "APPROVED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-05T01:34:05.577Z"
+      },
+      {
+        "id": "6ac2fed3e39c4f6b0a929b49",
+        "requestId": "ACC-2026-81272",
+        "department": "CSE",
+        "purpose": "Guest Lecture on Computational Intelligence",
+        "status": "APPROVED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-05T01:35:15.382Z"
+      },
+      {
+        "id": "6ac2fefae39c4f6b0a929b55",
+        "requestId": "ACC-2026-81273",
+        "department": "CSE",
+        "purpose": "Guest Lecture on Computational Intelligence",
+        "status": "APPROVED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-05T01:35:54.011Z"
+      }
+    ],
+    "transport_requests": [
+      {
+        "id": "6ac21e2d1b055b368294a361",
+        "requestId": "TR-5782",
+        "department": "CSE",
+        "purpose": "Conference Delegates Pickup",
+        "status": "APPROVED",
+        "requestedBy": "Dr. S. N. Thirumala Rao",
+        "createdAt": "2026-10-04T09:36:45.787Z"
+      },
+      {
+        "id": "6ac21e2e1b055b368294a371",
+        "requestId": "TR-6119",
+        "department": "ECE",
+        "purpose": "Field Trip",
+        "status": "APPROVED",
+        "requestedBy": "Dr. V. Venkata Rao",
+        "createdAt": "2026-10-04T09:36:46.119Z"
+      },
+      {
+        "id": "6ac21e471b055b368294a381",
+        "requestId": "TR-1152",
+        "department": "CSE",
+        "purpose": "Guest Pickup",
+        "status": "APPROVED",
+        "requestedBy": "Dr. S. N. Thirumala Rao",
+        "createdAt": "2026-10-04T09:37:11.152Z"
+      },
+      {
+        "id": "6ac21e721b055b368294a3a5",
+        "requestId": "TR-4365",
+        "department": "CSE",
+        "purpose": "Delegates Shuttle",
+        "status": "APPROVED",
+        "requestedBy": "Dr. S. N. Thirumala Rao",
+        "createdAt": "2026-10-04T09:37:54.365Z"
+      },
+      {
+        "id": "6ac21e721b055b368294a3b9",
+        "requestId": "TR-4512",
+        "department": "ECE",
+        "purpose": "Student Delegation",
+        "status": "APPROVED",
+        "requestedBy": "Dr. V. Venkata Rao",
+        "createdAt": "2026-10-04T09:37:54.512Z"
+      },
+      {
+        "id": "6ac2fe8de39c4f6b0a929b39",
+        "requestId": "TR-5699",
+        "department": "CSE",
+        "purpose": "Industrial Visit for Final Year Students",
+        "status": "APPROVED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-05T01:34:05.701Z"
+      },
+      {
+        "id": "6ac2fefae39c4f6b0a929b59",
+        "requestId": "TR-4070",
+        "department": "CSE",
+        "purpose": "Industrial Visit for Final Year Students",
+        "status": "APPROVED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-05T01:35:54.070Z"
+      }
+    ],
+    "meal_requests": [
+      {
+        "id": "6ac0cf7bb09ba374826f1511",
+        "requestId": "SM-3074",
+        "department": "CSE",
+        "eventTitle": "exam",
+        "status": "APPROVED",
+        "requestedBy": "Dr. S. N. Thirumala Rao",
+        "createdAt": "2026-10-03T09:48:43.084Z"
+      },
+      {
+        "id": "6ac21e2d1b055b368294a365",
+        "requestId": "SM-5981",
+        "department": "CSE",
+        "eventTitle": "Conference Lunch & Hi-Tea",
+        "status": "APPROVED",
+        "requestedBy": "Dr. S. N. Thirumala Rao",
+        "createdAt": "2026-10-04T09:36:45.982Z"
+      },
+      {
+        "id": "6ac21e2e1b055b368294a375",
+        "requestId": "SM-6175",
+        "department": "ECE",
+        "eventTitle": "Robotics Team Dinner",
+        "status": "APPROVED",
+        "requestedBy": "Dr. V. Venkata Rao",
+        "createdAt": "2026-10-04T09:36:46.176Z"
+      },
+      {
+        "id": "6ac21e471b055b368294a389",
+        "requestId": "SM-1255",
+        "department": "CSE",
+        "eventTitle": "Workshop Lunch",
+        "status": "APPROVED",
+        "requestedBy": "Dr. S. N. Thirumala Rao",
+        "createdAt": "2026-10-04T09:37:11.255Z"
+      },
+      {
+        "id": "6ac21e471b055b368294a399",
+        "requestId": "SM-1468",
+        "department": "ECE",
+        "eventTitle": "Expo Breakfast & Snacks",
+        "status": "APPROVED",
+        "requestedBy": "Dr. V. Venkata Rao",
+        "createdAt": "2026-10-04T09:37:11.469Z"
+      },
+      {
+        "id": "6ac21e721b055b368294a3ad",
+        "requestId": "SM-4420",
+        "department": "CSE",
+        "eventTitle": "AI Conclave Executive Buffet",
+        "status": "APPROVED",
+        "requestedBy": "Dr. S. N. Thirumala Rao",
+        "createdAt": "2026-10-04T09:37:54.420Z"
+      },
+      {
+        "id": "6ac21e721b055b368294a3c1",
+        "requestId": "SM-4560",
+        "department": "ECE",
+        "eventTitle": "IoT Summit High Tea",
+        "status": "APPROVED",
+        "requestedBy": "Dr. V. Venkata Rao",
+        "createdAt": "2026-10-04T09:37:54.561Z"
+      },
+      {
+        "id": "6ac2fe8de39c4f6b0a929b3d",
+        "requestId": "SM-5809",
+        "department": "CSE",
+        "eventTitle": "Faculty Development Program Luncheon",
+        "status": "APPROVED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-05T01:34:05.810Z"
+      },
+      {
+        "id": "6ac2fefae39c4f6b0a929b5d",
+        "requestId": "SM-4122",
+        "department": "CSE",
+        "eventTitle": "Faculty Development Program Luncheon",
+        "status": "APPROVED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-05T01:35:54.122Z"
+      }
+    ],
+    "stationery_requests": [
+      {
+        "id": "6ac086b45b1bfa4baf1a92ba",
+        "requestId": "STA-92974",
+        "department": "CSE",
+        "purpose": "AUDIT-E2E-STATIONERY - Examination & Seminar Materials",
+        "status": "APPROVED",
+        "requestedBy": "CSE Department",
+        "createdAt": "2026-10-03T04:38:12.978Z"
+      },
+      {
+        "id": "6ac0cf39b09ba374826f150e",
+        "requestId": "STA-57348",
+        "department": "CSE",
+        "purpose": "Accreditation / Inspection",
+        "status": "APPROVED",
+        "requestedBy": "Dr. S. N. Thirumala Rao",
+        "createdAt": "2026-10-03T09:47:37.354Z"
+      },
+      {
+        "id": "6ac21e471b055b368294a385",
+        "requestId": "STA-31210",
+        "department": "CSE",
+        "purpose": "CSE Workshop Materials",
+        "status": "APPROVED",
+        "requestedBy": "Dr. S. N. Thirumala Rao",
+        "createdAt": "2026-10-04T09:37:11.211Z"
+      },
+      {
+        "id": "6ac21e471b055b368294a395",
+        "requestId": "STA-31440",
+        "department": "ECE",
+        "purpose": "ECE Exam Sheets",
+        "status": "APPROVED",
+        "requestedBy": "Dr. V. Venkata Rao",
+        "createdAt": "2026-10-04T09:37:11.441Z"
+      },
+      {
+        "id": "6ac21e721b055b368294a3a9",
+        "requestId": "STA-74393",
+        "department": "CSE",
+        "purpose": "AI Conclave Welcome Kits",
+        "status": "APPROVED",
+        "requestedBy": "Dr. S. N. Thirumala Rao",
+        "createdAt": "2026-10-04T09:37:54.393Z"
+      },
+      {
+        "id": "6ac21e721b055b368294a3bd",
+        "requestId": "STA-74536",
+        "department": "ECE",
+        "purpose": "5G Summit Badges & Pads",
+        "status": "COLLECTED",
+        "requestedBy": "Dr. V. Venkata Rao",
+        "createdAt": "2026-10-04T09:37:54.536Z"
+      },
+      {
+        "id": "6ac2fefae39c4f6b0a929b61",
+        "requestId": "STA-54167",
+        "department": "CSE",
+        "purpose": "Lab Exam Printing Material",
+        "status": "APPROVED",
+        "requestedBy": "CSE HOD",
+        "createdAt": "2026-10-05T01:35:54.168Z"
+      }
+    ]
+  },
+  "announcements": [
+    {
+      "id": "6ab3eeae344f5a1ef4f8efb2",
+      "title": "College Foundation Day",
+      "type": "EVENT",
+      "active": true
+    },
+    {
+      "id": "6ab3eeae344f5a1ef4f8efb3",
+      "title": "Maintenance Schedule",
+      "type": "MAINTENANCE",
+      "active": true
+    },
+    {
+      "id": "6ac244e358d99b724ad056fb",
+      "title": "Creator System Notice",
+      "active": true
+    },
+    {
+      "id": "6ac245b0a3a11e3c9c2a4f39",
+      "title": "Creator System Notice",
+      "active": true
+    },
+    {
+      "id": "6ac245eee2b21a371e2c10cc",
+      "title": "Creator System Notice",
+      "active": true
+    },
+    {
+      "id": "6ac24850e2b21a371e2c10ce",
+      "title": "Creator System Notice",
+      "active": true
+    },
+    {
+      "id": "6ac262aee2b21a371e2c10cf",
+      "title": "hagshjka",
+      "type": "NOTICE",
+      "active": true
+    },
+    {
+      "id": "6ac2fefae39c4f6b0a929b65",
+      "title": "Annual College Sports Day 2026",
+      "type": "EVENT",
+      "active": true
+    },
+    {
+      "id": "6ac2fefae39c4f6b0a929b67",
+      "title": "CSE Departmental Accreditation Review",
+      "type": "NOTICE",
+      "active": true
+    }
+  ],
+  "notificationsCount": 232,
+  "pushSubscriptionsCount": 0
+}

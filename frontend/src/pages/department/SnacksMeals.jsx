@@ -55,12 +55,12 @@ const MEAL_CATEGORIES = [
   {
     type: 'Snacks',
     subtitle: 'Samosa, Cutlet, Biscuits, etc.',
-    defaultTime: '04:30 PM',
+    isRefreshment: true,
   },
   {
     type: 'Tea / Coffee',
     subtitle: 'Tea, Coffee, Green Tea, etc.',
-    defaultTime: '11:00 AM',
+    isRefreshment: true,
   },
 ];
 
@@ -73,11 +73,12 @@ export const SnacksMeals = () => {
   const [selectedReqModal, setSelectedReqModal] = useState(null);
   const [calendarDate, setCalendarDate] = useState(getTodayStr());
 
+  // Service time for Snacks / Tea & Coffee: FORENOON or AFTERNOON
+  const [serviceTime, setServiceTime] = useState('');
+
   // Selected meal items: map of { [mealType]: { guestCount, preferredTime } }
   const [selectedMeals, setSelectedMeals] = useState({
     Lunch: { guestCount: 25, preferredTime: '01:00 PM' },
-    Snacks: { guestCount: 25, preferredTime: '04:30 PM' },
-    'Tea / Coffee': { guestCount: 25, preferredTime: '11:00 AM' },
   });
 
   // Form states - clean defaults, department-aware venue
@@ -114,8 +115,19 @@ export const SnacksMeals = () => {
         delete next[cat.type];
       } else {
         const defaultGuest = Number(totalGuests) > 0 ? Number(totalGuests) : 25;
-        next[cat.type] = { guestCount: defaultGuest, preferredTime: cat.defaultTime };
+        const prefTime = cat.isRefreshment ? (serviceTime || '') : cat.defaultTime;
+        next[cat.type] = { guestCount: defaultGuest, preferredTime: prefTime };
       }
+      return next;
+    });
+  };
+
+  const handleServiceTimeChange = (val) => {
+    setServiceTime(val);
+    setSelectedMeals((prev) => {
+      const next = { ...prev };
+      if (next['Snacks']) next['Snacks'] = { ...next['Snacks'], preferredTime: val };
+      if (next['Tea / Coffee']) next['Tea / Coffee'] = { ...next['Tea / Coffee'], preferredTime: val };
       return next;
     });
   };
@@ -170,6 +182,7 @@ export const SnacksMeals = () => {
     setTotalGuests(25);
     setSpecialRequirements('');
     setAdditionalNotes('');
+    setServiceTime('');
     setSelectedMeals({
       Lunch: { guestCount: 25, preferredTime: '01:00 PM' },
     });
@@ -210,12 +223,21 @@ export const SnacksMeals = () => {
       return;
     }
 
-    const mealItems = mealTypesList.map((type) => ({
-      mealType: type,
-      guestCount: selectedMeals[type].guestCount,
-      preferredTime: selectedMeals[type].preferredTime,
-      description: `${type} arrangement for ${selectedMeals[type].guestCount} guests`,
-    }));
+    const hasRefreshments = !!(selectedMeals['Snacks'] || selectedMeals['Tea / Coffee']);
+    if (hasRefreshments && (!serviceTime || (serviceTime !== 'FORENOON' && serviceTime !== 'AFTERNOON'))) {
+      showToast('Please select FORENOON or AFTERNOON for Snacks / Tea / Coffee.', 'warning');
+      return;
+    }
+
+    const mealItems = mealTypesList.map((type) => {
+      const isRef = type === 'Snacks' || type === 'Tea / Coffee';
+      return {
+        mealType: type,
+        guestCount: selectedMeals[type].guestCount,
+        preferredTime: isRef ? serviceTime : selectedMeals[type].preferredTime,
+        description: `${type} arrangement for ${selectedMeals[type].guestCount} guests`,
+      };
+    });
 
     setSubmitting(true);
     try {
@@ -225,6 +247,7 @@ export const SnacksMeals = () => {
         venue,
         totalGuests: guestsNum,
         mealTypes: mealTypesList,
+        serviceTime: hasRefreshments ? serviceTime : null,
         mealItems,
         specialRequirements,
         additionalNotes,
@@ -246,6 +269,8 @@ export const SnacksMeals = () => {
   const pendingCount = requests.filter((r) => r.status === 'PENDING').length;
   const approvedCount = requests.filter((r) => r.status === 'APPROVED').length;
   const rejectedCount = requests.filter((r) => r.status === 'REJECTED').length;
+
+  const hasRefreshments = !!(selectedMeals['Snacks'] || selectedMeals['Tea / Coffee']);
 
   // Maximum guests across selected meals
   const maxGuests = Object.values(selectedMeals).reduce(
@@ -294,7 +319,7 @@ export const SnacksMeals = () => {
                 <th>Department</th>
                 <th>Meal Type</th>
                 <th>Guest Count</th>
-                <th>Preferred Time</th>
+                <th>Preferred / Service Time</th>
                 <th>Venue</th>
                 <th>Purpose / Event</th>
                 <th>Status</th>
@@ -311,9 +336,16 @@ export const SnacksMeals = () => {
                     <td className="table-cell-date">{formatDateDisplay(m.date)}</td>
                     <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{m.requestId}</td>
                     <td>{m.department}</td>
-                    <td style={{ color: 'var(--arctic-blue)', fontWeight: 600 }}>{mealTypesStr}</td>
+                    <td>
+                      <span style={{ color: 'var(--arctic-blue)', fontWeight: 600 }}>{mealTypesStr}</span>
+                      {m.serviceTime && (
+                        <div style={{ fontSize: '10px', color: 'var(--amber-color, #fbbf24)', fontWeight: 600 }}>
+                          Service: {m.serviceTime}
+                        </div>
+                      )}
+                    </td>
                     <td>{m.totalGuests || m.guestCount || 1} Guests</td>
-                    <td>{m.preferredTime || '-'}</td>
+                    <td>{m.serviceTime ? `Service: ${m.serviceTime}` : (m.preferredTime || '-')}</td>
                     <td>{m.venue || '-'}</td>
                     <td>{m.eventTitle || m.purpose || '-'}</td>
                     <td>
@@ -355,254 +387,273 @@ export const SnacksMeals = () => {
         />
       </div>
 
-      {/* Select Meal Types Card matching design system */}
+      {/* Unified Snacks & Meals Request Container */}
       <div className="card-panel">
-        <div className="card-header">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-800">
           <div>
-            <span className="card-title">Select Meal Types</span>
-            <p className="card-subtitle">
-              You can select multiple options as per your requirement.
+            <span className="card-title text-base font-bold flex items-center gap-2">
+              <Utensils size={18} color="var(--arctic-blue)" />
+              Snacks & Meals Request
+            </span>
+            <p className="card-subtitle text-xs text-slate-400 mt-0.5">
+              Select required meal categories, configure guest counts, and submit hospitality request.
             </p>
           </div>
         </div>
 
-        <div className="meal-types-grid">
-          {MEAL_CATEGORIES.map((cat) => {
-            const isSelected = !!selectedMeals[cat.type];
-            return (
-              <div
-                key={cat.type}
-                onClick={() => handleToggleMeal(cat)}
-                className={`meal-type-card ${isSelected ? 'selected' : ''}`}
-              >
-                {/* Checkbox badge */}
+        <div className="two-column-layout balanced">
+          {/* Left Column: Meal Category Selection & Configured Items */}
+          <div className="column-stack">
+            <div>
+              <span className="text-xs font-semibold text-slate-200 block mb-1.5">
+                Select Meal Types *
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {MEAL_CATEGORIES.map((cat) => {
+                  const isSelected = !!selectedMeals[cat.type];
+                  return (
+                    <div
+                      key={cat.type}
+                      onClick={() => handleToggleMeal(cat)}
+                      className={`p-2.5 rounded-lg border cursor-pointer transition ${
+                        isSelected
+                          ? 'bg-blue-600/20 border-blue-500 text-white shadow'
+                          : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <Utensils size={14} className={isSelected ? 'text-blue-400' : 'text-slate-400'} />
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
+                          isSelected ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400'
+                        }`}>
+                          {isSelected ? '✓' : '+'}
+                        </span>
+                      </div>
+                      <div className="font-semibold text-xs text-white">{cat.type}</div>
+                      <div className="text-[10px] text-slate-400 truncate">
+                        {cat.isRefreshment
+                          ? (serviceTime ? `Service: ${serviceTime}` : 'Service: FORENOON / AFTERNOON')
+                          : cat.defaultTime}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Service Time Selector for Snacks & Tea / Coffee */}
+              {hasRefreshments && (
                 <div
-                  className={`meal-checkbox-badge ${isSelected ? 'selected' : ''}`}
+                  className="mt-2.5 p-2.5 rounded-lg border"
+                  style={{
+                    background: 'var(--bg-surface-elevated, rgba(15, 23, 42, 0.6))',
+                    borderColor: 'var(--arctic-blue, #0284c7)'
+                  }}
                 >
-                  {isSelected ? '✓' : ''}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1.5">
+                    <label className="text-xs font-semibold text-white flex items-center gap-1.5">
+                      <Clock size={13} className="text-sky-400" />
+                      Refreshments Service Time *
+                    </label>
+                    <span className="text-[10px] text-amber-400 font-medium">
+                      Applies to Snacks &amp; Tea / Coffee
+                    </span>
+                  </div>
+                  <select
+                    value={serviceTime}
+                    onChange={(e) => handleServiceTimeChange(e.target.value)}
+                    className="w-full text-xs"
+                    style={{
+                      height: '36px',
+                      background: 'var(--input-bg, #0b1329)',
+                      color: 'var(--text-primary)',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: 'var(--radius-sm, 6px)',
+                      padding: '0 8px',
+                    }}
+                    required
+                  >
+                    <option value="">Select Service Time (FORENOON / AFTERNOON)...</option>
+                    <option value="FORENOON">FORENOON</option>
+                    <option value="AFTERNOON">AFTERNOON</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* Selected Meal Items List */}
+            <div className="p-3 rounded-lg bg-slate-900/80 border border-slate-800 text-xs">
+              <div className="flex justify-between items-center mb-2 pb-1.5 border-b border-slate-800">
+                <span className="font-semibold text-slate-200">Configured Meal Items</span>
+                {Object.keys(selectedMeals).length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearAll}
+                    className="view-all-link text-xs text-rose-400 hover:text-rose-300"
+                  >
+                    Clear All
+                  </button>
+                )}
+              </div>
+
+              <div className="selected-meals-list max-h-[200px] overflow-y-auto">
+                {Object.keys(selectedMeals).length === 0 ? (
+                  <div className="text-center py-4 text-slate-500 text-xs">
+                    No meal categories selected yet. Click meal types above.
+                  </div>
+                ) : (
+                  Object.keys(selectedMeals).map((mealType) => (
+                    <div
+                      key={mealType}
+                      className="selected-meal-row p-2 mb-1.5 rounded bg-slate-950/60 border border-slate-800/80 flex items-center justify-between"
+                    >
+                      <div>
+                        <div className="selected-meal-name font-semibold text-white text-xs">
+                          {mealType}
+                        </div>
+                        <div className="selected-meal-time text-[10px] text-slate-400">
+                          {(mealType === 'Snacks' || mealType === 'Tea / Coffee')
+                            ? (serviceTime ? `Service: ${serviceTime}` : 'Service: FORENOON / AFTERNOON (Required)')
+                            : `Time: ${selectedMeals[mealType].preferredTime}`}
+                        </div>
+                      </div>
+
+                      <div className="cart-qty-controls flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateGuestCount(mealType, -5)}
+                          className="cart-qty-btn"
+                        >
+                          <Minus size={11} />
+                        </button>
+                        <span className="cart-qty-number text-xs font-semibold px-1 text-slate-200">
+                          {selectedMeals[mealType].guestCount}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateGuestCount(mealType, 5)}
+                          className="cart-qty-btn"
+                        >
+                          <Plus size={11} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMeal(mealType)}
+                          className="cart-remove-btn text-rose-400 ml-1"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+
+                {Object.keys(selectedMeals).length > 0 && (
+                  <div className="selected-meals-total flex justify-between items-center pt-2 mt-2 border-t border-slate-800 font-semibold text-xs">
+                    <span className="text-slate-400">
+                      Total Guests (Max)
+                    </span>
+                    <span className="text-white font-bold">
+                      {maxGuests} Guests
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Request Details Form */}
+          <div className="column-stack">
+            <form onSubmit={handleSubmit} className="form-column">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="form-group">
+                  <label className="form-label text-xs">Event / Purpose *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Department Meeting, Workshop"
+                    value={eventTitle}
+                    onChange={(e) => setEventTitle(e.target.value)}
+                    required
+                    className="w-full text-xs"
+                  />
                 </div>
 
-                <div className="meal-icon-box">
-                  <Utensils size={20} className="text-arctic-blue" />
-                </div>
-
-                <div className="meal-type-title">
-                  {cat.type}
-                </div>
-                <div className="meal-type-subtitle">
-                  {cat.subtitle}
+                <div className="form-group">
+                  <label className="form-label text-xs">Date *</label>
+                  <input
+                    type="date"
+                    min={getTodayStr()}
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    required
+                    className="w-full text-xs"
+                  />
                 </div>
               </div>
-            );
-          })}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="form-group">
+                  <label className="form-label text-xs">Venue / Location *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Conference Hall"
+                    value={venue}
+                    onChange={(e) => setVenue(e.target.value)}
+                    required
+                    className="w-full text-xs"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label text-xs">Default Guest Count *</label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    placeholder="e.g. 25"
+                    value={totalGuests}
+                    onChange={handleTotalGuestsChange}
+                    required
+                    className="w-full text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label text-xs">Special Requirements</label>
+                <textarea
+                  rows="2"
+                  placeholder="Vegetarian option required. No onion/garlic, VIP arrangements, etc."
+                  value={specialRequirements}
+                  onChange={(e) => setSpecialRequirements(e.target.value)}
+                  className="w-full text-xs"
+                />
+              </div>
+
+              <div className="form-actions-row mt-2">
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="btn btn-outline btn-flex-1 text-xs"
+                  disabled={submitting}
+                >
+                  <RotateCcw size={14} /> Reset
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary btn-flex-2 text-xs"
+                  disabled={submitting || Object.keys(selectedMeals).length === 0}
+                >
+                  <Send size={14} /> {submitting ? 'Sending...' : 'Send Request to Admin'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
 
-      {/* Main Form & Selected Items Columns */}
+      {/* Auxiliary 2-Column Row: Guidelines & Quick Calendar */}
       <div className="two-column-layout balanced">
-        {/* Left Column: Request Details Form */}
-        <div className="card-panel">
-          <div className="card-header">
-            <div>
-              <span className="card-title">Request Details</span>
-              <p className="card-subtitle">
-                Fill in the event details for meal arrangement.
-              </p>
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmit} className="form-column">
-            <div className="responsive-form-grid-2">
-              <div className="form-group-sm">
-                <label className="form-label">
-                  Event / Purpose *
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Department Meeting"
-                  value={eventTitle}
-                  onChange={(e) => setEventTitle(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="form-group-sm">
-                <label className="form-label">
-                  Date *
-                </label>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="responsive-form-grid-2">
-              <div className="form-group-sm">
-                <label className="form-label">
-                  Venue / Location *
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. CSE Department Conference Hall"
-                  value={venue}
-                  onChange={(e) => setVenue(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="form-group-sm">
-                <label className="form-label">
-                  Number of Guests *
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  placeholder="e.g. 25"
-                  value={totalGuests}
-                  onChange={handleTotalGuestsChange}
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Meal Time Checkboxes */}
-            <div className="form-group-sm">
-              <label className="form-label">
-                Meal Time(s) *
-              </label>
-              <div className="meal-times-checkbox-group">
-                {MEAL_CATEGORIES.map((cat) => (
-                  <label
-                    key={cat.type}
-                    className="checkbox-label"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={!!selectedMeals[cat.type]}
-                      onChange={() => handleToggleMeal(cat)}
-                    />
-                    {cat.type}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="form-group-sm">
-              <label className="form-label">
-                Special Requirements
-              </label>
-              <textarea
-                rows="3"
-                placeholder="Vegetarian option required. No onion/garlic, VIP arrangements, etc."
-                value={specialRequirements}
-                onChange={(e) => setSpecialRequirements(e.target.value)}
-              />
-            </div>
-
-            <div className="form-actions-row">
-              <button
-                type="button"
-                onClick={handleReset}
-                className="btn btn-outline btn-flex-1"
-                disabled={submitting}
-              >
-                <RotateCcw size={16} /> Reset
-              </button>
-              <button
-                type="submit"
-                className="btn btn-primary btn-flex-2"
-                disabled={submitting}
-              >
-                <Send size={16} /> {submitting ? 'Sending...' : 'Send Request to Admin'}
-              </button>
-            </div>
-          </form>
-        </div>
-
-        {/* Right Column: Selected Meal Items & Recent Table */}
         <div className="column-stack">
-          {/* Selected Meal Items List */}
-          <div className="card-panel">
-            <div className="card-header">
-              <span className="card-title">Selected Meal Items</span>
-              {Object.keys(selectedMeals).length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleClearAll}
-                  className="view-all-link"
-                >
-                  Clear All
-                </button>
-              )}
-            </div>
-
-            <div className="selected-meals-list">
-              {Object.keys(selectedMeals).length === 0 ? (
-                <div className="cart-empty-state">
-                  No meal categories selected yet.
-                </div>
-              ) : (
-                Object.keys(selectedMeals).map((mealType) => (
-                  <div
-                    key={mealType}
-                    className="selected-meal-row"
-                  >
-                    <div>
-                      <div className="selected-meal-name">
-                        {mealType}
-                      </div>
-                      <div className="selected-meal-time">
-                        Preferred Time: {selectedMeals[mealType].preferredTime}
-                      </div>
-                    </div>
-
-                    <div className="cart-qty-controls">
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateGuestCount(mealType, -5)}
-                        className="cart-qty-btn"
-                      >
-                        <Minus size={13} />
-                      </button>
-                      <span className="cart-qty-number">
-                        {selectedMeals[mealType].guestCount}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateGuestCount(mealType, 5)}
-                        className="cart-qty-btn"
-                      >
-                        <Plus size={13} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveMeal(mealType)}
-                        className="cart-remove-btn"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-
-              {Object.keys(selectedMeals).length > 0 && (
-                <div className="selected-meals-total">
-                  <span className="selected-meals-total-label">
-                    Total Guests
-                  </span>
-                  <span className="selected-meals-total-value">
-                    {maxGuests}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* Guidelines */}
           <div className="guidelines-card">
             <div className="guidelines-header">
@@ -617,7 +668,9 @@ export const SnacksMeals = () => {
               <li>For urgent requests, contact the administration office.</li>
             </ul>
           </div>
+        </div>
 
+        <div className="column-stack">
           {/* Quick Calendar */}
           <QuickCalendar
             selectedDate={calendarDate}
@@ -629,9 +682,13 @@ export const SnacksMeals = () => {
               status: r.status,
               department: r.department,
             }))}
+            showLegend={true}
+            showEventsList={true}
           />
         </div>
       </div>
+
+
 
       {/* Recent Meal Requests Section */}
       <div className="card-panel">
@@ -681,6 +738,11 @@ export const SnacksMeals = () => {
                           </span>
                         ))}
                       </div>
+                      {r.serviceTime && (
+                        <div style={{ fontSize: '10px', color: 'var(--amber-color, #fbbf24)', fontWeight: 600, marginTop: '2px' }}>
+                          Service: {r.serviceTime}
+                        </div>
+                      )}
                     </td>
                     <td>
                       <StatusBadge status={r.status} />

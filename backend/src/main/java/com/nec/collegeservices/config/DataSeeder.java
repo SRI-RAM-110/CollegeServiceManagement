@@ -60,8 +60,9 @@ public class DataSeeder implements CommandLineRunner {
         String adminPass = passwordEncoder.encode("admin123");
         String coordPass = passwordEncoder.encode("coord123");
 
-        // 1. Primary AO Administrator (Exactly ONE)
-        seedOrUpdateUser("AO001", adminPass, "AO Administrator", "AO_ADMIN", List.of("AO_ADMIN"), "ADMIN", "ao001@nrtec.local", "+91 90000 00000", List.of());
+        // 1. Real Principal and Real Administrative Officer (Both with AO_ADMIN role and complete identical privileges)
+        seedOrUpdateUser("PRINCIPAL001", adminPass, "Dr. S. Venkateswarlu", "AO_ADMIN", List.of("AO_ADMIN"), "ADMIN", "principal@nrtec.in", "+91 91546 86203", "Principal", List.of());
+        seedOrUpdateUser("AO001", adminPass, "Mr. I. Sridhar", "AO_ADMIN", List.of("AO_ADMIN"), "ADMIN", "ao@nrtec.in", "08647-239905", "Administrative Officer", List.of());
 
         // 2. Department Users (ONE per supported canonical department)
         seedOrUpdateUser("CSE001", deptPass, "CSE Department User", "DEPARTMENT_USER", List.of("DEPARTMENT_USER"), "CSE", "cse001@nrtec.local", "+91 90000 00001", List.of());
@@ -73,15 +74,15 @@ public class DataSeeder implements CommandLineRunner {
         seedOrUpdateUser("MBA001", deptPass, "MBA Department User", "DEPARTMENT_USER", List.of("DEPARTMENT_USER"), "MBA", "mba001@nrtec.local", "+91 90000 00007", List.of());
         seedOrUpdateUser("PHARM001", deptPass, "Pharmacy Department User", "DEPARTMENT_USER", List.of("DEPARTMENT_USER"), "PHARM", "pharm001@nrtec.local", "+91 90000 00008", List.of());
 
-        // 3. Generic Department HODs (ONE per supported canonical department)
-        seedOrUpdateUser("csehod", deptPass, "CSE HOD", "DEPARTMENT_HOD", List.of("DEPARTMENT_HOD", "DEPARTMENT_USER"), "CSE", "csehod@nrtec.local", "+91 90000 00011", List.of());
-        seedOrUpdateUser("ecehod", deptPass, "ECE HOD", "DEPARTMENT_HOD", List.of("DEPARTMENT_HOD", "DEPARTMENT_USER"), "ECE", "ecehod@nrtec.local", "+91 90000 00012", List.of());
-        seedOrUpdateUser("eeehod", deptPass, "EEE HOD", "DEPARTMENT_HOD", List.of("DEPARTMENT_HOD", "DEPARTMENT_USER"), "EEE", "eeehod@nrtec.local", "+91 90000 00013", List.of());
-        seedOrUpdateUser("mechhod", deptPass, "Mechanical HOD", "DEPARTMENT_HOD", List.of("DEPARTMENT_HOD", "DEPARTMENT_USER"), "ME", "mechhod@nrtec.local", "+91 90000 00014", List.of());
-        seedOrUpdateUser("civilhod", deptPass, "Civil HOD", "DEPARTMENT_HOD", List.of("DEPARTMENT_HOD", "DEPARTMENT_USER"), "CIVIL", "civilhod@nrtec.local", "+91 90000 00015", List.of());
-        seedOrUpdateUser("aihod", deptPass, "AI HOD", "DEPARTMENT_HOD", List.of("DEPARTMENT_HOD", "DEPARTMENT_USER"), "AI", "aihod@nrtec.local", "+91 90000 00016", List.of());
-        seedOrUpdateUser("mbahod", deptPass, "MBA HOD", "DEPARTMENT_HOD", List.of("DEPARTMENT_HOD", "DEPARTMENT_USER"), "MBA", "mbahod@nrtec.local", "+91 90000 00017", List.of());
-        seedOrUpdateUser("pharmhod", deptPass, "Pharmacy HOD", "DEPARTMENT_HOD", List.of("DEPARTMENT_HOD", "DEPARTMENT_USER"), "PHARM", "pharmhod@nrtec.local", "+91 90000 00018", List.of());
+        // 3. Department HODs (Verified NRTEC faculty + clearly identified sample for Pharmacy)
+        seedOrUpdateUser("csehod", deptPass, "Dr. S. N. Thirumala Rao", "DEPARTMENT_HOD", List.of("DEPARTMENT_HOD", "DEPARTMENT_USER", "SEMINAR_COORDINATOR", "SERVICE_ADMIN"), "CSE", "csehod@nrtec.in", "+91 98852 71324", "Professor & HOD - CSE", List.of("SH-1"));
+        seedOrUpdateUser("ecehod", deptPass, "Dr. V. Venkata Rao", "DEPARTMENT_HOD", List.of("DEPARTMENT_HOD", "DEPARTMENT_USER"), "ECE", "ecehod@nrtec.in", "+91 98480 22001", "Professor & HOD - ECE", List.of());
+        seedOrUpdateUser("eeehod", deptPass, "Dr. Shaik Mahammad Shareef", "DEPARTMENT_HOD", List.of("DEPARTMENT_HOD", "DEPARTMENT_USER"), "EEE", "eeehod@nrtec.in", "+91 98480 33001", "Associate Professor & HOD - EEE", List.of());
+        seedOrUpdateUser("mechhod", deptPass, "Dr. B. Venkata Siva", "DEPARTMENT_HOD", List.of("DEPARTMENT_HOD", "DEPARTMENT_USER"), "ME", "mechhod@nrtec.in", "+91 98480 44001", "Professor & HOD - Mechanical", List.of());
+        seedOrUpdateUser("civilhod", deptPass, "Dr. P. Naga Sowjanya", "DEPARTMENT_HOD", List.of("DEPARTMENT_HOD", "DEPARTMENT_USER"), "CIVIL", "civilhod@nrtec.in", "+91 98480 55001", "Professor & HOD - Civil", List.of());
+        seedOrUpdateUser("aihod", deptPass, "Dr. B. Jhansi Vazram", "DEPARTMENT_HOD", List.of("DEPARTMENT_HOD", "DEPARTMENT_USER"), "AI", "aihod@nrtec.in", "+91 98480 66001", "Professor & HOD - AI & IT", List.of());
+        seedOrUpdateUser("mbahod", deptPass, "Dr. Y. Anki Reddy", "DEPARTMENT_HOD", List.of("DEPARTMENT_HOD", "DEPARTMENT_USER"), "MBA", "mbahod@nrtec.in", "+91 98480 77001", "Professor & HOD - MBA", List.of());
+        seedOrUpdateUser("pharmhod", deptPass, "Sample Pharmacy HOD", "DEPARTMENT_HOD", List.of("DEPARTMENT_HOD", "DEPARTMENT_USER"), "PHARM", "sample.pharm.hod@nrtec.in", "+91 98480 88001", "Sample HOD - Pharmacy", List.of());
 
         // 4. Service Administrators (Exactly ONE per service)
         seedOrUpdateUser("SEM001", adminPass, "Seminar Administrator", "SEMINAR_ADMIN", List.of("SEMINAR_ADMIN"), "SEMINAR", "sem001@nrtec.local", "+91 90000 00021", List.of());
@@ -90,21 +91,24 @@ public class DataSeeder implements CommandLineRunner {
         seedOrUpdateUser("STA001", adminPass, "Stationery Administrator", "STATIONERY_ADMIN", List.of("STATIONERY_ADMIN"), "STORE", "sta001@nrtec.local", "+91 90000 00024", List.of());
         seedOrUpdateUser("MEA001", adminPass, "Meals Administrator", "MEALS_ADMIN", List.of("MEALS_ADMIN"), "CANTEEN", "mea001@nrtec.local", "+91 90000 00025", List.of());
 
-        // 5. Hall-Specific Seminar Coordinators (Clean single-role SEMINAR_COORDINATOR)
+        // 5. Hall-Specific Seminar Coordinators (Exactly 6 coordinators mapped 1-to-1 with SH-1 through SH-6)
         seedOrUpdateUser("seminarcoordinator1", coordPass, "Seminar Coordinator 1", "SEMINAR_COORDINATOR",
-                List.of("SEMINAR_COORDINATOR"), "CSE", "seminarcoordinator1@nrtec.local", "+91 90000 00031", List.of("SH-1"));
+                List.of("SEMINAR_COORDINATOR"), "CSE", "seminarcoordinator1@nrtec.in", "+91 90000 00031", List.of("SH-1"));
 
         seedOrUpdateUser("seminarcoordinator2", coordPass, "Seminar Coordinator 2", "SEMINAR_COORDINATOR",
-                List.of("SEMINAR_COORDINATOR"), "ECE", "seminarcoordinator2@nrtec.local", "+91 90000 00032", List.of("SH-2"));
+                List.of("SEMINAR_COORDINATOR"), "ECE", "seminarcoordinator2@nrtec.in", "+91 90000 00032", List.of("SH-2"));
 
         seedOrUpdateUser("seminarcoordinator3", coordPass, "Seminar Coordinator 3", "SEMINAR_COORDINATOR",
-                List.of("SEMINAR_COORDINATOR"), "ME", "seminarcoordinator3@nrtec.local", "+91 90000 00033", List.of("SH-3"));
+                List.of("SEMINAR_COORDINATOR"), "ME", "seminarcoordinator3@nrtec.in", "+91 90000 00033", List.of("SH-3"));
 
         seedOrUpdateUser("seminarcoordinator4", coordPass, "Seminar Coordinator 4", "SEMINAR_COORDINATOR",
-                List.of("SEMINAR_COORDINATOR"), "PHARM", "seminarcoordinator4@nrtec.local", "+91 90000 00034", List.of("SH-4"));
+                List.of("SEMINAR_COORDINATOR"), "PHARM", "seminarcoordinator4@nrtec.in", "+91 90000 00034", List.of("SH-4"));
 
         seedOrUpdateUser("seminarcoordinator5", coordPass, "Seminar Coordinator 5", "SEMINAR_COORDINATOR",
-                List.of("SEMINAR_COORDINATOR"), "AI", "seminarcoordinator5@nrtec.local", "+91 90000 00035", List.of("SH-5"));
+                List.of("SEMINAR_COORDINATOR"), "AI", "seminarcoordinator5@nrtec.in", "+91 90000 00035", List.of("SH-5"));
+
+        seedOrUpdateUser("seminarcoordinator6", coordPass, "Seminar Coordinator 6", "SEMINAR_COORDINATOR",
+                List.of("SEMINAR_COORDINATOR"), "ECE", "seminarcoordinator6@nrtec.in", "+91 90000 00036", List.of("SH-6"));
 
         // 6. Cleanup obsolete accounts if present
         userRepository.findByUserId("ithod").ifPresent(user -> {
@@ -183,43 +187,74 @@ public class DataSeeder implements CommandLineRunner {
 
     private void seedOrUpdateUser(String userId, String password, String name, String primaryRole, List<String> roles,
                                   String department, String email, String phone, List<String> assignedHallIds) {
-        userRepository.findByUserId(userId).ifPresentOrElse(user -> {
-            user.setName(name);
-            user.setPassword(password);
-            user.setRoles(roles);
-            user.setRole(primaryRole);
-            user.setDepartment(department);
-            user.setEmail(email);
-            user.setPhone(phone);
-            user.setAssignedHallIds(assignedHallIds);
-            user.setActive(true);
-            userRepository.save(user);
-        }, () -> {
-            userRepository.save(User.builder()
-                    .userId(userId)
-                    .password(password)
-                    .name(name)
-                    .role(primaryRole)
-                    .roles(roles)
-                    .assignedHallIds(assignedHallIds)
-                    .department(department)
-                    .email(email)
-                    .phone(phone)
-                    .active(true)
-                    .createdAt(LocalDateTime.now())
-                    .build());
-        });
+        seedOrUpdateUser(userId, password, name, primaryRole, roles, department, email, phone, null, assignedHallIds);
+    }
+
+    private void seedOrUpdateUser(String userId, String password, String name, String primaryRole, List<String> roles,
+                                  String department, String email, String phone, String designation, List<String> assignedHallIds) {
+        userRepository.findByUserId(userId)
+                .or(() -> userRepository.findByEmailIgnoreCase(email))
+                .ifPresentOrElse(user -> {
+                    user.setName(name);
+                    if (email != null && !email.isBlank()) {
+                        user.setEmail(email.trim().toLowerCase());
+                    }
+                    if (designation != null && !designation.isBlank()) {
+                        user.setDesignation(designation);
+                    }
+                    if (user.getPassword() == null || user.getPassword().isBlank()) {
+                        user.setPassword(password);
+                    }
+                    // Preserve multi-role users: merge existing roles with seeded roles
+                    java.util.Set<String> mergedRoles = new java.util.LinkedHashSet<>(user.getEffectiveRoles());
+                    mergedRoles.addAll(roles);
+                    user.setRoles(new java.util.ArrayList<>(mergedRoles));
+                    if (user.getRole() == null || user.getRole().isBlank()) {
+                        user.setRole(primaryRole);
+                    }
+                    if (user.getDepartment() == null || user.getDepartment().isBlank()) {
+                        user.setDepartment(department);
+                    }
+                    if (phone != null && !phone.isBlank()) {
+                        user.setPhone(phone);
+                    }
+                    // For dedicated seminar coordinators, ensure correct hall assignment
+                    if (userId.toLowerCase().startsWith("seminarcoordinator")) {
+                        user.setAssignedHallIds(assignedHallIds);
+                    } else if ((user.getAssignedHallIds() == null || user.getAssignedHallIds().isEmpty()) && assignedHallIds != null) {
+                        user.setAssignedHallIds(assignedHallIds);
+                    }
+                    if (user.getActive() == null) {
+                        user.setActive(true);
+                    }
+                    userRepository.save(user);
+                }, () -> {
+                    userRepository.save(User.builder()
+                            .userId(userId)
+                            .password(password)
+                            .name(name)
+                            .role(primaryRole)
+                            .roles(roles)
+                            .assignedHallIds(assignedHallIds)
+                            .department(department)
+                            .email(email != null ? email.trim().toLowerCase() : null)
+                            .phone(phone)
+                            .designation(designation)
+                            .active(true)
+                            .createdAt(LocalDateTime.now())
+                            .build());
+                });
     }
 
     private void seedDepartments() {
-        seedOrUpdateDepartment("CSE", "Computer Science and Engineering", "Block 3", "Second Floor", "CSE HOD");
-        seedOrUpdateDepartment("ECE", "Electronics and Communication Engineering", "Block 2", "First Floor", "ECE HOD");
-        seedOrUpdateDepartment("EEE", "Electrical and Electronics Engineering", "Block 1", "Ground Floor", "EEE HOD");
-        seedOrUpdateDepartment("ME", "Mechanical Engineering", "Block 4", "Ground Floor", "Mechanical HOD");
-        seedOrUpdateDepartment("CIVIL", "Civil Engineering", "Block 4", "First Floor", "Civil HOD");
-        seedOrUpdateDepartment("AI", "Artificial Intelligence and Data Science", "Block 3", "Third Floor", "AI HOD");
-        seedOrUpdateDepartment("MBA", "Master of Business Administration", "MBA Block", "Ground Floor", "MBA HOD");
-        seedOrUpdateDepartment("PHARM", "Pharmacy", "Pharma Block", "Ground Floor", "Pharmacy HOD");
+        seedOrUpdateDepartment("CSE", "Computer Science and Engineering", "Block 3", "Second Floor", "Dr. S. N. Thirumala Rao");
+        seedOrUpdateDepartment("ECE", "Electronics and Communication Engineering", "Block 2", "First Floor", "Dr. V. Venkata Rao");
+        seedOrUpdateDepartment("EEE", "Electrical and Electronics Engineering", "Block 1", "Ground Floor", "Dr. Shaik Mahammad Shareef");
+        seedOrUpdateDepartment("ME", "Mechanical Engineering", "Block 4", "Ground Floor", "Dr. B. Venkata Siva");
+        seedOrUpdateDepartment("CIVIL", "Civil Engineering", "Block 4", "First Floor", "Dr. P. Naga Sowjanya");
+        seedOrUpdateDepartment("AI", "Artificial Intelligence and Data Science", "Block 3", "Third Floor", "Dr. B. Jhansi Vazram");
+        seedOrUpdateDepartment("MBA", "Master of Business Administration", "MBA Block", "Ground Floor", "Dr. Y. Anki Reddy");
+        seedOrUpdateDepartment("PHARM", "Pharmacy", "Pharma Block", "Ground Floor", "Sample Pharmacy HOD");
     }
 
     private void seedOrUpdateDepartment(String code, String name, String block, String floor, String headOfDept) {
@@ -257,6 +292,9 @@ public class DataSeeder implements CommandLineRunner {
 
         seedOrUpdateHall("SH-5", "Tech Hub", "Block 3 – Third Floor", "Block 3", "Third Floor",
                 150, List.of("Projector", "AC", "Audio System", "Wi-Fi"), "/assets/halls/techhub.jpg", "Available", List.of("seminarcoordinator5"));
+
+        seedOrUpdateHall("SH-6", "Block 2 Seminar hall", "Block 2 – Ground Floor", "Block 2", "Ground Floor",
+                250, List.of("Projector", "AC", "Audio System", "Wi-Fi"), "/assets/halls/hall2.jpg", "Available", List.of("seminarcoordinator6"));
 
         // If legacy TECH-HUB exists as a separate document, update it as well
         seminarHallRepository.findByHallId("TECH-HUB").ifPresent(th -> {

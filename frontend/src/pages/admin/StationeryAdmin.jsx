@@ -191,6 +191,7 @@ export default function StationeryAdmin() {
       (req.purpose?.toLowerCase() || '').includes(q) ||
       (req.additionalNotes?.toLowerCase() || '').includes(q) ||
       (req.requestedBy?.toLowerCase() || '').includes(q) ||
+      (req.requesterUserId?.toLowerCase() || '').includes(q) ||
       itemNames.includes(q);
 
     const matchesStatus = statusFilter === 'ALL' || req.status === statusFilter;

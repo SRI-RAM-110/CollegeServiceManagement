@@ -32,4 +32,29 @@ public class Notification {
 
     @CreatedDate
     private LocalDateTime createdAt;
+
+    @Builder.Default
+    private java.util.Set<String> readByUserIds = new java.util.HashSet<>();
+
+    @Builder.Default
+    private java.util.Set<String> clearedByUserIds = new java.util.HashSet<>();
+
+    public String getRequestId() {
+        return referenceId;
+    }
+
+    public boolean isReadForUser(String userId) {
+        if (userId != null && recipientUserId != null && userId.trim().equalsIgnoreCase(recipientUserId.trim())) {
+            return read;
+        }
+        if (readByUserIds != null && userId != null && readByUserIds.contains(userId.trim())) {
+            return true;
+        }
+        return false;
+    }
+
+    public boolean isClearedByUser(String userId) {
+        if (userId == null) return false;
+        return clearedByUserIds != null && clearedByUserIds.contains(userId.trim());
+    }
 }

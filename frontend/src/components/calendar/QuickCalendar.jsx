@@ -101,7 +101,7 @@ export const QuickCalendar = ({
       {/* Header */}
       <div className="calendar-header">
         <span className="calendar-title">
-          <CalendarIcon size={17} color="var(--arctic-blue)" />
+          <CalendarIcon size={16} color="var(--accent-color)" />
           {title}
         </span>
         <span className="calendar-active-date-badge">
@@ -117,7 +117,7 @@ export const QuickCalendar = ({
           className="calendar-nav-btn"
           aria-label="Previous month"
         >
-          <ChevronLeft size={18} />
+          <ChevronLeft size={16} />
         </button>
         <span className="calendar-month-title">
           {monthNames[month]} {year}
@@ -128,7 +128,7 @@ export const QuickCalendar = ({
           className="calendar-nav-btn"
           aria-label="Next month"
         >
-          <ChevronRight size={18} />
+          <ChevronRight size={16} />
         </button>
       </div>
 
@@ -164,7 +164,15 @@ export const QuickCalendar = ({
           return (
             <div
               key={index}
+              role="button"
+              tabIndex={0}
               onClick={() => handleDayClick(d)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleDayClick(d);
+                }
+              }}
               className={`calendar-day-btn ${!d.currentMonth ? 'outside-month' : ''} ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''}`}
               title={`${d.dateStr}${hasEvent ? ` (${dayEvents.length} event/booking)` : ''}`}
             >

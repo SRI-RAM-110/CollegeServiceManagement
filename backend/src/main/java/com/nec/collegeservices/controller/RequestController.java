@@ -143,7 +143,7 @@ public class RequestController {
         if ("MEALS".equals(serviceCategory) && (user.hasRole("MEALS_ADMIN") || user.hasServicePermission("MEALS_ADMIN"))) {
             return;
         }
-        if (UnifiedRequestService.isRequestedByUser(item.getRequestedBy(), user)) {
+        if (UnifiedRequestService.isRequestedByUser(item, user)) {
             return;
         }
         throw new AccessDeniedException("You are not authorized to view or download this request document.");

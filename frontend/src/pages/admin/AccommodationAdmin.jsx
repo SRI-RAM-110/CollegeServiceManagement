@@ -274,7 +274,8 @@ export default function AccommodationAdmin() {
       (req.purpose?.toLowerCase() || '').includes(q) ||
       (req.hostel?.toLowerCase() || '').includes(q) ||
       (req.roomId?.toLowerCase() || '').includes(q) ||
-      (req.requestedBy?.toLowerCase() || '').includes(q);
+      (req.requestedBy?.toLowerCase() || '').includes(q) ||
+      (req.requesterUserId?.toLowerCase() || '').includes(q);
 
     const matchesHostel = hostelFilter === 'ALL' || req.hostel === hostelFilter;
     const matchesType = typeFilter === 'ALL' || req.roomType?.includes(typeFilter);

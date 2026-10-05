@@ -1,0 +1,781 @@
+{
+  "timestamp": "2026-10-05T02:05:53.813Z",
+  "removedTransactions": [
+    {
+      "collection": "seminar_bookings",
+      "id": "SEM-2026-195642",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "seminar_bookings",
+      "id": "SEM-2026-405283",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "seminar_bookings",
+      "id": "SEM-2026-405284",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "seminar_bookings",
+      "id": "SEM-2026-405285",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "seminar_bookings",
+      "id": "SEM-2026-782032",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "seminar_bookings",
+      "id": "SEM-2026-782033",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "seminar_bookings",
+      "id": "SEM-2026-782034",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "seminar_bookings",
+      "id": "SEM-2026-782035",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "seminar_bookings",
+      "id": "SEM-2026-782036",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "seminar_bookings",
+      "id": "SEM-2026-782037",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "seminar_bookings",
+      "id": "SEM-2026-782038",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "seminar_bookings",
+      "id": "SEM-2026-782039",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "seminar_bookings",
+      "id": "SEM-2026-782040",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "seminar_bookings",
+      "id": "SEM-2026-782041",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "seminar_bookings",
+      "id": "SEM-2026-782042",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "seminar_bookings",
+      "id": "SEM-2026-782043",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "seminar_bookings",
+      "id": "SEM-2026-782044",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "seminar_bookings",
+      "id": "SEM-2026-782045",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "seminar_bookings",
+      "id": "SEM-2026-782046",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "seminar_bookings",
+      "id": "SEM-2026-782047",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "seminar_bookings",
+      "id": "SEM-2026-862898",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "seminar_bookings",
+      "id": "SEM-2026-862899",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "seminar_bookings",
+      "id": "SEM-2026-255497",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "accommodation_requests",
+      "id": "ACC-2026-81271",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "accommodation_requests",
+      "id": "ACC-2026-81272",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "accommodation_requests",
+      "id": "ACC-2026-81273",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "transport_requests",
+      "id": "TR-5699",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "transport_requests",
+      "id": "TR-4070",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "meal_requests",
+      "id": "SM-5809",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "meal_requests",
+      "id": "SM-4122",
+      "reason": "Confirmed test transaction"
+    },
+    {
+      "collection": "stationery_requests",
+      "id": "STA-54167",
+      "reason": "Confirmed test transaction"
+    }
+  ],
+  "removedAnnouncements": [
+    {
+      "id": "6ac244e358d99b724ad056fb",
+      "reason": "Confirmed test/dummy announcement"
+    },
+    {
+      "id": "6ac245b0a3a11e3c9c2a4f39",
+      "reason": "Confirmed test/dummy announcement"
+    },
+    {
+      "id": "6ac245eee2b21a371e2c10cc",
+      "reason": "Confirmed test/dummy announcement"
+    },
+    {
+      "id": "6ac24850e2b21a371e2c10ce",
+      "reason": "Confirmed test/dummy announcement"
+    },
+    {
+      "id": "6ac262aee2b21a371e2c10cf",
+      "reason": "Confirmed test/dummy announcement"
+    }
+  ],
+  "removedNotifications": [
+    {
+      "id": "6ac241da6af4ab7eca3b4c4b",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-255497",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac241da6af4ab7eca3b4c4c",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-255497",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac241f46af4ab7eca3b4c4d",
+      "title": "Seminar Request Approved",
+      "referenceId": "SEM-2026-255497",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac292521a876704c6d1a265",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-195642",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac292521a876704c6d1a266",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-195642",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac292afc97a1d39bc2f67ff",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-405283",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac292afc97a1d39bc2f6800",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-405283",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac292bbc97a1d39bc2f6801",
+      "title": "Seminar Request Approved",
+      "referenceId": "SEM-2026-405283",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac293fcc97a1d39bc2f6803",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-405284",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac293fcc97a1d39bc2f6804",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-405284",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2940bc97a1d39bc2f6806",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-405285",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2940bc97a1d39bc2f6807",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-405285",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fe8de39c4f6b0a929b32",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782032",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fe8de39c4f6b0a929b33",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782032",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fe8de39c4f6b0a929b34",
+      "title": "Seminar Request Approved",
+      "referenceId": "SEM-2026-782032",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fe8de39c4f6b0a929b36",
+      "title": "New Accommodation Request",
+      "referenceId": "ACC-2026-81271",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fe8de39c4f6b0a929b37",
+      "title": "New Accommodation Request",
+      "referenceId": "ACC-2026-81271",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fe8de39c4f6b0a929b38",
+      "title": "Accommodation Request Approved",
+      "referenceId": "ACC-2026-81271",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fe8de39c4f6b0a929b3a",
+      "title": "New Transport Request",
+      "referenceId": "TR-5699",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fe8de39c4f6b0a929b3b",
+      "title": "New Transport Request",
+      "referenceId": "TR-5699",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fe8de39c4f6b0a929b3c",
+      "title": "Transport Request Approved",
+      "referenceId": "TR-5699",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fe8de39c4f6b0a929b3e",
+      "title": "New Meal Arrangement Request",
+      "referenceId": "SM-5809",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fe8de39c4f6b0a929b3f",
+      "title": "New Meal Arrangement Request",
+      "referenceId": "SM-5809",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fe8de39c4f6b0a929b40",
+      "title": "Meals Request Approved",
+      "referenceId": "SM-5809",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2feb7e39c4f6b0a929b42",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782033",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2feb7e39c4f6b0a929b43",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782033",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2feb7e39c4f6b0a929b44",
+      "title": "Seminar Request Approved",
+      "referenceId": "SEM-2026-782033",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fed3e39c4f6b0a929b46",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782034",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fed3e39c4f6b0a929b47",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782034",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fed3e39c4f6b0a929b48",
+      "title": "Seminar Request Approved",
+      "referenceId": "SEM-2026-782034",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fed3e39c4f6b0a929b4a",
+      "title": "New Accommodation Request",
+      "referenceId": "ACC-2026-81272",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fed3e39c4f6b0a929b4b",
+      "title": "New Accommodation Request",
+      "referenceId": "ACC-2026-81272",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fed3e39c4f6b0a929b4c",
+      "title": "Accommodation Request Approved",
+      "referenceId": "ACC-2026-81272",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2feeae39c4f6b0a929b4e",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782035",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2feeae39c4f6b0a929b4f",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782035",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2feeae39c4f6b0a929b50",
+      "title": "Seminar Request Approved",
+      "referenceId": "SEM-2026-782035",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fef9e39c4f6b0a929b52",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782036",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fef9e39c4f6b0a929b53",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782036",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fef9e39c4f6b0a929b54",
+      "title": "Seminar Request Approved",
+      "referenceId": "SEM-2026-782036",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fefae39c4f6b0a929b56",
+      "title": "New Accommodation Request",
+      "referenceId": "ACC-2026-81273",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fefae39c4f6b0a929b57",
+      "title": "New Accommodation Request",
+      "referenceId": "ACC-2026-81273",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fefae39c4f6b0a929b58",
+      "title": "Accommodation Request Approved",
+      "referenceId": "ACC-2026-81273",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fefae39c4f6b0a929b5a",
+      "title": "New Transport Request",
+      "referenceId": "TR-4070",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fefae39c4f6b0a929b5b",
+      "title": "New Transport Request",
+      "referenceId": "TR-4070",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fefae39c4f6b0a929b5c",
+      "title": "Transport Request Approved",
+      "referenceId": "TR-4070",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fefae39c4f6b0a929b5e",
+      "title": "New Meal Arrangement Request",
+      "referenceId": "SM-4122",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fefae39c4f6b0a929b5f",
+      "title": "New Meal Arrangement Request",
+      "referenceId": "SM-4122",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fefae39c4f6b0a929b60",
+      "title": "Meals Request Approved",
+      "referenceId": "SM-4122",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fefae39c4f6b0a929b62",
+      "title": "New Stationery Request",
+      "referenceId": "STA-54167",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fefae39c4f6b0a929b63",
+      "title": "New Stationery Request",
+      "referenceId": "STA-54167",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2fefae39c4f6b0a929b64",
+      "title": "Stationery Request Approved",
+      "referenceId": "STA-54167",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff0ae39c4f6b0a929b6a",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782037",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff0ae39c4f6b0a929b6b",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782037",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff0ae39c4f6b0a929b6c",
+      "title": "Seminar Request Rejected",
+      "referenceId": "SEM-2026-782037",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff0ae39c4f6b0a929b6e",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782038",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff0ae39c4f6b0a929b6f",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782038",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff0ae39c4f6b0a929b70",
+      "title": "Seminar Request Approved",
+      "referenceId": "SEM-2026-782038",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff0ae39c4f6b0a929b71",
+      "title": "Seminar Cancellation Requested",
+      "referenceId": "SEM-2026-782038",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff0ae39c4f6b0a929b72",
+      "title": "Cancellation Approved",
+      "referenceId": "SEM-2026-782038",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff0ae39c4f6b0a929b74",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782039",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff0ae39c4f6b0a929b75",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782039",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff0ae39c4f6b0a929b76",
+      "title": "Seminar Request Approved",
+      "referenceId": "SEM-2026-782039",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff1be39c4f6b0a929b78",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782040",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff1be39c4f6b0a929b79",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782040",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff1be39c4f6b0a929b7a",
+      "title": "Seminar Request Rejected",
+      "referenceId": "SEM-2026-782040",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff1be39c4f6b0a929b7c",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782041",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff1be39c4f6b0a929b7d",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782041",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff1be39c4f6b0a929b7e",
+      "title": "Seminar Request Approved",
+      "referenceId": "SEM-2026-782041",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff1be39c4f6b0a929b7f",
+      "title": "Seminar Cancellation Requested",
+      "referenceId": "SEM-2026-782041",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff1be39c4f6b0a929b80",
+      "title": "Cancellation Approved",
+      "referenceId": "SEM-2026-782041",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff1be39c4f6b0a929b82",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782042",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff1be39c4f6b0a929b83",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782042",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff1be39c4f6b0a929b84",
+      "title": "Seminar Request Approved",
+      "referenceId": "SEM-2026-782042",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff1be39c4f6b0a929b85",
+      "title": "Seminar Reschedule Requested",
+      "referenceId": "SEM-2026-782042",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff1be39c4f6b0a929b87",
+      "title": "Seminar Reschedule Approved",
+      "referenceId": "SEM-2026-782043",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff4ae39c4f6b0a929b89",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782044",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff4ae39c4f6b0a929b8a",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782044",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff4ae39c4f6b0a929b8b",
+      "title": "Seminar Request Rejected",
+      "referenceId": "SEM-2026-782044",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff4ae39c4f6b0a929b8d",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782045",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff4ae39c4f6b0a929b8e",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782045",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff4ae39c4f6b0a929b8f",
+      "title": "Seminar Request Approved",
+      "referenceId": "SEM-2026-782045",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff4ae39c4f6b0a929b90",
+      "title": "Seminar Cancellation Requested",
+      "referenceId": "SEM-2026-782045",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff4ae39c4f6b0a929b91",
+      "title": "Cancellation Approved",
+      "referenceId": "SEM-2026-782045",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff4ae39c4f6b0a929b93",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782046",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff4ae39c4f6b0a929b94",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-782046",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff4ae39c4f6b0a929b95",
+      "title": "Seminar Request Approved",
+      "referenceId": "SEM-2026-782046",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff4ae39c4f6b0a929b96",
+      "title": "Seminar Reschedule Requested",
+      "referenceId": "SEM-2026-782046",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac2ff4ae39c4f6b0a929b98",
+      "title": "Seminar Reschedule Approved",
+      "referenceId": "SEM-2026-782047",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac301fe6e51f32ce159e13b",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-862898",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac301fe6e51f32ce159e13c",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-862898",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac3022c6e51f32ce159e13d",
+      "title": "Seminar Request Approved",
+      "referenceId": "SEM-2026-862898",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac302746e51f32ce159e13f",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-862899",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac302746e51f32ce159e140",
+      "title": "New Seminar Hall Request",
+      "referenceId": "SEM-2026-862899",
+      "reason": "Test notification linked to test transaction / test announcement"
+    },
+    {
+      "id": "6ac302986e51f32ce159e141",
+      "title": "Seminar Request Approved",
+      "referenceId": "SEM-2026-862899",
+      "reason": "Test notification linked to test transaction / test announcement"
+    }
+  ],
+  "removedUsers": [],
+  "beforeCounts": {
+    "vehicles": 5,
+    "seminar_halls": 6,
+    "departments": 8,
+    "seminar_bookings": 40,
+    "push_subscriptions": 0,
+    "users": 28,
+    "accommodation_requests": 13,
+    "stationery_requests": 7,
+    "accommodation_rooms": 4,
+    "stationery_items": 13,
+    "announcements": 9,
+    "meal_requests": 9,
+    "notifications": 232,
+    "transport_requests": 7
+  },
+  "afterCounts": {
+    "vehicles": 5,
+    "seminar_halls": 6,
+    "departments": 8,
+    "seminar_bookings": 17,
+    "push_subscriptions": 0,
+    "users": 28,
+    "accommodation_requests": 10,
+    "stationery_requests": 6,
+    "accommodation_rooms": 4,
+    "stationery_items": 13,
+    "announcements": 4,
+    "meal_requests": 7,
+    "notifications": 138,
+    "transport_requests": 5
+  }
+}

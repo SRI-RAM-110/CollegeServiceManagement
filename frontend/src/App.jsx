@@ -27,6 +27,7 @@ import TransportAdmin from './pages/admin/TransportAdmin';
 import StationeryAdmin from './pages/admin/StationeryAdmin';
 import MealsAdmin from './pages/admin/MealsAdmin';
 import ForcedPasswordChangeModal from './components/common/ForcedPasswordChangeModal';
+import Reports from './pages/Reports';
 
 function RootRedirect() {
   const { user, isAuthenticated, getDefaultRouteForRole } = useAuth();
@@ -236,6 +237,16 @@ export default function App() {
                 element={
                   <ProtectedRoute allowedRoles={['CREATOR', 'AO_ADMIN', 'MEALS_ADMIN']}>
                     <MealsAdmin />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Reports & Analytics - Role-adaptive with backend-enforced permissions */}
+              <Route
+                path="/reports"
+                element={
+                  <ProtectedRoute>
+                    <Reports />
                   </ProtectedRoute>
                 }
               />

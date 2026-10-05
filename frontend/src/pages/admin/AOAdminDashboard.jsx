@@ -220,6 +220,7 @@ export default function AOAdminDashboard() {
       (req.details?.toLowerCase() || '').includes(q) ||
       (req.service?.toLowerCase() || '').includes(q) ||
       (req.requestedBy?.toLowerCase() || '').includes(q) ||
+      (req.requesterUserId?.toLowerCase() || '').includes(q) ||
       (req.status?.toLowerCase() || '').includes(q);
 
     const matchesService = serviceFilter === 'ALL' || req.service === serviceFilter;

@@ -425,189 +425,254 @@ export const Accommodation = () => {
 
       {activeTab === 'available' ? (
         <div className="column-stack">
-          {/* Top Row: Left = Room Selection, Right = Availability & Calendar */}
-          <div className="two-column-layout balanced">
-            {/* Left Column: Hostel & Room Selection */}
-            <div className="card-panel accommodation-selection-panel">
-              <span className="accommodation-selection-title">
-                <BedDouble size={18} className="text-arctic-blue" />
-                Hostel & Room Selection
-              </span>
-              <div className="space-y-3.5">
-                {/* Girls Hostel Block */}
-                <div>
-                  <div className="hostel-block-header">
-                    <Home size={13} /> Girls Hostel – Guest Rooms
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {girlsRooms.map((room) => {
-                      const isMaint = room.status === 'Maintenance' || room.status === 'Unavailable';
-                      const isSelected = roomId === room.roomId;
+          {/* UNIFIED ACCOMMODATION REQUEST CONTAINER */}
+          <div className="card-panel">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-800">
+              <div>
+                <span className="card-title text-base font-bold flex items-center gap-2">
+                  <BedDouble size={18} color="var(--arctic-blue)" />
+                  Accommodation Request
+                </span>
+                <p className="card-subtitle text-xs text-slate-400 mt-0.5">
+                  Select a guest room, check live date availability, and submit reservation details.
+                </p>
+              </div>
+            </div>
+
+            <div className="two-column-layout balanced">
+              {/* Left Column: Room Selection, Details & Availability */}
+              <div className="column-stack">
+                {/* 1. Room Dropdown */}
+                <div className="form-group">
+                  <label className="form-label text-xs">Select Room *</label>
+                  <select
+                    value={roomId}
+                    onChange={(e) => {
+                      const selected = rooms.find((r) => r.roomId === e.target.value);
+                      if (selected) handleSelectRoom(selected);
+                    }}
+                    className="w-full text-xs"
+                  >
+                    {rooms.map((r) => {
+                      const prefix = r.hostel?.includes('Girls') ? 'GH' : 'BH';
                       return (
-                        <div
-                          key={room.roomId}
-                          onClick={() => handleSelectRoom(room)}
-                          className={`room-card-compact ${isSelected ? 'selected' : ''}`}
-                        >
-                          <div className="room-header">
-                            <span className="room-title">
-                              {room.roomType}
-                            </span>
-                            <StatusBadge
-                              status={isMaint ? 'MAINTENANCE' : room.available ? 'AVAILABLE' : 'PENDING'}
-                            />
-                          </div>
-                          <div className="room-meta-row">
-                            <span className="font-mono text-arctic-blue font-semibold">{room.roomId}</span>
-                            <span>•</span>
-                            <span className="flex items-center gap-1">
-                              <Users size={11} className="text-arctic-blue" /> {room.capacity} Guests
-                            </span>
-                          </div>
-                          {room.location && (
-                            <div className="text-[10px] text-slate-400 flex items-center gap-1 mb-1">
-                              <MapPin size={10} className="text-slate-500" /> {room.location}
-                            </div>
-                          )}
-                          <div className="room-amenities-row">
-                            {room.amenities?.slice(0, 3).map((a) => (
-                              <span key={a} className="amenity-chip">✓ {a}</span>
-                            ))}
-                          </div>
-                          <button
-                            type="button"
-                            className={`btn btn-sm w-full mt-2 text-xs py-1 ${isSelected ? 'btn-primary' : 'btn-outline'}`}
-                          >
-                            {isSelected ? 'Selected' : 'Select Room'}
-                          </button>
-                        </div>
+                        <option key={r.roomId} value={r.roomId}>
+                          {prefix} — {r.roomId} — {r.roomType} ({r.capacity} Guests)
+                        </option>
                       );
                     })}
+                  </select>
+                </div>
+
+                {/* 2. Selected Room Details */}
+                {selectedRoomObj && (
+                  <div className="p-3 rounded-lg bg-slate-900/80 border border-slate-800 text-xs space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Hostel & Type:</span>
+                      <span className="font-semibold text-white">{selectedRoomObj.hostel} — {selectedRoomObj.roomType}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Room Code:</span>
+                      <span className="font-mono text-arctic-blue font-semibold">{selectedRoomObj.roomId}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Capacity:</span>
+                      <span className="text-slate-200">{selectedRoomObj.capacity} Guests</span>
+                    </div>
+                    {selectedRoomObj.location && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Location:</span>
+                        <span className="text-slate-300">{selectedRoomObj.location}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Room Status:</span>
+                      <StatusBadge
+                        status={isRoomInMaintenance ? 'MAINTENANCE' : selectedRoomObj.available ? 'AVAILABLE' : 'PENDING'}
+                      />
+                    </div>
+                    {selectedRoomObj.amenities && selectedRoomObj.amenities.length > 0 && (
+                      <div className="pt-1.5 border-t border-slate-800/80">
+                        <span className="text-slate-400 block text-[10px] mb-1">Amenities:</span>
+                        <div className="flex flex-wrap gap-1">
+                          {selectedRoomObj.amenities.map((a) => (
+                            <span key={a} className="amenity-chip">✓ {a}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 3. Check-in & Check-out Dates */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="form-group">
+                    <label className="form-label text-xs">Check-in Date *</label>
+                    <input
+                      type="date"
+                      value={checkInDate}
+                      min={getTodayStr()}
+                      onChange={(e) => setCheckInDate(e.target.value)}
+                      required
+                      className="w-full text-xs"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label text-xs">Check-out Date *</label>
+                    <input
+                      type="date"
+                      value={checkOutDate}
+                      min={checkInDate || getTodayStr()}
+                      onChange={(e) => setCheckOutDate(e.target.value)}
+                      required
+                      className="w-full text-xs"
+                    />
                   </div>
                 </div>
 
-                {/* Boys Hostel Block */}
-                <div>
-                  <div className="hostel-block-header">
-                    <Home size={13} /> Boys Hostel – Guest Rooms
+                {/* 4. Live Availability & Status */}
+                {isRoomInMaintenance ? (
+                  <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+                    <AlertTriangle size={15} className="text-rose-400 flex-shrink-0" />
+                    <span>
+                      Warning: Room <strong>{roomId}</strong> is under {selectedRoomObj?.status || 'Maintenance'}.
+                    </span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {boysRooms.map((room) => {
-                      const isMaint = room.status === 'Maintenance' || room.status === 'Unavailable';
-                      const isSelected = roomId === room.roomId;
-                      return (
-                        <div
-                          key={room.roomId}
-                          onClick={() => handleSelectRoom(room)}
-                          className={`room-card-compact ${isSelected ? 'selected' : ''}`}
-                        >
-                          <div className="room-header">
-                            <span className="room-title">
-                              {room.roomType}
-                            </span>
-                            <StatusBadge
-                              status={isMaint ? 'MAINTENANCE' : room.available ? 'AVAILABLE' : 'PENDING'}
-                            />
-                          </div>
-                          <div className="room-meta-row">
-                            <span className="font-mono text-arctic-blue font-semibold">{room.roomId}</span>
-                            <span>•</span>
-                            <span className="flex items-center gap-1">
-                              <Users size={11} className="text-arctic-blue" /> {room.capacity} Guests
-                            </span>
-                          </div>
-                          {room.location && (
-                            <div className="text-[10px] text-slate-400 flex items-center gap-1 mb-1">
-                              <MapPin size={10} className="text-slate-500" /> {room.location}
-                            </div>
-                          )}
-                          <div className="room-amenities-row">
-                            {room.amenities?.slice(0, 3).map((a) => (
-                              <span key={a} className="amenity-chip">✓ {a}</span>
-                            ))}
-                          </div>
-                          <button
-                            type="button"
-                            className={`btn btn-sm w-full mt-2 text-xs py-1 ${isSelected ? 'btn-primary' : 'btn-outline'}`}
-                          >
-                            {isSelected ? 'Selected' : 'Select Room'}
-                          </button>
-                        </div>
-                      );
-                    })}
+                ) : liveAvailabilityStatus ? (
+                  <div
+                    className={`p-2.5 rounded-lg border text-xs flex items-center justify-between ${
+                      liveAvailabilityStatus.isAvailable
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                        : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-medium">
+                      {liveAvailabilityStatus.isAvailable ? (
+                        <CheckCircle2 size={14} className="text-emerald-400" />
+                      ) : (
+                        <AlertTriangle size={14} className="text-amber-400" />
+                      )}
+                      <span>
+                        {liveAvailabilityStatus.isAvailable
+                          ? `✓ Room ${roomId} is AVAILABLE for selected dates.`
+                          : `⚠ Room ${roomId} has conflicting bookings for selected dates.`}
+                      </span>
+                    </div>
+                    {checkingAvailability && (
+                      <span className="text-[10px] text-slate-400">checking...</span>
+                    )}
                   </div>
+                ) : (
+                  <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800 text-xs text-slate-400 flex items-center gap-1.5">
+                    <Clock size={13} className="text-arctic-blue" />
+                    <span>Select dates to verify room availability</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column: Request Fields & Submit */}
+              <div className="column-stack">
+                <form onSubmit={handleSubmit} className="form-column">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="form-group">
+                      <label className="form-label text-xs">Number of Guests *</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="50"
+                        step="1"
+                        value={guestsCount}
+                        onChange={(e) => setGuestsCount(e.target.value)}
+                        placeholder="Enter guest count (1-50)"
+                        required
+                        className="w-full text-xs"
+                      />
+                      <span className="text-[10px] text-slate-400 mt-1 block">
+                        Min: 1 | Max: 50 (Room capacity: {selectedRoomObj?.capacity || 2})
+                      </span>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label text-xs">Guest / Faculty Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Dr. Ramesh (External Guest)"
+                        value={facultyOrGuestName}
+                        onChange={(e) => setFacultyOrGuestName(e.target.value)}
+                        className="w-full text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label text-xs">Purpose of Visit *</label>
+                    <textarea
+                      rows="2"
+                      placeholder="e.g. Guest Lecture, Workshop, Interview"
+                      value={purpose}
+                      onChange={(e) => setPurpose(e.target.value)}
+                      required
+                      className="w-full text-xs"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label text-xs">Additional Notes</label>
+                    <textarea
+                      rows="2"
+                      placeholder="Any special requirements..."
+                      value={additionalNotes}
+                      onChange={(e) => setAdditionalNotes(e.target.value)}
+                      className="w-full text-xs"
+                    />
+                  </div>
+
+                  <div className="form-actions-row mt-2">
+                    <button
+                      type="button"
+                      onClick={handleReset}
+                      className="btn btn-outline btn-flex-1 text-xs"
+                      disabled={submitting}
+                    >
+                      <RotateCcw size={14} /> Reset
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-primary btn-flex-2 text-xs"
+                      disabled={submitting || isRoomInMaintenance}
+                    >
+                      <Send size={14} /> {submitting ? 'Sending...' : 'Send Request'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          {/* Auxiliary 2-Column Row: Guidelines & Quick Calendar */}
+          <div className="two-column-layout balanced mt-6">
+            <div className="column-stack">
+              {/* Guidelines Box */}
+              <div className="guidelines-card">
+                <div className="guidelines-header">
+                  <Info size={16} className="text-arctic-blue" />
+                  <span className="guidelines-title text-xs">Accommodation Guidelines</span>
+                </div>
+                <ul className="guidelines-list text-xs">
+                  <li>Rooms are available strictly for official college guest visits and invited speakers.</li>
+                  <li>Same-day check-in/out is not supported. Multi-day stays allowed.</li>
+                  <li>Requests must be submitted within room capacity limits.</li>
+                  <li>Approved requests can be rescheduled or cancelled upon review.</li>
+                </ul>
+                <div className="guidelines-footer">
+                  <Home size={14} className="text-emerald" />
+                  <span className="guidelines-tagline text-xs">“Comfort to Collaborate”</span>
                 </div>
               </div>
             </div>
 
-            {/* Right Column: Room Availability & Status */}
-            <div className="card-panel">
-              <span className="card-title mb-2.5 flex items-center gap-1.5 font-bold text-sm">
-                <Clock size={16} className="text-arctic-blue" />
-                Live Room Availability & Status
-              </span>
-
-              {/* Maintenance Warning */}
-              {isRoomInMaintenance && (
-                <div className="mb-2.5 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-                  <AlertTriangle size={15} className="text-rose-400 flex-shrink-0" />
-                  <span>
-                    Warning: Room <strong>{roomId}</strong> is under {selectedRoomObj?.status || 'Maintenance'}.
-                    Requests for this room will be rejected.
-                  </span>
-                </div>
-              )}
-
-              {liveAvailabilityStatus && !isRoomInMaintenance && (
-                <div
-                  className={`mb-2.5 p-2.5 rounded-lg border text-xs flex items-center justify-between ${
-                    liveAvailabilityStatus.isAvailable
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                      : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5 font-medium">
-                    {liveAvailabilityStatus.isAvailable ? (
-                      <CheckCircle2 size={14} className="text-emerald-400" />
-                    ) : (
-                      <AlertTriangle size={14} className="text-amber-400" />
-                    )}
-                    <span>
-                      {liveAvailabilityStatus.isAvailable
-                        ? `Room ${roomId} is AVAILABLE for selected dates.`
-                        : `Room ${roomId} has conflicting bookings for selected dates.`}
-                    </span>
-                  </div>
-                  {checkingAvailability && (
-                    <span className="text-[10px] text-slate-400">checking...</span>
-                  )}
-                </div>
-              )}
-
-              {/* Selected Room Details Highlight */}
-              {selectedRoomObj && (
-                <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 text-xs space-y-1 mb-2.5">
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-400">Selected Facility:</span>
-                    <span className="font-semibold text-white">{selectedRoomObj.hostel} — {selectedRoomObj.roomType}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-400">Room Code:</span>
-                    <span className="font-mono text-arctic-blue font-semibold">{selectedRoomObj.roomId}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-400">Max Capacity:</span>
-                    <span className="text-slate-200">{selectedRoomObj.capacity} Guests</span>
-                  </div>
-                  {selectedRoomObj.location && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Location:</span>
-                      <span className="text-slate-300">{selectedRoomObj.location}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-
+            <div className="column-stack">
               {/* Quick Calendar */}
               <QuickCalendar
                 title="Accommodation Quick Calendar"
@@ -626,184 +691,6 @@ export const Accommodation = () => {
                 showLegend={true}
                 showEventsList={true}
               />
-            </div>
-          </div>
-
-          {/* Bottom Panel: Accommodation Request Form (Spans Full Width with balanced grid) */}
-          <div className="card-panel">
-            <div className="mb-3.5 pb-2 border-b border-slate-800">
-              <span className="card-title flex items-center gap-2">
-                <BedDouble size={18} className="text-arctic-blue" />
-                Accommodation Request Form
-              </span>
-              <p className="card-subtitle text-xs text-slate-400 mt-0.5">
-                Submit guest room reservation details for official faculty or external visitor stays.
-              </p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="form-column">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="form-group">
-                  <label className="form-label text-xs">Hostel *</label>
-                  <select
-                    value={hostel}
-                    onChange={(e) => {
-                      const newHostel = e.target.value;
-                      setHostel(newHostel);
-                      const prefix = newHostel.includes('Girls') ? 'GH' : 'BH';
-                      const suffix = roomType.includes('Non-AC') ? 'NAC-1' : 'AC-1';
-                      setRoomId(`${prefix}-${suffix}`);
-                    }}
-                    className="w-full text-xs"
-                  >
-                    <option value="Girls Hostel">Girls Hostel</option>
-                    <option value="Boys Hostel">Boys Hostel</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label text-xs">Room Type *</label>
-                  <select
-                    value={roomType}
-                    onChange={(e) => {
-                      const newType = e.target.value;
-                      setRoomType(newType);
-                      const prefix = hostel.includes('Girls') ? 'GH' : 'BH';
-                      const suffix = newType.includes('Non-AC') ? 'NAC-1' : 'AC-1';
-                      setRoomId(`${prefix}-${suffix}`);
-                    }}
-                    className="w-full text-xs"
-                  >
-                    <option value="AC Room">
-                      AC Room ({hostel.includes('Girls') ? 'GH-AC-1' : 'BH-AC-1'})
-                    </option>
-                    <option value="Non-AC Room">
-                      Non-AC Room ({hostel.includes('Girls') ? 'GH-NAC-1' : 'BH-NAC-1'})
-                    </option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label text-xs">Check-in Date *</label>
-                  <input
-                    type="date"
-                    value={checkInDate}
-                    min={getTodayStr()}
-                    onChange={(e) => setCheckInDate(e.target.value)}
-                    required
-                    className="w-full text-xs"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label text-xs">Check-out Date *</label>
-                  <input
-                    type="date"
-                    value={checkOutDate}
-                    min={checkInDate || getTodayStr()}
-                    onChange={(e) => setCheckOutDate(e.target.value)}
-                    required
-                    className="w-full text-xs"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
-                <div className="form-group">
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="form-label text-xs mb-0">Number of Guests *</label>
-                    <span className="text-[10px] text-slate-400">
-                      Minimum: 1 | Maximum: 50
-                    </span>
-                  </div>
-                  <input
-                    type="number"
-                    min="1"
-                    max="50"
-                    step="1"
-                    value={guestsCount}
-                    onChange={(e) => setGuestsCount(e.target.value)}
-                    placeholder="Enter guest count (1-50)"
-                    required
-                    className="w-full text-xs"
-                  />
-                  <span className="text-[10px] text-slate-400 mt-1 block">
-                    Number of Guests (Minimum: 1 | Maximum: 50)
-                  </span>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label text-xs">Guest / Faculty Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Dr. Ramesh (External Guest)"
-                    value={facultyOrGuestName}
-                    onChange={(e) => setFacultyOrGuestName(e.target.value)}
-                    className="w-full text-xs"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
-                <div className="form-group">
-                  <label className="form-label text-xs">Purpose of Visit *</label>
-                  <textarea
-                    rows="2"
-                    placeholder="e.g. Guest Lecture, Workshop, Interview"
-                    value={purpose}
-                    onChange={(e) => setPurpose(e.target.value)}
-                    required
-                    className="w-full text-xs"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label text-xs">Additional Notes</label>
-                  <textarea
-                    rows="2"
-                    placeholder="Any special requirements..."
-                    value={additionalNotes}
-                    onChange={(e) => setAdditionalNotes(e.target.value)}
-                    className="w-full text-xs"
-                  />
-                </div>
-              </div>
-
-              <div className="form-actions-row">
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  className="btn btn-outline btn-flex-1 text-xs"
-                  disabled={submitting}
-                >
-                  <RotateCcw size={14} /> Reset
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary btn-flex-2 text-xs"
-                  disabled={submitting || isRoomInMaintenance}
-                >
-                  <Send size={14} /> {submitting ? 'Sending...' : 'Send Request'}
-                </button>
-              </div>
-            </form>
-          </div>
-
-          {/* Guidelines Box */}
-          <div className="guidelines-card">
-            <div className="guidelines-header">
-              <Info size={16} className="text-arctic-blue" />
-              <span className="guidelines-title text-xs">Accommodation Guidelines</span>
-            </div>
-            <ul className="guidelines-list text-xs">
-              <li>Rooms are available strictly for official college guest visits and invited speakers.</li>
-              <li>Same-day check-in/out is not supported. Multi-day stays allowed.</li>
-              <li>Requests must be submitted within room capacity limits.</li>
-              <li>Approved requests can be rescheduled or cancelled upon review.</li>
-            </ul>
-            <div className="guidelines-footer">
-              <Home size={14} className="text-emerald" />
-              <span className="guidelines-tagline text-xs">“Comfort to Collaborate”</span>
             </div>
           </div>
 

@@ -48,6 +48,7 @@ export const Stationery = () => {
 
   // Request Cart state: [{ itemId, name, quantity, unit, description }]
   const [cart, setCart] = useState([]);
+  const [selectedDropdownItemId, setSelectedDropdownItemId] = useState('');
   const [purpose, setPurpose] = useState('Departmental Use');
   const [additionalNotes, setAdditionalNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -90,6 +91,18 @@ export const Stationery = () => {
       ];
     });
     showToast(`Added ${item.name} to request`, 'info');
+  };
+
+  const handleDropdownAddToCart = () => {
+    if (!selectedDropdownItemId) {
+      showToast('Please select a stationery item first', 'warning');
+      return;
+    }
+    const itemToAdd = items.find((i) => i.itemId === selectedDropdownItemId);
+    if (itemToAdd) {
+      handleAddToCart(itemToAdd);
+      setSelectedDropdownItemId('');
+    }
   };
 
   const handleUpdateQuantity = (itemId, delta) => {
@@ -268,197 +281,302 @@ export const Stationery = () => {
         />
       </div>
 
-      {/* Main Grid: Left Catalog, Right Shopping Cart */}
-      <div className="two-column-layout balanced">
-        {/* Left Column: Items Catalog */}
-        <div className="card-panel">
-          <div className="card-header flex-wrap gap-sm">
-            <span className="card-title">Available Stationery Items</span>
-
-            <div className="filter-group">
-              <div className="filter-search-box">
-                <Search
-                  size={15}
-                  className="filter-search-icon"
-                />
-                <input
-                  type="text"
-                  placeholder="Search items..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="filter-search-input"
-                />
-              </div>
-
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="filter-select"
-              >
-                <option value="ALL">All Categories</option>
-                <option value="Paper">Paper</option>
-                <option value="Writing">Writing</option>
-                <option value="Filing">Filing</option>
-                <option value="Office Tools">Office Tools</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Items Grid */}
-          <div className="stationery-grid">
-            {filteredItems.length === 0 ? (
-              <div className="empty-state-branded" style={{ gridColumn: '1 / -1', padding: '32px' }}>
-                <PackageCheck size={32} className="text-muted" />
-                <span>No stationery items match your search.</span>
-              </div>
-            ) : (
-              filteredItems.map((item) => (
-              <div
-                key={item.itemId}
-                className="stationery-item-card"
-              >
-                <div className="stationery-icon-box">
-                  <FileText size={20} className="text-arctic-blue" />
-                </div>
-
-                <div className="stationery-item-name">
-                  {item.name}
-                </div>
-                <div className="stationery-unit-text">
-                  {item.description || item.unit || 'Standard Item'}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => handleAddToCart(item)}
-                  className="btn btn-primary btn-sm w-full mt-2"
-                >
-                  <Plus size={13} /> Add to Request
-                </button>
-              </div>
-            ))}
+      {/* Unified Stationery Request Container */}
+      <div className="card-panel">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-800">
+          <div>
+            <span className="card-title text-base font-bold flex items-center gap-2">
+              <FileText size={18} color="var(--arctic-blue)" />
+              Stationery Indent Request
+            </span>
+            <p className="card-subtitle text-xs text-slate-400 mt-0.5">
+              Select stationery items from the catalog, specify quantities, and submit your request.
+            </p>
           </div>
         </div>
 
-        {/* Right Column: Request Cart Form */}
-        <div className="column-stack">
-          <div className="card-panel">
-            <div className="card-header">
-              <span className="card-title">
-                <ShoppingCart size={18} className="text-arctic-blue" />
-                Your Request Cart ({cart.length})
-              </span>
+        <div className="two-column-layout balanced">
+          {/* Left Column: Items Catalog */}
+          <div className="column-stack">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-800">
+              <span className="text-xs font-semibold text-slate-200">Catalog Items</span>
+
+              <div className="filter-group">
+                <div className="filter-search-box">
+                  <Search size={14} className="filter-search-icon" />
+                  <input
+                    type="text"
+                    placeholder="Search items..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="filter-search-input text-xs"
+                  />
+                </div>
+
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="filter-select text-xs"
+                >
+                  <option value="ALL">All Categories</option>
+                  <option value="Paper">Paper</option>
+                  <option value="Writing">Writing</option>
+                  <option value="Filing">Filing</option>
+                  <option value="Office Tools">Office Tools</option>
+                </select>
+              </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="form-column">
-              {/* Cart Items Table */}
-              <div className="cart-items-scroll">
-                {cart.length === 0 ? (
-                  <div className="table-empty-cell">
-                    Cart is empty. Click "Add to Request" on stationery items.
-                  </div>
-                ) : (
-                  <div className="cart-list">
-                    {cart.map((c) => (
-                      <div
-                        key={c.itemId}
-                        className="cart-item-row"
-                      >
-                        <div className="flex-1">
-                          <div className="cart-item-name">
-                            {c.name}
-                          </div>
-                          <div className="cart-item-sub">
-                            Unit: {c.unit || 'units'}
-                          </div>
-                        </div>
+            {/* Items Grid */}
+            <div className="stationery-grid max-h-[380px] overflow-y-auto">
+              {filteredItems.length === 0 ? (
+                <div className="empty-state-branded" style={{ gridColumn: '1 / -1', padding: '24px' }}>
+                  <PackageCheck size={28} className="text-muted" />
+                  <span className="text-xs">No stationery items match your search.</span>
+                </div>
+              ) : (
+                filteredItems.map((item) => (
+                  <div
+                    key={item.itemId}
+                    className="stationery-item-card"
+                  >
+                    <div className="stationery-icon-box">
+                      <FileText size={18} className="text-arctic-blue" />
+                    </div>
 
-                        {/* Quantity controls */}
-                        <div className="cart-qty-controls">
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateQuantity(c.itemId, -1)}
-                            className="cart-qty-btn"
-                          >
-                            <Minus size={12} />
-                          </button>
-                          <input
-                            type="number"
-                            min="1"
-                            value={c.quantity}
-                            onChange={(e) => handleSetQuantity(c.itemId, e.target.value)}
-                            className="cart-qty-number"
-                            style={{ width: '68px', textAlign: 'center', background: 'transparent', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-primary)' }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateQuantity(c.itemId, 1)}
-                            className="cart-qty-btn"
-                          >
-                            <Plus size={12} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItem(c.itemId)}
-                            className="cart-remove-btn"
-                            aria-label="Remove item"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                    <div className="stationery-item-name text-xs">
+                      {item.name}
+                    </div>
+                    <div className="stationery-unit-text text-[10px]">
+                      {item.description || item.unit || 'Standard Item'}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleAddToCart(item)}
+                      className="btn btn-primary btn-sm w-full mt-2 text-xs py-1"
+                    >
+                      <Plus size={12} /> Add to Request
+                    </button>
                   </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Right Column: Request Cart Form */}
+          <div className="column-stack">
+            <div
+              className="p-3 rounded-lg border"
+              style={{
+                background: 'var(--bg-surface, rgba(15, 23, 42, 0.7))',
+                borderColor: 'var(--border-color, rgba(148, 163, 184, 0.2))'
+              }}
+            >
+              <div
+                className="flex justify-between items-center mb-2.5 pb-2 border-b"
+                style={{ borderColor: 'var(--border-color, rgba(148, 163, 184, 0.2))' }}
+              >
+                <span className="card-title text-xs font-semibold flex items-center gap-1.5">
+                  <ShoppingCart size={15} className="text-arctic-blue" />
+                  CART ({cart.length})
+                </span>
+                {cart.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearCart}
+                    className="text-xs text-rose-400 hover:text-rose-300"
+                  >
+                    Clear All
+                  </button>
                 )}
               </div>
 
-              <div className="form-group">
-                <label className="form-label">
-                  Purpose of Request *
-                </label>
-                <select
-                  value={purpose}
-                  onChange={(e) => setPurpose(e.target.value)}
+              {/* Add Stationery Item Dropdown Section */}
+              <div
+                className="dropdown-add-section p-2.5 mb-3 rounded-lg border"
+                style={{
+                  background: 'var(--bg-surface-elevated, rgba(15, 23, 42, 0.45))',
+                  borderColor: 'var(--border-color, rgba(148, 163, 184, 0.2))'
+                }}
+              >
+                <label
+                  className="form-label text-xs font-semibold block mb-1.5"
+                  style={{ color: 'var(--text-primary)' }}
                 >
-                  <option value="Departmental Use">Departmental Use</option>
-                  <option value="Workshop / Seminar">Workshop / Seminar</option>
-                  <option value="Academic Examination">Academic Examination</option>
-                  <option value="Accreditation / Inspection">Accreditation / Inspection</option>
-                </select>
+                  Add Stationery Item
+                </label>
+                <div className="flex flex-col sm:flex-row gap-2 items-center">
+                  <select
+                    value={selectedDropdownItemId}
+                    onChange={(e) => setSelectedDropdownItemId(e.target.value)}
+                    className="w-full text-xs"
+                    style={{
+                      height: '36px',
+                      background: 'var(--input-bg, #0b1329)',
+                      color: 'var(--text-primary)',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: 'var(--radius-sm, 6px)',
+                      padding: '0 8px',
+                    }}
+                  >
+                    <option value="">Select an item...</option>
+                    {items.map((it) => (
+                      <option key={it.itemId} value={it.itemId}>
+                        {it.name} {it.unit ? `(${it.unit})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleDropdownAddToCart}
+                    disabled={!selectedDropdownItemId}
+                    className="btn btn-primary text-xs py-1.5 px-3 whitespace-nowrap w-full sm:w-auto flex items-center justify-center gap-1.5"
+                    style={{ height: '36px' }}
+                  >
+                    <Plus size={13} /> Add to Cart
+                  </button>
+                </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">
-                  Other Requirements / Additional Notes
-                </label>
-                <textarea
-                  rows="3"
-                  placeholder="e.g. Need blue and black markers for the faculty workshop."
-                  value={additionalNotes}
-                  onChange={(e) => setAdditionalNotes(e.target.value)}
-                />
-              </div>
+              <form onSubmit={handleSubmit} className="form-column">
+                {/* Cart Items Table */}
+                <div className="cart-items-scroll max-h-[180px] overflow-y-auto">
+                  {cart.length === 0 ? (
+                    <div className="table-empty-cell text-xs py-4 text-center text-slate-500">
+                      Cart is empty. Select from dropdown or click "Add to Request" on cards.
+                    </div>
+                  ) : (
+                    <div className="cart-list">
+                      {cart.map((c) => (
+                        <div
+                          key={c.itemId}
+                          className="cart-item-row p-1.5 mb-1.5 rounded flex items-center justify-between"
+                          style={{
+                            background: 'var(--bg-surface-elevated, rgba(11, 27, 48, 0.6))',
+                            border: '1px solid var(--border-color, rgba(148, 163, 184, 0.2))'
+                          }}
+                        >
+                          <div className="flex-1 pr-2">
+                            <div
+                              className="cart-item-name text-xs font-semibold"
+                              style={{ color: 'var(--text-primary)' }}
+                            >
+                              {c.name}
+                            </div>
+                            <div
+                              className="cart-item-sub text-[10px]"
+                              style={{ color: 'var(--text-muted)' }}
+                            >
+                              Unit: {c.unit || 'units'}
+                            </div>
+                          </div>
 
-              <div className="form-actions-row">
-                <button
-                  type="button"
-                  onClick={handleClearCart}
-                  className="btn btn-outline btn-flex-1"
-                  disabled={cart.length === 0}
-                >
-                  <RotateCcw size={15} /> Clear Cart
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary btn-flex-2"
-                  disabled={submitting || cart.length === 0}
-                >
-                  <Send size={15} /> {submitting ? 'Sending...' : 'Send Request'}
-                </button>
-              </div>
-            </form>
+                          {/* Quantity controls */}
+                          <div className="cart-qty-controls flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateQuantity(c.itemId, -1)}
+                              className="cart-qty-btn"
+                              aria-label="Decrease quantity"
+                            >
+                              <Minus size={11} />
+                            </button>
+                            <input
+                              type="number"
+                              min="1"
+                              value={c.quantity}
+                              onChange={(e) => handleSetQuantity(c.itemId, e.target.value)}
+                              className="cart-qty-number text-xs font-semibold"
+                              style={{
+                                width: '48px',
+                                textAlign: 'center',
+                                background: 'var(--input-bg, #0b1329)',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '4px',
+                                color: 'var(--text-primary)',
+                                height: '28px',
+                                padding: '0 2px'
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateQuantity(c.itemId, 1)}
+                              className="cart-qty-btn"
+                              aria-label="Increase quantity"
+                            >
+                              <Plus size={11} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveItem(c.itemId)}
+                              className="cart-remove-btn text-rose-400 hover:text-rose-300 ml-1 p-1"
+                              aria-label="Remove item"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="form-group mt-2">
+                  <label className="form-label text-xs">
+                    Purpose of Request *
+                  </label>
+                  <select
+                    value={purpose}
+                    onChange={(e) => setPurpose(e.target.value)}
+                    className="w-full text-xs"
+                  >
+                    <option value="Departmental Use">Departmental Use</option>
+                    <option value="Workshop / Seminar">Workshop / Seminar</option>
+                    <option value="Academic Examination">Academic Examination</option>
+                    <option value="Accreditation / Inspection">Accreditation / Inspection</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label text-xs">
+                    Other Requirements / Additional Notes
+                  </label>
+                  <textarea
+                    rows="2"
+                    placeholder="e.g. Need blue and black markers for the faculty workshop."
+                    value={additionalNotes}
+                    onChange={(e) => setAdditionalNotes(e.target.value)}
+                    className="w-full text-xs"
+                  />
+                </div>
+
+                <div className="form-actions-row mt-2">
+                  <button
+                    type="button"
+                    onClick={handleClearCart}
+                    className="btn btn-outline btn-flex-1 text-xs"
+                    disabled={cart.length === 0}
+                  >
+                    <RotateCcw size={14} /> Clear Cart
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-primary btn-flex-2 text-xs"
+                    disabled={submitting || cart.length === 0}
+                  >
+                    <Send size={14} /> {submitting ? 'Submitting...' : 'Submit Request'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
+        </div>
+      </div>
 
+      {/* Auxiliary 2-Column Row: Guidelines & Quick Calendar */}
+      <div className="two-column-layout balanced">
+        <div className="column-stack">
           {/* Stationery Guidelines */}
           <div className="guidelines-card">
             <div className="guidelines-header">
@@ -472,7 +590,9 @@ export const Stationery = () => {
               <li>Items are for official academic and administrative use only.</li>
             </ul>
           </div>
+        </div>
 
+        <div className="column-stack">
           {/* Quick Calendar */}
           <QuickCalendar
             selectedDate={calendarDate}
@@ -484,6 +604,8 @@ export const Stationery = () => {
               status: r.status,
               department: r.department,
             }))}
+            showLegend={true}
+            showEventsList={true}
           />
         </div>
       </div>

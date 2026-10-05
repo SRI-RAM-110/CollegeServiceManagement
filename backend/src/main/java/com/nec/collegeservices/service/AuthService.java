@@ -30,9 +30,29 @@ public class AuthService {
     private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     public AuthResponse login(LoginRequest request) {
+        String identifier = request.getEmail();
+        if (identifier == null || identifier.trim().isEmpty()) {
+            identifier = request.getUserId();
+        }
+        if (identifier == null || identifier.trim().isEmpty()) {
+            throw new BadCredentialsException("Email is required");
+        }
+        String cleanIdentifier = identifier.trim().toLowerCase();
+
+        // Check if account is inactive
+        java.util.Optional<User> userOpt = userRepository.findByEmailIgnoreCase(cleanIdentifier)
+                .or(() -> userRepository.findByUserId(cleanIdentifier));
+
+        if (userOpt.isPresent()) {
+            User u = userOpt.get();
+            if (u.getActive() != null && !u.getActive()) {
+                throw new org.springframework.security.authentication.DisabledException("User account is inactive. Please contact administrator.");
+            }
+        }
+
         try {
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getUserId(), request.getPassword())
+                    new UsernamePasswordAuthenticationToken(cleanIdentifier, request.getPassword())
             );
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -54,8 +74,10 @@ public class AuthService {
                     .active(user.getActive())
                     .mustChangePassword(Boolean.TRUE.equals(user.getMustChangePassword()))
                     .build();
+        } catch (org.springframework.security.authentication.DisabledException e) {
+            throw e;
         } catch (BadCredentialsException e) {
-            throw new BadCredentialsException("Invalid User ID or Password");
+            throw new BadCredentialsException("Invalid Email or Password");
         }
     }
 
@@ -93,7 +115,9 @@ public class AuthService {
         if (auth == null || !auth.isAuthenticated()) {
             return null;
         }
-        String userId = auth.getName();
-        return userRepository.findByUserId(userId).orElse(null);
+        String principal = auth.getName();
+        return userRepository.findByUserId(principal)
+                .or(() -> userRepository.findByEmailIgnoreCase(principal))
+                .orElse(null);
     }
 }

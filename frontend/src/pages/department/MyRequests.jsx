@@ -110,12 +110,14 @@ export const MyRequests = () => {
     const status = (r.status || '').toLowerCase();
     const requestedBy = (r.requestedBy || '').toLowerCase();
     const department = (r.department || '').toLowerCase();
+    const requesterUserId = (r.requesterUserId || '').toLowerCase();
     return (
       id.includes(q) ||
       details.includes(q) ||
       service.includes(q) ||
       status.includes(q) ||
       requestedBy.includes(q) ||
+      requesterUserId.includes(q) ||
       department.includes(q)
     );
   });

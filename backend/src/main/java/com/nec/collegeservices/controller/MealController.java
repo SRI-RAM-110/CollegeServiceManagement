@@ -72,6 +72,16 @@ public class MealController {
         return ResponseEntity.ok(ApiResponse.ok("Meal request details", request));
     }
 
+    @PutMapping("/requests/{id}")
+    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN', 'MEALS_ADMIN')")
+    public ResponseEntity<ApiResponse<MealRequest>> updateRequest(
+            @PathVariable String id,
+            @Valid @RequestBody MealRequestDTO dto) {
+        User user = authService.getCurrentUser();
+        MealRequest updated = mealService.updateRequest(id, dto, user);
+        return ResponseEntity.ok(ApiResponse.ok("Meal request updated successfully.", updated));
+    }
+
     @PutMapping("/requests/{id}/approve")
     @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN', 'MEALS_ADMIN')")
     public ResponseEntity<ApiResponse<MealRequest>> approveRequest(@PathVariable String id) {

@@ -84,6 +84,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
+                .requestMatchers("/api/push/public-key").permitAll()
                 .requestMatchers("/error").permitAll()
 
                 // Seminar Module: Accessible by CREATOR, AO_ADMIN, SEMINAR_ADMIN, SEMINAR_COORDINATOR, and DEPARTMENT_USER / DEPARTMENT_HOD
@@ -124,6 +125,8 @@ public class SecurityConfig {
                     .hasAnyRole("CREATOR", "AO_ADMIN", "STATIONERY_ADMIN", "DEPARTMENT_USER", "DEPARTMENT_HOD")
 
                 // Meals Module: Accessible by CREATOR, AO_ADMIN, MEALS_ADMIN, and DEPARTMENT_USER / DEPARTMENT_HOD
+                .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/meals/requests/*")
+                    .hasAnyRole("CREATOR", "AO_ADMIN", "MEALS_ADMIN")
                 .requestMatchers("/api/meals/requests/*/approve", "/api/meals/requests/*/reject")
                     .hasAnyRole("CREATOR", "AO_ADMIN", "MEALS_ADMIN")
                 .requestMatchers("/api/meals/**")
@@ -132,6 +135,9 @@ public class SecurityConfig {
                 // AO & Creator Super Admin specific endpoints
                 .requestMatchers("/api/ao/**", "/api/admin/users/**")
                     .hasAnyRole("CREATOR", "AO_ADMIN")
+
+                // Reports & Analytics Module (authenticated, granular checks handled in service)
+                .requestMatchers("/api/reports/**").authenticated()
 
                 // General authenticated routes (e.g. /api/requests/my, /api/notifications/**, /api/dashboard)
                 .anyRequest().authenticated()

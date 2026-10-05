@@ -256,96 +256,140 @@ export const Transport = () => {
         />
       </div>
 
-      {/* Balanced 2-Column Layout */}
-      <div className="two-column-layout balanced">
-        {/* Left Column: Request Form & Guidelines */}
-        <div className="column-stack">
-          <div className="card-panel">
-            <div className="mb-4">
-              <span className="card-title">
-                <Bus size={18} className="text-arctic-blue" />
-                Request Transport
-              </span>
+      {/* Unified Transport Request Container */}
+      <div className="card-panel">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-800">
+          <div>
+            <span className="card-title text-base font-bold flex items-center gap-2">
+              <Bus size={18} color="var(--arctic-blue)" />
+              Transport Request
+            </span>
+            <p className="card-subtitle text-xs text-slate-400 mt-0.5">
+              Select a vehicle type, choose travel date, and submit trip booking details.
+            </p>
+          </div>
+        </div>
+
+        <div className="two-column-layout balanced">
+          {/* Left Column: Vehicle & Date Selection + Fleet Availability */}
+          <div className="column-stack">
+            <div className="form-group">
+              <label className="form-label text-xs">Trip Type *</label>
+              <select
+                value={tripType}
+                onChange={(e) => setTripType(e.target.value)}
+                className="w-full text-xs"
+              >
+                <option value="College Bus">College Bus (50 Seater)</option>
+                <option value="Mini Bus">Mini Bus (25/32 Seater)</option>
+                <option value="Tempo Traveller">Tempo Traveller (12/17 Seater)</option>
+                <option value="Innova">Innova (7 Seater)</option>
+              </select>
             </div>
 
+            <div className="form-group">
+              <label className="form-label text-xs">Trip Date *</label>
+              <input
+                type="date"
+                value={tripDate}
+                min={getTodayStr()}
+                onChange={(e) => setTripDate(e.target.value)}
+                required
+                className="w-full text-xs"
+              />
+            </div>
+
+            <div className="checkbox-row my-1">
+              <input
+                type="checkbox"
+                id="roundTripCheck"
+                checked={roundTrip}
+                onChange={(e) => setRoundTrip(e.target.checked)}
+              />
+              <label htmlFor="roundTripCheck" className="checkbox-label text-xs">
+                Round Trip (Return on same day)
+              </label>
+            </div>
+
+            {/* Available Vehicles for Selected Date */}
+            <div className="p-3 rounded-lg bg-slate-900/80 border border-slate-800 text-xs">
+              <div className="flex justify-between items-center mb-2 pb-1.5 border-b border-slate-800">
+                <span className="font-semibold text-slate-200">Fleet Availability on {tripDate}</span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/30">
+                  {vehicles.length} Fleet
+                </span>
+              </div>
+              <div className="vehicle-list max-h-[200px] overflow-y-auto">
+                {vehicles.length === 0 ? (
+                  <div className="text-center py-4 text-slate-500 text-xs">
+                    No vehicles registered.
+                  </div>
+                ) : (
+                  vehicles.map((v) => (
+                    <div
+                      key={v.vehicleId || v.id}
+                      className="vehicle-item-row"
+                    >
+                      <div className="vehicle-item-info">
+                        <div
+                          className={`vehicle-icon-box ${v.status === 'AVAILABLE' ? 'available' : 'unavailable'}`}
+                        >
+                          <Bus size={18} className={v.status === 'AVAILABLE' ? 'text-arctic-blue' : 'text-danger'} />
+                        </div>
+                        <div>
+                          <div className="vehicle-name text-xs">
+                            {v.name}
+                          </div>
+                          <div className="vehicle-meta text-[10px]">
+                            {v.registrationNumber} · {v.capacity} Seats
+                          </div>
+                        </div>
+                      </div>
+
+                      <StatusBadge status={v.status} />
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Trip Details Form */}
+          <div className="column-stack">
             <form onSubmit={handleSubmit} className="form-column">
-              <div className="form-row-2col">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div className="form-group">
-                  <label className="form-label">
-                    Trip Type *
-                  </label>
-                  <select
-                    value={tripType}
-                    onChange={(e) => setTripType(e.target.value)}
-                  >
-                    <option value="College Bus">College Bus (50 Seater)</option>
-                    <option value="Mini Bus">Mini Bus (25/32 Seater)</option>
-                    <option value="Tempo Traveller">Tempo Traveller (12/17 Seater)</option>
-                    <option value="Innova">Innova (7 Seater)</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">
-                    Trip Date *
-                  </label>
-                  <input
-                    type="date"
-                    value={tripDate}
-                    onChange={(e) => setTripDate(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="checkbox-row">
-                <input
-                  type="checkbox"
-                  id="roundTripCheck"
-                  checked={roundTrip}
-                  onChange={(e) => setRoundTrip(e.target.checked)}
-                />
-                <label htmlFor="roundTripCheck" className="checkbox-label">
-                  Round Trip (Return on same day)
-                </label>
-              </div>
-
-              <div className="form-row-2col">
-                <div className="form-group">
-                  <label className="form-label">
-                    Pickup Location *
-                  </label>
+                  <label className="form-label text-xs">Pickup Location *</label>
                   <input
                     type="text"
                     placeholder="e.g. Narasaraopet Engineering College"
                     value={pickupLocation}
                     onChange={(e) => setPickupLocation(e.target.value)}
                     required
+                    className="w-full text-xs"
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">
-                    Destination *
-                  </label>
+                  <label className="form-label text-xs">Destination *</label>
                   <input
                     type="text"
                     placeholder="e.g. Vijayawada"
                     value={destination}
                     onChange={(e) => setDestination(e.target.value)}
                     required
+                    className="w-full text-xs"
                   />
                 </div>
               </div>
 
-              <div className="form-row-2col">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div className="form-group">
-                  <label className="form-label">
-                    Departure Time *
-                  </label>
+                  <label className="form-label text-xs">Departure Time *</label>
                   <select
                     value={departureTime}
                     onChange={(e) => setDepartureTime(e.target.value)}
+                    className="w-full text-xs"
                   >
                     <option value="08:00 AM">08:00 AM</option>
                     <option value="09:00 AM">09:00 AM</option>
@@ -356,12 +400,11 @@ export const Transport = () => {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">
-                    Return Time
-                  </label>
+                  <label className="form-label text-xs">Return Time</label>
                   <select
                     value={returnTime}
                     onChange={(e) => setReturnTime(e.target.value)}
+                    className="w-full text-xs"
                   >
                     <option value="03:00 PM">03:00 PM</option>
                     <option value="04:00 PM">04:00 PM</option>
@@ -372,65 +415,67 @@ export const Transport = () => {
                 </div>
               </div>
 
-              <div className="form-row-2col">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div className="form-group">
-                  <label className="form-label">
-                    Expected Passengers *
-                  </label>
+                  <label className="form-label text-xs">Expected Passengers *</label>
                   <input
                     type="number"
                     value={expectedPassengers}
                     onChange={(e) => setExpectedPassengers(e.target.value)}
                     required
+                    className="w-full text-xs"
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">
-                    Purpose of Trip *
-                  </label>
+                  <label className="form-label text-xs">Purpose of Trip *</label>
                   <input
                     type="text"
-                    placeholder="e.g. Industrial Visit, Workshop, Conference"
+                    placeholder="e.g. Industrial Visit, Workshop"
                     value={purpose}
                     onChange={(e) => setPurpose(e.target.value)}
                     required
+                    className="w-full text-xs"
                   />
                 </div>
               </div>
 
               <div className="form-group">
-                <label className="form-label">
-                  Additional Notes
-                </label>
+                <label className="form-label text-xs">Additional Notes</label>
                 <textarea
                   rows="2"
                   placeholder="Any special requirements (e.g. extra stop, luggage, etc.)"
                   value={additionalNotes}
                   onChange={(e) => setAdditionalNotes(e.target.value)}
+                  className="w-full text-xs"
                 />
               </div>
 
-              <div className="form-actions-row">
+              <div className="form-actions-row mt-2">
                 <button
                   type="button"
                   onClick={handleReset}
-                  className="btn btn-outline btn-flex-1"
+                  className="btn btn-outline btn-flex-1 text-xs"
                   disabled={submitting}
                 >
-                  <RotateCcw size={16} /> Reset
+                  <RotateCcw size={14} /> Reset
                 </button>
                 <button
                   type="submit"
-                  className="btn btn-primary btn-flex-2"
+                  className="btn btn-primary btn-flex-2 text-xs"
                   disabled={submitting}
                 >
-                  <Send size={16} /> {submitting ? 'Sending...' : 'Send Request to Admin'}
+                  <Send size={14} /> {submitting ? 'Sending...' : 'Send Request to Admin'}
                 </button>
               </div>
             </form>
           </div>
+        </div>
+      </div>
 
+      {/* Auxiliary Row: Guidelines */}
+      <div className="two-column-layout balanced">
+        <div className="column-stack">
           {/* Transport Guidelines */}
           <div className="guidelines-card">
             <div className="guidelines-header">
@@ -447,50 +492,8 @@ export const Transport = () => {
           </div>
         </div>
 
-        {/* Right Column: Fleet, Trips, Calendar & Assistance */}
+        {/* Right Column: Trips & Calendar */}
         <div className="column-stack">
-          {/* Available Vehicles */}
-          <div className="card-panel">
-            <div className="card-header">
-              <span className="card-title">Available Vehicles on {tripDate}</span>
-              <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/30">
-                {vehicles.length} Fleet
-              </span>
-            </div>
-
-            <div className="vehicle-list">
-              {vehicles.length === 0 ? (
-                <div className="table-empty-cell">
-                  No vehicles registered.
-                </div>
-              ) : (
-                vehicles.map((v) => (
-                  <div
-                    key={v.vehicleId || v.id}
-                    className="vehicle-item-row"
-                  >
-                    <div className="vehicle-item-info">
-                      <div
-                        className={`vehicle-icon-box ${v.status === 'AVAILABLE' ? 'available' : 'unavailable'}`}
-                      >
-                        <Bus size={22} className={v.status === 'AVAILABLE' ? 'text-arctic-blue' : 'text-danger'} />
-                      </div>
-                      <div>
-                        <div className="vehicle-name">
-                          {v.name}
-                        </div>
-                        <div className="vehicle-meta">
-                          {v.registrationNumber} · {v.capacity} Seats
-                        </div>
-                      </div>
-                    </div>
-
-                    <StatusBadge status={v.status} />
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
 
           {/* Trips on Selected Date */}
           <div className="card-panel">

@@ -64,12 +64,31 @@ const SEMINAR_HALLS_LIST = [
   { id: 'SH-2', name: 'Seminar Hall 2', location: 'Block 3 – Third Floor', capacity: 200 },
   { id: 'SH-3', name: 'Seminar Hall 3', location: 'Block 4 – Ground Floor', capacity: 350 },
   { id: 'SH-4', name: 'Seminar Hall 4', location: 'Pharma Block', capacity: 200 },
-  { id: 'TECH-HUB', name: 'Tech Hub', location: 'Block 3 – Third Floor', capacity: 150 },
+  { id: 'SH-5', name: 'Tech Hub', location: 'Block 3 – Third Floor', capacity: 150 },
+  { id: 'SH-6', name: 'Block 2 Seminar hall', location: 'Block 2 – Ground Floor', capacity: 250 },
 ];
 
 export default function UserManagement() {
   const { addToast } = useNotifications();
   const { user: currentUser } = useAuth();
+
+  // Dynamic Seminar Halls
+  const [availableHalls, setAvailableHalls] = useState(SEMINAR_HALLS_LIST);
+
+  useEffect(() => {
+    seminarApi.getHalls().then((res) => {
+      if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+        setAvailableHalls(
+          res.data.map((h) => ({
+            id: h.hallId || h.id,
+            name: h.name,
+            location: h.location,
+            capacity: h.capacity,
+          }))
+        );
+      }
+    }).catch(() => {});
+  }, []);
 
   // Data states
   const [stats, setStats] = useState({
@@ -223,8 +242,13 @@ export default function UserManagement() {
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    if (!registerForm.name.trim() || !registerForm.userId.trim()) {
-      addToast('Name and Username are required.', 'error');
+    if (!registerForm.name.trim() || !registerForm.email.trim()) {
+      addToast('Full Name and Email are required.', 'error');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(registerForm.email.trim())) {
+      addToast('Please enter a valid email address.', 'error');
       return;
     }
     if (registerForm.password !== registerForm.confirmPassword) {
@@ -233,8 +257,12 @@ export default function UserManagement() {
     }
     try {
       setSubmitting(true);
-      await adminUserApi.registerUser(registerForm);
-      addToast(`User ${registerForm.userId} successfully registered!`, 'success');
+      const submissionData = {
+        ...registerForm,
+        email: registerForm.email.trim().toLowerCase(),
+      };
+      await adminUserApi.registerUser(submissionData);
+      addToast(`User ${submissionData.email} successfully registered!`, 'success');
       setRegisterModalOpen(false);
       fetchData();
     } catch (err) {
@@ -596,9 +624,8 @@ export default function UserManagement() {
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-slate-900/90 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-800 text-[11px]">
               <tr>
-                <th className="py-2.5 px-3">Name</th>
-                <th className="py-2.5 px-2">Username</th>
-                <th className="py-2.5 px-2">Email / Phone</th>
+                <th className="py-2.5 px-3">Full Name</th>
+                <th className="py-2.5 px-2">Email (Login ID)</th>
                 <th className="py-2.5 px-1.5 text-center w-[60px]">Dept</th>
                 <th className="py-2.5 px-2">Roles</th>
                 <th className="py-2.5 px-2">Services</th>
@@ -610,14 +637,14 @@ export default function UserManagement() {
             <tbody className="divide-y divide-slate-800/60 font-normal">
               {loading ? (
                 <tr>
-                  <td colSpan="9" className="py-8 text-center text-slate-400">
+                  <td colSpan="8" className="py-8 text-center text-slate-400">
                     <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-400" />
                     Loading user registry...
                   </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="py-8 text-center text-slate-500">
+                  <td colSpan="8" className="py-8 text-center text-slate-500">
                     No users found matching current filters.
                   </td>
                 </tr>
@@ -628,7 +655,8 @@ export default function UserManagement() {
                   const isAO = (u.roles || []).includes('AO_ADMIN');
                   const isTargetCreator = (u.roles || []).includes('CREATOR') || u.userId === 'CREATOR001';
                   const isCallerCreator = (currentUser?.roles || []).includes('CREATOR') || currentUser?.role === 'CREATOR';
-                  const isSelf = !!(currentUser?.userId && u.userId?.toLowerCase() === currentUser?.userId?.toLowerCase());
+                  const isSelf = !!(currentUser?.userId && u.userId?.toLowerCase() === currentUser?.userId?.toLowerCase()) ||
+                                 !!(currentUser?.email && u.email?.toLowerCase() === currentUser?.email?.toLowerCase());
                   const isMenuOpen = openMenuUserId === u.userId;
                   const isNearBottom = idx >= users.length - 4 && users.length > 4;
 
@@ -647,21 +675,20 @@ export default function UserManagement() {
                             </span>
                           )}
                         </div>
-                        {u.designation && <div className="text-[11px] text-slate-400">{u.designation}</div>}
+                        <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                          {u.designation && <span>{u.designation}</span>}
+                          {u.userId && <span className="font-mono text-[10px] text-slate-500">ID: {u.userId}</span>}
+                        </div>
                       </td>
 
-                      <td className="py-2 px-2 font-mono text-slate-300 font-medium whitespace-nowrap text-[11px]">
-                        {u.userId}
-                      </td>
-
-                      <td className="py-2 px-2 text-slate-300">
-                        <div className="text-xs truncate max-w-[165px]" title={u.email}>{u.email || '—'}</div>
+                      <td className="py-2 px-2 text-slate-200">
+                        <div className="text-xs font-medium text-blue-300 truncate max-w-[200px]" title={u.email}>{u.email || '—'}</div>
                         {u.phone && <div className="text-[10px] text-slate-500">{u.phone}</div>}
                       </td>
 
                       <td className="py-2 px-1.5 text-center">
-                        <span className="px-2 py-0.5 rounded font-bold text-[11px] bg-slate-800 text-slate-300 border border-slate-700">
-                          {u.department || '—'}
+                        <span className={`px-2 py-0.5 rounded font-bold text-[11px] ${isAO ? 'bg-rose-500/10 text-rose-300 border border-rose-500/30' : 'bg-slate-800 text-slate-300 border border-slate-700'}`}>
+                          {isAO ? 'GLOBAL' : (u.department || '—')}
                         </span>
                       </td>
 
@@ -714,7 +741,7 @@ export default function UserManagement() {
                               <span className="text-rose-400 text-[10px] italic">No Halls Assigned</span>
                             )
                           ) : (isAO || isTargetCreator) ? (
-                            <span className="text-emerald-400 text-[10px] font-medium">All Halls ({isTargetCreator ? 'Creator' : 'AO'})</span>
+                            <span className="text-emerald-400 text-[10px] font-medium">All Halls ({isTargetCreator ? 'Creator' : 'Global'})</span>
                           ) : (
                             <span className="text-slate-500 text-[11px]">N/A</span>
                           )}
@@ -908,14 +935,14 @@ export default function UserManagement() {
 
             <div>
               <label className="block font-semibold text-slate-300 mb-1">
-                Username / Login ID <span className="text-rose-400">*</span>
+                Email (Login Credential) <span className="text-rose-400">*</span>
               </label>
               <input
-                type="text"
-                value={registerForm.userId}
-                onChange={(e) => setRegisterForm({ ...registerForm, userId: e.target.value.toLowerCase().trim() })}
-                placeholder="e.g. csehod, seminarcoordinator1"
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono text-xs focus:outline-none focus:border-blue-500"
+                type="email"
+                value={registerForm.email}
+                onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
+                placeholder="e.g. csehod@nrtec.in"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-blue-500"
                 required
               />
             </div>
@@ -923,13 +950,15 @@ export default function UserManagement() {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block font-semibold text-slate-300 mb-1">Email</label>
+              <label className="block font-semibold text-slate-300 mb-1">
+                Internal User ID <span className="text-slate-500 font-normal">(Optional)</span>
+              </label>
               <input
-                type="email"
-                value={registerForm.email}
-                onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
-                placeholder="official@nrtec.local"
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-blue-500"
+                type="text"
+                value={registerForm.userId}
+                onChange={(e) => setRegisterForm({ ...registerForm, userId: e.target.value.toLowerCase().trim() })}
+                placeholder="auto-generated from email"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 font-mono text-xs focus:outline-none focus:border-blue-500"
               />
             </div>
 
@@ -1085,7 +1114,7 @@ export default function UserManagement() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                {SEMINAR_HALLS_LIST.map((h) => {
+                {availableHalls.map((h) => {
                   const checked = registerForm.assignedHallIds.includes(h.id);
                   return (
                     <label
@@ -1144,13 +1173,15 @@ export default function UserManagement() {
       <Modal
         isOpen={editModalOpen}
         onClose={() => setEditModalOpen(false)}
-        title={`Edit User: ${selectedUser?.userId || ''}`}
+        title={`Edit User: ${selectedUser?.name || selectedUser?.email || ''}`}
         maxWidth="680px"
       >
         <form onSubmit={handleEditSubmit} className="space-y-4 text-xs">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-300 mb-1">Full Name</label>
+              <label className="block font-semibold text-slate-300 mb-1">
+                Full Name <span className="text-rose-400">*</span>
+              </label>
               <input
                 type="text"
                 value={editForm.name}
@@ -1173,12 +1204,28 @@ export default function UserManagement() {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block font-semibold text-slate-300 mb-1">Email</label>
+              <label className="block font-semibold text-slate-300 mb-1">
+                Email (Login ID) <span className="text-rose-400">*</span>
+              </label>
               <input
                 type="email"
                 value={editForm.email}
                 onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
                 className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-blue-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-300 mb-1">
+                Internal User ID <span className="text-slate-500 font-normal">(Read Only)</span>
+              </label>
+              <input
+                type="text"
+                value={selectedUser?.userId || ''}
+                disabled
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-slate-400 font-mono text-xs cursor-not-allowed"
+                title="Internal database identifier cannot be changed"
               />
             </div>
 
@@ -1191,21 +1238,21 @@ export default function UserManagement() {
                 className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-blue-500"
               />
             </div>
+          </div>
 
-            <div>
-              <label className="block font-semibold text-slate-300 mb-1">Department</label>
-              <select
-                value={editForm.department}
-                onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-blue-500"
-              >
-                {DEPARTMENTS.map((d) => (
-                  <option key={d.code} value={d.code}>
-                    {d.code} – {d.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div>
+            <label className="block font-semibold text-slate-300 mb-1">Department</label>
+            <select
+              value={editForm.department}
+              onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-blue-500"
+            >
+              {DEPARTMENTS.map((d) => (
+                <option key={d.code} value={d.code}>
+                  {d.code} – {d.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Section: ROLES / ACCESS (Multi-Select) */}
@@ -1299,7 +1346,7 @@ export default function UserManagement() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                {SEMINAR_HALLS_LIST.map((h) => {
+                {availableHalls.map((h) => {
                   const checked = editForm.assignedHallIds.includes(h.id);
                   return (
                     <label
@@ -1364,7 +1411,7 @@ export default function UserManagement() {
         <form onSubmit={handleAccessSubmit} className="space-y-4 text-xs">
           <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl space-y-1">
             <div className="text-white font-semibold text-xs">USER: {selectedUser?.name}</div>
-            <div className="text-slate-400 text-[11px]">LOGIN ID: <span className="font-mono text-slate-300">{selectedUser?.userId}</span> | DEPARTMENT: <span className="text-blue-400 font-semibold">{selectedUser?.department}</span></div>
+            <div className="text-slate-400 text-[11px]">LOGIN EMAIL: <span className="text-blue-300 font-medium">{selectedUser?.email || '—'}</span> | INTERNAL ID: <span className="font-mono text-slate-300">{selectedUser?.userId}</span> | DEPARTMENT: <span className="text-blue-400 font-semibold">{selectedUser?.department}</span></div>
           </div>
 
           {/* Roles */}
@@ -1456,7 +1503,7 @@ export default function UserManagement() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                {SEMINAR_HALLS_LIST.map((h) => {
+                {availableHalls.map((h) => {
                   const checked = editForm.assignedHallIds.includes(h.id);
                   return (
                     <label

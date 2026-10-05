@@ -30,6 +30,9 @@ public class MealService {
     @Autowired
     private AuthService authService;
 
+    @Autowired
+    private com.nec.collegeservices.repository.UserRepository userRepository;
+
     public MealRequest createRequest(MealRequestDTO dto, User user) {
         if (user == null) {
             throw new AccessDeniedException("Authentication required.");
@@ -73,6 +76,21 @@ public class MealService {
             throw new BadRequestException("Total guest count must be greater than zero.");
         }
 
+        // 5. Service Time validation for Snacks / Tea & Coffee
+        boolean hasRefreshments = dto.getMealTypes() != null && dto.getMealTypes().stream()
+                .anyMatch(mt -> mt != null && (mt.equalsIgnoreCase("Snacks") || mt.toLowerCase().contains("tea") || mt.toLowerCase().contains("coffee")));
+
+        String validatedServiceTime = null;
+        if (hasRefreshments) {
+            if (dto.getServiceTime() == null || dto.getServiceTime().isBlank()) {
+                throw new BadRequestException("Please select FORENOON or AFTERNOON for Snacks / Tea / Coffee.");
+            }
+            validatedServiceTime = dto.getServiceTime().trim().toUpperCase();
+            if (!validatedServiceTime.equals("FORENOON") && !validatedServiceTime.equals("AFTERNOON")) {
+                throw new BadRequestException("Invalid service time: " + dto.getServiceTime() + ". Allowed values: FORENOON, AFTERNOON.");
+            }
+        }
+
         List<MealRequest.MealItemDetail> items = new ArrayList<>();
         int totalGuestCount = (dto.getTotalGuests() != null && dto.getTotalGuests() > 0) ? dto.getTotalGuests() : 0;
 
@@ -85,10 +103,14 @@ public class MealService {
                 if (totalGuestCount == 0) {
                     totalGuestCount = Math.max(totalGuestCount, count);
                 }
+                boolean isItemRefreshment = itemDTO.getMealType() != null &&
+                        (itemDTO.getMealType().equalsIgnoreCase("Snacks") || itemDTO.getMealType().toLowerCase().contains("tea") || itemDTO.getMealType().toLowerCase().contains("coffee"));
+                String prefTime = isItemRefreshment && validatedServiceTime != null ? validatedServiceTime : itemDTO.getPreferredTime();
+
                 items.add(MealRequest.MealItemDetail.builder()
                         .mealType(itemDTO.getMealType())
                         .guestCount(count)
-                        .preferredTime(itemDTO.getPreferredTime())
+                        .preferredTime(prefTime)
                         .description(itemDTO.getDescription())
                         .build());
             }
@@ -106,6 +128,7 @@ public class MealService {
                 .date(dto.getDate().trim())
                 .venue(dto.getVenue().trim())
                 .mealTypes(dto.getMealTypes())
+                .serviceTime(validatedServiceTime)
                 .mealItems(items)
                 .totalGuests(totalGuestCount)
                 .specialRequirements(dto.getSpecialRequirements())
@@ -113,6 +136,7 @@ public class MealService {
                 .status("PENDING")
                 .requestedBy(user.getName() != null && !user.getName().isBlank() ? user.getName() : user.getUserId())
                 .requesterUserId(user.getUserId())
+                .requesterEmail(user.getEmail() != null && !user.getEmail().isBlank() ? user.getEmail() : resolveUserEmail(user.getUserId(), user.getName(), user.getDepartment()))
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -161,7 +185,7 @@ public class MealService {
         }
         List<MealRequest> all = mealRequestRepository.findAll();
         boolean isStaffOrAdmin = user != null && (user.hasRole("CREATOR") || user.hasRole("AO_ADMIN") || user.hasRole("MEALS_ADMIN") || user.hasServicePermission("MEALS_ADMIN"));
-        return all.stream()
+        List<MealRequest> list = all.stream()
                 .filter(r -> {
                     if (!isStaffOrAdmin && user != null) {
                         return UnifiedRequestService.isRequestedByUser(r.getRequestedBy(), user);
@@ -182,10 +206,22 @@ public class MealService {
                     return b.getCreatedAt() != null && a.getCreatedAt() != null ? b.getCreatedAt().compareTo(a.getCreatedAt()) : 0;
                 })
                 .toList();
+
+        for (MealRequest r : list) {
+            if (r.getRequesterEmail() == null || r.getRequesterEmail().isBlank()) {
+                r.setRequesterEmail(resolveUserEmail(r.getRequesterUserId(), r.getRequestedBy(), r.getDepartment()));
+            }
+        }
+        return list;
     }
 
     public List<MealRequest> getRequestsByDepartment(String department) {
         return mealRequestRepository.findByDepartment(department).stream()
+                .peek(r -> {
+                    if (r.getRequesterEmail() == null || r.getRequesterEmail().isBlank()) {
+                        r.setRequesterEmail(resolveUserEmail(r.getRequesterUserId(), r.getRequestedBy(), r.getDepartment()));
+                    }
+                })
                 .sorted((a, b) -> b.getCreatedAt() != null && a.getCreatedAt() != null ? b.getCreatedAt().compareTo(a.getCreatedAt()) : 0)
                 .toList();
     }
@@ -194,6 +230,10 @@ public class MealService {
         MealRequest req = mealRequestRepository.findById(id)
                 .or(() -> mealRequestRepository.findByRequestId(id))
                 .orElseThrow(() -> new ResourceNotFoundException("Meal request not found: " + id));
+
+        if ("APPROVED".equalsIgnoreCase(req.getStatus())) {
+            throw new BadRequestException("Meal request is already approved.");
+        }
 
         req.setStatus("APPROVED");
         try {
@@ -219,6 +259,10 @@ public class MealService {
                 saved.getRequestId()
         );
 
+        if (saved.getRequesterEmail() == null || saved.getRequesterEmail().isBlank()) {
+            saved.setRequesterEmail(resolveUserEmail(saved.getRequesterUserId(), saved.getRequestedBy(), saved.getDepartment()));
+        }
+
         return saved;
     }
 
@@ -228,7 +272,7 @@ public class MealService {
                 .orElseThrow(() -> new ResourceNotFoundException("Meal request not found: " + id));
 
         req.setStatus("REJECTED");
-        req.setRejectionReason(reason != null && !reason.isBlank() ? reason : "Declined by Meals & Hospitality Administrator");
+        req.setRejectionReason(reason != null && !reason.isBlank() ? reason : "Declined by Administrator");
         req.setUpdatedAt(LocalDateTime.now());
         MealRequest saved = mealRequestRepository.save(req);
 
@@ -244,6 +288,10 @@ public class MealService {
                 "DANGER",
                 saved.getRequestId()
         );
+
+        if (saved.getRequesterEmail() == null || saved.getRequesterEmail().isBlank()) {
+            saved.setRequesterEmail(resolveUserEmail(saved.getRequesterUserId(), saved.getRequestedBy(), saved.getDepartment()));
+        }
 
         return saved;
     }
@@ -261,6 +309,149 @@ public class MealService {
                 throw new AccessDeniedException("You are not authorized to view meal requests created by other users.");
             }
         }
+        if (req.getRequesterEmail() == null || req.getRequesterEmail().isBlank()) {
+            req.setRequesterEmail(resolveUserEmail(req.getRequesterUserId(), req.getRequestedBy(), req.getDepartment()));
+        }
         return req;
+    }
+
+    public MealRequest updateRequest(String id, MealRequestDTO dto, User user) {
+        if (user == null) {
+            throw new AccessDeniedException("Authentication required.");
+        }
+        boolean isStaffOrAdmin = user.hasRole("CREATOR") || user.hasRole("AO_ADMIN") || user.hasRole("MEALS_ADMIN") || user.hasServicePermission("MEALS_ADMIN");
+        if (!isStaffOrAdmin) {
+            throw new AccessDeniedException("You are not authorized to edit meal requests.");
+        }
+
+        MealRequest req = mealRequestRepository.findById(id)
+                .or(() -> mealRequestRepository.findByRequestId(id))
+                .orElseThrow(() -> new ResourceNotFoundException("Meal request not found: " + id));
+
+        // Status rule: Only PENDING or UNDER_REVIEW can be edited
+        if (!"PENDING".equalsIgnoreCase(req.getStatus()) && !"UNDER_REVIEW".equalsIgnoreCase(req.getStatus())) {
+            throw new BadRequestException("Only pending or under-review meal requests can be edited. Current status: " + req.getStatus());
+        }
+
+        // 1. Required fields
+        if (dto.getEventTitle() == null || dto.getEventTitle().isBlank()) {
+            throw new BadRequestException("Event title is required.");
+        }
+        if (dto.getVenue() == null || dto.getVenue().isBlank()) {
+            throw new BadRequestException("Venue is required.");
+        }
+
+        // 2. Date validation
+        if (dto.getDate() == null || dto.getDate().isBlank()) {
+            throw new BadRequestException("Event date is required.");
+        }
+        LocalDate mealDate;
+        try {
+            mealDate = LocalDate.parse(dto.getDate().trim());
+        } catch (DateTimeParseException e) {
+            throw new BadRequestException("Invalid date format. Expected YYYY-MM-DD.");
+        }
+        if (mealDate.isBefore(LocalDate.now())) {
+            throw new BadRequestException("Event date cannot be in the past (" + dto.getDate() + ").");
+        }
+
+        // 3. Meal types validation
+        if (dto.getMealTypes() == null || dto.getMealTypes().isEmpty()) {
+            throw new BadRequestException("At least one meal type must be selected.");
+        }
+        List<String> validMealTypes = List.of("Breakfast", "Lunch", "Dinner", "Snacks", "Tea / Coffee", "Tea/Coffee");
+        for (String mt : dto.getMealTypes()) {
+            if (validMealTypes.stream().noneMatch(v -> v.equalsIgnoreCase(mt.trim()))) {
+                throw new BadRequestException("Invalid meal type: " + mt);
+            }
+        }
+
+        // 4. Guest counts validation
+        if (dto.getTotalGuests() != null && dto.getTotalGuests() <= 0) {
+            throw new BadRequestException("Total guest count must be greater than zero.");
+        }
+
+        // 5. Service Time validation for Snacks / Tea & Coffee
+        boolean hasRefreshments = dto.getMealTypes().stream()
+                .anyMatch(mt -> mt != null && (mt.equalsIgnoreCase("Snacks") || mt.toLowerCase().contains("tea") || mt.toLowerCase().contains("coffee")));
+
+        String validatedServiceTime = null;
+        if (hasRefreshments) {
+            if (dto.getServiceTime() == null || dto.getServiceTime().isBlank()) {
+                throw new BadRequestException("Please select FORENOON or AFTERNOON for Snacks / Tea / Coffee.");
+            }
+            validatedServiceTime = dto.getServiceTime().trim().toUpperCase();
+            if (!validatedServiceTime.equals("FORENOON") && !validatedServiceTime.equals("AFTERNOON")) {
+                throw new BadRequestException("Invalid service time: " + dto.getServiceTime() + ". Allowed values: FORENOON, AFTERNOON.");
+            }
+        }
+
+        List<MealRequest.MealItemDetail> items = new ArrayList<>();
+        int totalGuestCount = (dto.getTotalGuests() != null && dto.getTotalGuests() > 0) ? dto.getTotalGuests() : 0;
+
+        if (dto.getMealItems() != null) {
+            for (MealRequestDTO.MealItemDetailDTO itemDTO : dto.getMealItems()) {
+                if (itemDTO.getGuestCount() != null && itemDTO.getGuestCount() <= 0) {
+                    throw new BadRequestException("Guest count for " + itemDTO.getMealType() + " must be greater than zero.");
+                }
+                int count = itemDTO.getGuestCount() != null && itemDTO.getGuestCount() > 0 ? itemDTO.getGuestCount() : (totalGuestCount > 0 ? totalGuestCount : 1);
+                if (totalGuestCount == 0) {
+                    totalGuestCount = Math.max(totalGuestCount, count);
+                }
+                boolean isItemRefreshment = itemDTO.getMealType() != null &&
+                        (itemDTO.getMealType().equalsIgnoreCase("Snacks") || itemDTO.getMealType().toLowerCase().contains("tea") || itemDTO.getMealType().toLowerCase().contains("coffee"));
+                String prefTime = isItemRefreshment && validatedServiceTime != null ? validatedServiceTime : itemDTO.getPreferredTime();
+
+                items.add(MealRequest.MealItemDetail.builder()
+                        .mealType(itemDTO.getMealType())
+                        .guestCount(count)
+                        .preferredTime(prefTime)
+                        .description(itemDTO.getDescription())
+                        .build());
+            }
+        }
+        if (totalGuestCount <= 0) {
+            totalGuestCount = (req.getTotalGuests() != null && req.getTotalGuests() > 0) ? req.getTotalGuests() : 1;
+        }
+
+        // Apply changes to mutable fields only (preserving system-controlled identity fields)
+        req.setEventTitle(dto.getEventTitle().trim());
+        req.setDate(dto.getDate().trim());
+        req.setVenue(dto.getVenue().trim());
+        req.setMealTypes(dto.getMealTypes());
+        req.setServiceTime(validatedServiceTime);
+        req.setMealItems(items);
+        req.setTotalGuests(totalGuestCount);
+        req.setSpecialRequirements(dto.getSpecialRequirements());
+        if (dto.getAdditionalNotes() != null) {
+            req.setAdditionalNotes(dto.getAdditionalNotes());
+        }
+        req.setUpdatedAt(LocalDateTime.now());
+
+        MealRequest saved = mealRequestRepository.save(req);
+        if (saved.getRequesterEmail() == null || saved.getRequesterEmail().isBlank()) {
+            saved.setRequesterEmail(resolveUserEmail(saved.getRequesterUserId(), saved.getRequestedBy(), saved.getDepartment()));
+        }
+        return saved;
+    }
+
+    public String resolveUserEmail(String requesterUserId, String requestedBy, String department) {
+        if (requesterUserId != null && !requesterUserId.isBlank() && !"null".equalsIgnoreCase(requesterUserId)) {
+            var opt = userRepository.findByUserId(requesterUserId.trim());
+            if (opt.isPresent() && opt.get().getEmail() != null && !opt.get().getEmail().isBlank()) {
+                return opt.get().getEmail();
+            }
+        }
+        String resolvedId = requesterResolver.resolveRequesterUserId(requesterUserId, requestedBy, department);
+        if (resolvedId != null && !resolvedId.isBlank()) {
+            var opt = userRepository.findByUserId(resolvedId.trim());
+            if (opt.isPresent() && opt.get().getEmail() != null && !opt.get().getEmail().isBlank()) {
+                return opt.get().getEmail();
+            }
+        }
+        if (department != null && !department.isBlank()) {
+            return department.toLowerCase().trim() + "@nrtec.local";
+        }
+        return "requester@nrtec.local";
     }
 }

@@ -278,6 +278,33 @@
   color: #0f172a !important;
 }
 
+[data-theme="light"] .notif-clear-btn {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .notif-clear-btn:hover:not(:disabled) {
+  color: #dc2626 !important;
+}
+
+[data-theme="light"] .notif-clear-confirm-bar {
+  background: #fef2f2 !important;
+  border-bottom: 1px solid #fecaca !important;
+}
+
+[data-theme="light"] .notif-clear-confirm-text {
+  color: #991b1b !important;
+}
+
+[data-theme="light"] .notif-clear-cancel-btn {
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
+}
+
+[data-theme="light"] .notif-clear-cancel-btn:hover:not(:disabled) {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
 [data-theme="light"] .user-dropdown-email,
 [data-theme="light"] .user-dropdown-section-title {
   color: #64748b !important;

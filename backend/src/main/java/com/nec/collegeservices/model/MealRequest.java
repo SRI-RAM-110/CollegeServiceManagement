@@ -34,6 +34,7 @@ public class MealRequest {
     private List<MealItemDetail> mealItems;
 
     private Integer totalGuests;
+    private String serviceTime; // FORENOON or AFTERNOON
     private String specialRequirements; // e.g. Vegetarian option required. No onion/garlic.
     private String additionalNotes;
 
@@ -42,6 +43,7 @@ public class MealRequest {
 
     private String requestedBy;
     private String requesterUserId;
+    private String requesterEmail;
     private String rejectionReason;
 
     private String approvedBy;
@@ -53,6 +55,14 @@ public class MealRequest {
 
     @LastModifiedDate
     private LocalDateTime updatedAt;
+
+    public String getEventDate() {
+        return date;
+    }
+
+    public String getEventName() {
+        return eventTitle;
+    }
 
     @Data
     @Builder

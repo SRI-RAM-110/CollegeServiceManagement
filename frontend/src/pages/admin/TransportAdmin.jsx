@@ -136,7 +136,8 @@ export default function TransportAdmin() {
       (req.destination?.toLowerCase() || '').includes(q) ||
       (req.pickupLocation?.toLowerCase() || '').includes(q) ||
       (req.purpose?.toLowerCase() || '').includes(q) ||
-      (req.requestedBy?.toLowerCase() || '').includes(q);
+      (req.requestedBy?.toLowerCase() || '').includes(q) ||
+      (req.requesterUserId?.toLowerCase() || '').includes(q);
 
     const matchesType = tripTypeFilter === 'ALL' || req.tripType === tripTypeFilter;
     const matchesStatus = statusFilter === 'ALL' || req.status === statusFilter;

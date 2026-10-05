@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { COLLEGE_LOGO } from '../../constants/branding';
-import { ShieldCheck, Eye, EyeOff, Lock, User as UserIcon, AlertCircle, ArrowRight } from 'lucide-react';
+import { ShieldCheck, Eye, EyeOff, Lock, User as UserIcon, AlertCircle, ArrowRight, Mail } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export const LoginPage = () => {
   const { login, isAuthenticated, user, getDefaultRouteForRole } = useAuth();
   const navigate = useNavigate();
 
-  const [userId, setUserId] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
@@ -21,27 +21,34 @@ export const LoginPage = () => {
       navigate(getDefaultRouteForRole(user.role), { replace: true });
     }
 
-    const savedId = localStorage.getItem('rememberedUserId');
-    if (savedId) {
-      setUserId(savedId);
+    const savedEmail = localStorage.getItem('rememberedEmail') || localStorage.getItem('rememberedUserId');
+    if (savedEmail) {
+      setEmail(savedEmail);
     }
   }, [isAuthenticated, user, navigate, getDefaultRouteForRole]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!userId.trim() || !password) {
-      setError('Please enter both User ID and Password');
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !password) {
+      setError('Please enter both Email and Password');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      setError('Please enter a valid email address.');
       return;
     }
 
     setLoading(true);
     try {
-      const loggedInUser = await login(userId.trim(), password, rememberMe);
+      const loggedInUser = await login(trimmedEmail, password, rememberMe);
       const target = getDefaultRouteForRole(loggedInUser.role);
       navigate(target, { replace: true });
     } catch (err) {
-      setError(err.message || 'Invalid User ID or Password');
+      setError(err.message || 'Invalid Email or Password');
     } finally {
       setLoading(false);
     }
@@ -81,23 +88,24 @@ export const LoginPage = () => {
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="login-form">
-          {/* User ID */}
+          {/* Email Address */}
           <div>
             <label className="login-field-label">
-              User ID
+              Email address
             </label>
             <div className="login-input-wrapper">
-              <UserIcon
+              <Mail
                 size={18}
                 className="login-input-icon"
               />
               <input
-                type="text"
-                placeholder="e.g. CSE001, AO001"
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
+                type="email"
+                placeholder="e.g. csehod@nrtec.in"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="login-input-text"
                 disabled={loading}
+                autoComplete="email"
               />
             </div>
           </div>

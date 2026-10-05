@@ -185,6 +185,8 @@ export const mealsApi = {
   getOptions: () => api.get('/meals/options'),
   createRequest: (data) => api.post('/meals/requests', data),
   getRequests: (params = {}) => api.get('/meals/requests', { params }),
+  getRequestById: (id) => api.get(`/meals/requests/${id}`),
+  updateRequest: (id, data) => api.put(`/meals/requests/${id}`, data),
   approve: (id) => api.put(`/meals/requests/${id}/approve`),
   reject: (id, reason) => api.put(`/meals/requests/${id}/reject`, { reason }),
 };
@@ -207,6 +209,7 @@ export const notificationApi = {
   getAll: () => api.get('/notifications'),
   markRead: (id) => api.put(`/notifications/${id}/read`),
   markAllRead: () => api.put('/notifications/read-all'),
+  clearAll: () => api.delete('/notifications'),
 };
 
 export const announcementApi = {
@@ -219,6 +222,19 @@ export const pushApi = {
   subscribe: (data) => api.post('/push/subscribe', data),
   unsubscribe: (data) => api.post('/push/unsubscribe', data),
   sendTest: () => api.post('/push/test'),
+};
+
+export const reportsApi = {
+  getPermissions: () => api.get('/reports/permissions'),
+  getData: (filters = {}) => api.post('/reports/data', filters),
+  exportPdf: (filters = {}) =>
+    api.post('/reports/export/pdf', filters, {
+      responseType: 'blob',
+    }),
+  exportExcel: (filters = {}) =>
+    api.post('/reports/export/excel', filters, {
+      responseType: 'blob',
+    }),
 };
 
 export default api;

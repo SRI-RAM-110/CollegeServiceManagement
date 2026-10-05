@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { COLLEGE_LOGO } from '../../constants/branding';
-import { Menu, Search, Bell, ChevronDown, LogOut, CheckCheck, Sun, Moon } from 'lucide-react';
+import { Menu, Search, Bell, ChevronDown, LogOut, CheckCheck, Sun, Moon, Trash2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useNotifications } from '../../context/NotificationContext';
@@ -80,6 +80,7 @@ export const Topbar = ({ onToggleSidebar, searchPlaceholder = 'Search anything..
     unreadCount,
     markAsRead,
     markAllAsRead,
+    clearNotifications,
     pushSupported,
     pushPermission,
     isPushSubscribed,
@@ -92,6 +93,8 @@ export const Topbar = ({ onToggleSidebar, searchPlaceholder = 'Search anything..
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [notifSearch, setNotifSearch] = useState('');
 
@@ -101,32 +104,33 @@ export const Topbar = ({ onToggleSidebar, searchPlaceholder = 'Search anything..
     const title = (item.title || '').toLowerCase();
     const msg = (item.message || '').toLowerCase();
     const srv = (item.service || '').toLowerCase();
-    const reqId = (item.requestId || '').toLowerCase();
+    const reqId = (item.referenceId || item.requestId || '').toLowerCase();
     return title.includes(q) || msg.includes(q) || srv.includes(q) || reqId.includes(q);
   });
 
   const handleNotificationClick = (item) => {
     markAsRead(item.id);
-    if (item.requestId) {
+    const targetRef = item.referenceId || item.requestId;
+    if (targetRef) {
       const role = user?.role;
       if (
         role === 'DEPARTMENT_USER' ||
         role === 'DEPARTMENT_HOD' ||
         role === 'SEMINAR_COORDINATOR'
       ) {
-        navigate(`/my-requests?q=${encodeURIComponent(item.requestId)}`);
+        navigate(`/my-requests?q=${encodeURIComponent(targetRef)}`);
       } else if (role === 'SEMINAR_ADMIN') {
-        navigate(`/admin/seminar?q=${encodeURIComponent(item.requestId)}`);
+        navigate(`/admin/seminar?q=${encodeURIComponent(targetRef)}`);
       } else if (role === 'ACCOMMODATION_ADMIN') {
-        navigate(`/admin/accommodation?q=${encodeURIComponent(item.requestId)}`);
+        navigate(`/admin/accommodation?q=${encodeURIComponent(targetRef)}`);
       } else if (role === 'TRANSPORT_ADMIN') {
-        navigate(`/admin/transport?q=${encodeURIComponent(item.requestId)}`);
+        navigate(`/admin/transport?q=${encodeURIComponent(targetRef)}`);
       } else if (role === 'STATIONERY_ADMIN') {
-        navigate(`/admin/stationery?q=${encodeURIComponent(item.requestId)}`);
+        navigate(`/admin/stationery?q=${encodeURIComponent(targetRef)}`);
       } else if (role === 'MEALS_ADMIN') {
-        navigate(`/admin/meals?q=${encodeURIComponent(item.requestId)}`);
+        navigate(`/admin/meals?q=${encodeURIComponent(targetRef)}`);
       } else if (role === 'AO_ADMIN' || role === 'CREATOR') {
-        navigate(`/admin/ao?q=${encodeURIComponent(item.requestId)}`);
+        navigate(`/admin/ao?q=${encodeURIComponent(targetRef)}`);
       }
     }
   };
@@ -167,6 +171,7 @@ export const Topbar = ({ onToggleSidebar, searchPlaceholder = 'Search anything..
     const handleClickOutside = (e) => {
       if (notifRef.current && !notifRef.current.contains(e.target)) {
         setShowNotifications(false);
+        setShowClearConfirm(false);
       }
       if (userRef.current && !userRef.current.contains(e.target)) {
         setShowUserMenu(false);
@@ -177,6 +182,7 @@ export const Topbar = ({ onToggleSidebar, searchPlaceholder = 'Search anything..
       if (e.key === 'Escape') {
         setShowUserMenu(false);
         setShowNotifications(false);
+        setShowClearConfirm(false);
       }
     };
 
@@ -187,6 +193,18 @@ export const Topbar = ({ onToggleSidebar, searchPlaceholder = 'Search anything..
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
+
+  const handleClearConfirm = async () => {
+    setClearing(true);
+    try {
+      await clearNotifications();
+      setShowClearConfirm(false);
+    } catch (err) {
+      // Toast notification already alerts user
+    } finally {
+      setClearing(false);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -277,15 +295,57 @@ export const Topbar = ({ onToggleSidebar, searchPlaceholder = 'Search anything..
             <div className="notif-dropdown">
               <div className="notif-header">
                 <span className="notif-title">Notifications</span>
-                {unreadCount > 0 && (
-                  <button
-                    onClick={markAllAsRead}
-                    className="notif-mark-read-btn"
-                  >
-                    <CheckCheck size={14} /> Mark all read
-                  </button>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {unreadCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={markAllAsRead}
+                      className="notif-mark-read-btn"
+                      title="Mark all notifications as read"
+                    >
+                      <CheckCheck size={14} /> Mark all read
+                    </button>
+                  )}
+                  {notifications.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowClearConfirm(true)}
+                      disabled={clearing}
+                      className="notif-clear-btn"
+                      title="Clear all notifications"
+                    >
+                      <Trash2 size={13} /> Clear All
+                    </button>
+                  )}
+                </div>
               </div>
+
+              {/* Confirmation Prompt before clearing notifications */}
+              {showClearConfirm && (
+                <div className="notif-clear-confirm-bar" role="alertdialog" aria-label="Confirm clear notifications">
+                  <span className="notif-clear-confirm-text">
+                    Clear all notifications?
+                  </span>
+                  <div className="notif-clear-confirm-actions">
+                    <button
+                      type="button"
+                      onClick={() => setShowClearConfirm(false)}
+                      disabled={clearing}
+                      className="notif-clear-cancel-btn"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleClearConfirm}
+                      disabled={clearing}
+                      className="notif-clear-confirm-btn"
+                    >
+                      {clearing ? 'Clearing...' : 'Clear'}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Web Push Status & Toggle Bar */}
               {pushSupported && (

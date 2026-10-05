@@ -42,36 +42,42 @@ export const Sidebar = ({ isOpen, onClose }) => {
         { name: 'Transport', path: '/admin/transport', icon: Bus },
         { name: 'Snacks & Meals', path: '/admin/meals', icon: Coffee },
         { name: 'Stationery Requests', path: '/admin/stationery', icon: FileText },
+        { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
       ];
     }
 
     if (userRoles.includes('SEMINAR_ADMIN')) {
       return [
         { name: 'Dashboard', path: '/admin/seminar', icon: LayoutDashboard },
+        { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
       ];
     }
 
     if (userRoles.includes('ACCOMMODATION_ADMIN')) {
       return [
         { name: 'Dashboard', path: '/admin/accommodation', icon: LayoutDashboard },
+        { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
       ];
     }
 
     if (userRoles.includes('TRANSPORT_ADMIN')) {
       return [
         { name: 'Dashboard', path: '/admin/transport', icon: LayoutDashboard },
+        { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
       ];
     }
 
     if (userRoles.includes('STATIONERY_ADMIN')) {
       return [
         { name: 'Dashboard', path: '/admin/stationery', icon: LayoutDashboard },
+        { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
       ];
     }
 
     if (userRoles.includes('MEALS_ADMIN')) {
       return [
         { name: 'Dashboard', path: '/admin/meals', icon: LayoutDashboard },
+        { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
       ];
     }
 
@@ -82,6 +88,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
     if (isCoordinator && !isDeptUser) {
       return [
         { name: 'Coordinator Dashboard', path: '/admin/seminar', icon: LayoutDashboard },
+        { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
       ];
     }
 
@@ -95,6 +102,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
         { name: 'Stationery', path: '/stationery', icon: FileText },
         { name: 'Snacks & Meals', path: '/snacks-meals', icon: Coffee },
         { name: 'My Requests', path: '/my-requests', icon: ListOrdered },
+        { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
       ];
     }
 
@@ -106,6 +114,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
       { name: 'Stationery', path: '/stationery', icon: FileText },
       { name: 'Snacks & Meals', path: '/snacks-meals', icon: Coffee },
       { name: 'My Requests', path: '/my-requests', icon: ListOrdered },
+      { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
     ];
   };
 

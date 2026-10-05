@@ -17,10 +17,12 @@ public class CreateUserRequestDTO {
     @NotBlank(message = "Full Name is required")
     private String name;
 
-    @NotBlank(message = "Username / Login ID is required")
     private String userId;
 
+    @NotBlank(message = "Email is required")
+    @jakarta.validation.constraints.Email(message = "Please enter a valid email address")
     private String email;
+
     private String phone;
 
     @NotBlank(message = "Department is required")

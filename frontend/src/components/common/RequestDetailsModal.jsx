@@ -477,6 +477,14 @@ export const RequestDetailsModal = ({
                         {raw.mealTypes ? raw.mealTypes.join(', ') : '—'}
                       </span>
                     </div>
+                    {raw.serviceTime && (
+                      <div className="doc-view-cell doc-view-span-2">
+                        <span className="doc-view-label">Refreshments Service Time</span>
+                        <span className="doc-view-value font-semibold text-amber-300">
+                          Service: {raw.serviceTime}
+                        </span>
+                      </div>
+                    )}
                     <div className="doc-view-cell doc-view-span-full">
                       <span className="doc-view-label">Dietary Requirements</span>
                       <span className="doc-view-value">{raw.specialRequirements || 'Standard catering required'}</span>
@@ -498,22 +506,29 @@ export const RequestDetailsModal = ({
                             <th style={{ width: '50px', textAlign: 'center' }}>S.No.</th>
                             <th>Meal Type</th>
                             <th style={{ width: '90px', textAlign: 'center' }}>Guests</th>
-                            <th style={{ width: '130px', textAlign: 'center' }}>Preferred Time</th>
+                            <th style={{ width: '130px', textAlign: 'center' }}>Service / Time</th>
                             <th>Menu / Items Description</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {raw.mealItems.map((item, idx) => (
-                            <tr key={idx}>
-                              <td style={{ textAlign: 'center' }}>{idx + 1}</td>
-                              <td className="font-semibold text-white">{item.mealType}</td>
-                              <td style={{ textAlign: 'center' }} className="font-mono text-cyan-300 font-bold">
-                                {item.guestCount || raw.totalGuests}
-                              </td>
-                              <td style={{ textAlign: 'center' }}>{item.preferredTime || 'Scheduled'}</td>
-                              <td className="text-muted">{item.description || 'Standard College Menu'}</td>
-                            </tr>
-                          ))}
+                          {raw.mealItems.map((item, idx) => {
+                            const isRef = item.mealType && (item.mealType.toLowerCase().includes('snack') || item.mealType.toLowerCase().includes('tea') || item.mealType.toLowerCase().includes('coffee'));
+                            const displayTime = isRef && raw.serviceTime
+                              ? `Service: ${raw.serviceTime}`
+                              : (item.preferredTime ? ((item.preferredTime === 'FORENOON' || item.preferredTime === 'AFTERNOON') ? `Service: ${item.preferredTime}` : item.preferredTime) : 'Scheduled');
+
+                            return (
+                              <tr key={idx}>
+                                <td style={{ textAlign: 'center' }}>{idx + 1}</td>
+                                <td className="font-semibold text-white">{item.mealType}</td>
+                                <td style={{ textAlign: 'center' }} className="font-mono text-cyan-300 font-bold">
+                                  {item.guestCount || raw.totalGuests}
+                                </td>
+                                <td style={{ textAlign: 'center' }}>{displayTime}</td>
+                                <td className="text-muted">{item.description || 'Standard College Menu'}</td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>

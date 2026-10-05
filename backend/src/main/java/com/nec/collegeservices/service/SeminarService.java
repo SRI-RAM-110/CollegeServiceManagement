@@ -109,6 +109,7 @@ public class SeminarService {
         if (s.contains("SEMINARHALL2") || s.equals("SH2") || s.equals("2")) return "SH2";
         if (s.contains("SEMINARHALL3") || s.equals("SH3") || s.equals("3")) return "SH3";
         if (s.contains("SEMINARHALL4") || s.equals("SH4") || s.equals("4")) return "SH4";
+        if (s.contains("SEMINARHALL6") || s.equals("SH6") || s.equals("6") || s.contains("BLOCK2SEMINARHALL")) return "SH6";
         return s;
     }
 
@@ -117,6 +118,9 @@ public class SeminarService {
         String norm = normalizeHallKey(hallId);
         if ("TECHHUB".equals(norm)) {
             return List.of("SH-5", "TECH-HUB", "Tech Hub");
+        }
+        if ("SH6".equals(norm)) {
+            return List.of("SH-6", "Block 2 Seminar hall", "Seminar Hall 6");
         }
         return List.of(hallId);
     }

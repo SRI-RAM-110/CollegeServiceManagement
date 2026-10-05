@@ -30,8 +30,9 @@ export const AuthProvider = ({ children }) => {
     }
   }, [token]);
 
-  const login = async (userId, password, rememberMe = true) => {
-    const res = await authApi.login({ userId, password });
+  const login = async (email, password, rememberMe = true) => {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const res = await authApi.login({ email: cleanEmail, userId: cleanEmail, password });
     if (res.success && res.data) {
       const { token: jwtToken, ...userData } = res.data;
       setToken(jwtToken);
@@ -39,8 +40,10 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('token', jwtToken);
       localStorage.setItem('user', JSON.stringify(userData));
       if (rememberMe) {
-        localStorage.setItem('rememberedUserId', userId);
+        localStorage.setItem('rememberedEmail', cleanEmail);
+        localStorage.setItem('rememberedUserId', cleanEmail);
       } else {
+        localStorage.removeItem('rememberedEmail');
         localStorage.removeItem('rememberedUserId');
       }
       return userData;

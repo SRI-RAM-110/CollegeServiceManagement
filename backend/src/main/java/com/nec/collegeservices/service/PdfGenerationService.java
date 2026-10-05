@@ -378,7 +378,11 @@ public class PdfGenerationService {
         String mealTypesStr = m.getMealTypes() != null ? String.join(", ", m.getMealTypes()) : "N/A";
         addGridRow(table, "Event / Occasion", m.getEventTitle(), "Event Date", formatCustomDate(m.getDate()));
         addGridRow(table, "Venue / Location", m.getVenue(), "Total Guest Count", String.valueOf(m.getTotalGuests() != null ? m.getTotalGuests() : "N/A"));
-        addGridRow(table, "Selected Meal Types", mealTypesStr, "Service Status", m.getStatus());
+        if (m.getServiceTime() != null && !m.getServiceTime().isBlank()) {
+            addGridRow(table, "Selected Meal Types", mealTypesStr, "Service Time", m.getServiceTime());
+        } else {
+            addGridRow(table, "Selected Meal Types", mealTypesStr, "Service Status", m.getStatus());
+        }
         addGridRowSpan(table, "Dietary Requirements", m.getSpecialRequirements() != null && !m.getSpecialRequirements().isBlank() ? m.getSpecialRequirements() : "Standard catering required");
         addGridRowSpan(table, "Additional Instructions", m.getAdditionalNotes() != null && !m.getAdditionalNotes().isBlank() ? m.getAdditionalNotes() : "None");
 
@@ -399,7 +403,7 @@ public class PdfGenerationService {
             addTableHeaderCell(scheduleTable, "S.No.");
             addTableHeaderCell(scheduleTable, "Meal Type");
             addTableHeaderCell(scheduleTable, "Guests");
-            addTableHeaderCell(scheduleTable, "Preferred Time");
+            addTableHeaderCell(scheduleTable, "Service / Time");
             addTableHeaderCell(scheduleTable, "Menu / Items Description");
 
             int idx = 1;
@@ -408,7 +412,8 @@ public class PdfGenerationService {
                 addItemTableCell(scheduleTable, String.valueOf(idx++), rowBg, Element.ALIGN_CENTER);
                 addItemTableCell(scheduleTable, detail.getMealType(), rowBg, Element.ALIGN_LEFT);
                 addItemTableCell(scheduleTable, String.valueOf(detail.getGuestCount() != null ? detail.getGuestCount() : m.getTotalGuests()), rowBg, Element.ALIGN_CENTER);
-                addItemTableCell(scheduleTable, detail.getPreferredTime() != null ? detail.getPreferredTime() : "Scheduled", rowBg, Element.ALIGN_CENTER);
+                String displayTime = detail.getPreferredTime() != null ? detail.getPreferredTime() : (m.getServiceTime() != null ? m.getServiceTime() : "Scheduled");
+                addItemTableCell(scheduleTable, displayTime, rowBg, Element.ALIGN_CENTER);
                 addItemTableCell(scheduleTable, detail.getDescription() != null ? detail.getDescription() : "Standard College Menu", rowBg, Element.ALIGN_LEFT);
             }
             document.add(scheduleTable);

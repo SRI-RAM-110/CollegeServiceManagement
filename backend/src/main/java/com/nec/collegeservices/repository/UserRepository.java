@@ -10,6 +10,8 @@ import java.util.Optional;
 public interface UserRepository extends MongoRepository<User, String> {
     Optional<User> findByUserId(String userId);
     boolean existsByUserId(String userId);
+    Optional<User> findByEmailIgnoreCase(String email);
+    boolean existsByEmailIgnoreCase(String email);
     java.util.List<User> findByDepartment(String department);
     long countByActive(Boolean active);
 }

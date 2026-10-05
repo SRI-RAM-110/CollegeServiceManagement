@@ -7,12 +7,20 @@ import {
   CheckCircle, 
   XCircle, 
   Eye, 
-  RefreshCw,
-  Coffee,
-  Check,
-  X,
-  MapPin,
-  FileText
+  RefreshCw, 
+  Coffee, 
+  Check, 
+  X, 
+  MapPin, 
+  FileText,
+  Edit3,
+  Save,
+  AlertCircle,
+  Calendar,
+  User as UserIcon,
+  Mail,
+  Users,
+  ShieldAlert
 } from 'lucide-react';
 import StatCard from '../../components/common/StatCard';
 import StatusBadge from '../../components/common/StatusBadge';
@@ -25,6 +33,7 @@ import { getTodayStr } from '../../utils/dateUtils';
 
 export default function MealsAdmin() {
   const { addToast } = useNotifications();
+  const [searchParams] = useSearchParams();
   const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0 });
   const [requests, setRequests] = useState([]);
   const [selectedDate, setSelectedDate] = useState(getTodayStr());
@@ -50,6 +59,21 @@ export default function MealsAdmin() {
   const [rejectReason, setRejectReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
+  // Edit State
+  const [isEditing, setIsEditing] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    eventTitle: '',
+    date: '',
+    venue: '',
+    totalGuests: 20,
+    mealTypes: [],
+    mealItems: [],
+    serviceTime: '',
+    specialRequirements: ''
+  });
+
   const fetchData = async () => {
     try {
       setRefreshing(true);
@@ -59,7 +83,7 @@ export default function MealsAdmin() {
       setRequests(reqList);
 
       const total = reqList.length;
-      const pending = reqList.filter(r => r.status === 'PENDING').length;
+      const pending = reqList.filter(r => r.status === 'PENDING' || r.status === 'UNDER_REVIEW').length;
       const approved = reqList.filter(r => r.status === 'APPROVED').length;
       const rejected = reqList.filter(r => r.status === 'REJECTED').length;
       setStats({ total, pending, approved, rejected });
@@ -74,18 +98,199 @@ export default function MealsAdmin() {
     fetchData();
   }, []);
 
+  const handleOpenDetails = (req) => {
+    setSelectedRequest(req);
+    setIsEditing(false);
+    setIsDirty(false);
+  };
+
+  const handleStartEdit = () => {
+    if (!selectedRequest) return;
+    const req = selectedRequest;
+    const types = req.mealTypes || [];
+    const guests = req.totalGuests || (req.mealItems && req.mealItems[0]?.guestCount) || (req.guestCounts ? Object.values(req.guestCounts)[0] : 20);
+
+    const items = types.map((t) => {
+      const existing = req.mealItems?.find(
+        (mi) => mi.mealType && mi.mealType.toLowerCase() === t.toLowerCase()
+      );
+      return {
+        mealType: t,
+        guestCount: existing?.guestCount || req.guestCounts?.[t] || guests,
+        preferredTime: existing?.preferredTime || '',
+        description: existing?.description || ''
+      };
+    });
+
+    setEditForm({
+      eventTitle: req.eventTitle || req.eventName || '',
+      date: req.date || req.eventDate || '',
+      venue: req.venue || '',
+      totalGuests: guests,
+      mealTypes: [...types],
+      mealItems: items,
+      serviceTime: req.serviceTime || '',
+      specialRequirements: req.specialRequirements || req.dietaryRequirements || ''
+    });
+    setIsEditing(true);
+    setIsDirty(false);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setIsDirty(false);
+  };
+
+  const handleToggleMealType = (type) => {
+    setIsDirty(true);
+    setEditForm((prev) => {
+      const exists = prev.mealTypes.includes(type);
+      const nextTypes = exists
+        ? prev.mealTypes.filter((t) => t !== type)
+        : [...prev.mealTypes, type];
+
+      const nextItems = nextTypes.map((mt) => {
+        const found = prev.mealItems.find((i) => i.mealType === mt);
+        return (
+          found || {
+            mealType: mt,
+            guestCount: prev.totalGuests || 20,
+            preferredTime:
+              (mt === 'Snacks' || mt.includes('Tea') || mt.includes('Coffee')) ? prev.serviceTime : '',
+            description: ''
+          }
+        );
+      });
+
+      const hasRefreshments = nextTypes.some(
+        (mt) => mt === 'Snacks' || mt.toLowerCase().includes('tea') || mt.toLowerCase().includes('coffee')
+      );
+
+      return {
+        ...prev,
+        mealTypes: nextTypes,
+        mealItems: nextItems,
+        serviceTime: hasRefreshments ? prev.serviceTime : ''
+      };
+    });
+  };
+
+  const handleUpdateItemGuestCount = (mealType, count) => {
+    setIsDirty(true);
+    const parsed = parseInt(count, 10);
+    const val = isNaN(parsed) || parsed < 0 ? 0 : parsed;
+    setEditForm((prev) => ({
+      ...prev,
+      mealItems: prev.mealItems.map((item) =>
+        item.mealType === mealType ? { ...item, guestCount: val } : item
+      )
+    }));
+  };
+
+  const handleUpdateItemDescription = (mealType, desc) => {
+    setIsDirty(true);
+    setEditForm((prev) => ({
+      ...prev,
+      mealItems: prev.mealItems.map((item) =>
+        item.mealType === mealType ? { ...item, description: desc } : item
+      )
+    }));
+  };
+
+  const handleSaveChanges = async () => {
+    if (!editForm.eventTitle?.trim()) {
+      addToast('Event / Purpose is required.', 'error');
+      return;
+    }
+    if (!editForm.date) {
+      addToast('Event date is required.', 'error');
+      return;
+    }
+    if (!editForm.venue?.trim()) {
+      addToast('Venue / Location is required.', 'error');
+      return;
+    }
+    if (!editForm.mealTypes || editForm.mealTypes.length === 0) {
+      addToast('Please select at least one Meal Type.', 'error');
+      return;
+    }
+    if (!editForm.totalGuests || editForm.totalGuests <= 0) {
+      addToast('Total guest count must be greater than zero.', 'error');
+      return;
+    }
+
+    const hasRefreshments = editForm.mealTypes.some(
+      (mt) => mt === 'Snacks' || mt.toLowerCase().includes('tea') || mt.toLowerCase().includes('coffee')
+    );
+
+    if (hasRefreshments) {
+      if (!editForm.serviceTime || (editForm.serviceTime !== 'FORENOON' && editForm.serviceTime !== 'AFTERNOON')) {
+        addToast('Please select Service Time (FORENOON or AFTERNOON) for Snacks / Tea & Coffee.', 'error');
+        return;
+      }
+    }
+
+    try {
+      setSaving(true);
+      const payload = {
+        eventTitle: editForm.eventTitle.trim(),
+        date: editForm.date,
+        venue: editForm.venue.trim(),
+        totalGuests: parseInt(editForm.totalGuests, 10),
+        mealTypes: editForm.mealTypes,
+        serviceTime: hasRefreshments ? editForm.serviceTime : null,
+        mealItems: editForm.mealItems.map((item) => ({
+          mealType: item.mealType,
+          guestCount: parseInt(item.guestCount || editForm.totalGuests, 10),
+          preferredTime:
+            (item.mealType === 'Snacks' || item.mealType.includes('Tea') || item.mealType.includes('Coffee')) && editForm.serviceTime
+              ? editForm.serviceTime
+              : (item.preferredTime || null),
+          description: item.description || ''
+        })),
+        specialRequirements: editForm.specialRequirements?.trim() || ''
+      };
+
+      const res = await mealsApi.updateRequest(selectedRequest.id, payload);
+      const updated = res.data;
+      addToast('Meal request updated successfully.', 'success');
+      setSelectedRequest(updated);
+      setIsEditing(false);
+      setIsDirty(false);
+      fetchData();
+    } catch (err) {
+      addToast(err.message || 'Failed to update meal request.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleApprove = async (id) => {
     try {
       setActionLoading(true);
       await mealsApi.approve(id);
       addToast('Meal catering request approved successfully!', 'success');
       setSelectedRequest(null);
+      setIsEditing(false);
+      setIsDirty(false);
       fetchData();
     } catch (err) {
       addToast(err.message || 'Error approving request', 'error');
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const handleApproveWithCheck = (id) => {
+    if (isEditing && isDirty) {
+      addToast('Please save your changes before approving the request.', 'warning');
+      return;
+    }
+    if (isEditing) {
+      addToast('Please save your changes before approving the request.', 'warning');
+      return;
+    }
+    handleApprove(id);
   };
 
   const handleOpenReject = (id) => {
@@ -102,6 +307,8 @@ export default function MealsAdmin() {
       addToast('Meal request rejected.', 'info');
       setRejectModalOpen(false);
       setSelectedRequest(null);
+      setIsEditing(false);
+      setIsDirty(false);
       fetchData();
     } catch (err) {
       addToast(err.message || 'Error rejecting request', 'error');
@@ -110,30 +317,75 @@ export default function MealsAdmin() {
     }
   };
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const todayMeals = requests.filter(r => r.status === 'APPROVED' && r.eventDate === todayStr);
+  const targetDate = selectedDate || getTodayStr();
 
-  // Compute today's guest counts across the 5 categories
-  const computeTodayCount = (categoryKey) => {
-    let count = 0;
-    todayMeals.forEach(req => {
-      if (req.mealTypes && req.mealTypes.includes(categoryKey)) {
-        if (req.guestCounts && req.guestCounts[categoryKey]) {
-          count += req.guestCounts[categoryKey];
-        } else if (req.totalGuests) {
-          count += req.totalGuests;
+  // Active catering requests for the selected dashboard date (excluding REJECTED and CANCELLED)
+  const todayMeals = requests.filter(r => {
+    const isApproved = r.status === 'APPROVED' || r.status === 'BOOKED';
+    const isNotDeclined = r.status !== 'REJECTED' && r.status !== 'CANCELLED';
+    const reqDate = (r.date || r.eventDate || '').trim().substring(0, 10);
+    return isApproved && isNotDeclined && reqDate === targetDate;
+  });
+
+  const matchesCategory = (categoryKey, mealTypeStr) => {
+    if (!mealTypeStr || typeof mealTypeStr !== 'string') return false;
+    const norm = mealTypeStr.toLowerCase().replace(/[^a-z]/g, '');
+    switch (categoryKey) {
+      case 'breakfast':
+        return norm.includes('breakfast');
+      case 'lunch':
+        return norm.includes('lunch');
+      case 'dinner':
+        return norm.includes('dinner');
+      case 'snacks':
+        return norm.includes('snack');
+      case 'teaCoffee':
+        return norm.includes('tea') || norm.includes('coffee');
+      default:
+        return false;
+    }
+  };
+
+  const getRequestCategoryGuestCount = (req, categoryKey) => {
+    // 1. Check if the category is present in req.mealTypes or req.mealItems
+    let hasCategory = false;
+    if (Array.isArray(req.mealTypes) && req.mealTypes.some(mt => matchesCategory(categoryKey, mt))) {
+      hasCategory = true;
+    }
+    if (Array.isArray(req.mealItems) && req.mealItems.some(mi => matchesCategory(categoryKey, mi.mealType))) {
+      hasCategory = true;
+    }
+
+    if (!hasCategory) return 0;
+
+    // 2. Specific item guest count if present in mealItems
+    if (Array.isArray(req.mealItems) && req.mealItems.length > 0) {
+      const item = req.mealItems.find(mi => matchesCategory(categoryKey, mi.mealType));
+      if (item && typeof item.guestCount === 'number' && item.guestCount > 0) {
+        return item.guestCount;
+      }
+    }
+
+    // 3. Fallback to guestCounts map if provided
+    if (req.guestCounts && typeof req.guestCounts === 'object') {
+      for (const [key, val] of Object.entries(req.guestCounts)) {
+        if (matchesCategory(categoryKey, key) && Number(val) > 0) {
+          return Number(val);
         }
       }
-    });
-    return count;
+    }
+
+    // 4. Fallback to request-level guest count
+    const total = Number(req.totalGuests || req.guests || req.guestCount || 0);
+    return total > 0 ? total : 0;
   };
 
   const todayCounts = {
-    breakfast: computeTodayCount('BREAKFAST'),
-    lunch: computeTodayCount('LUNCH'),
-    dinner: computeTodayCount('DINNER'),
-    snacks: computeTodayCount('SNACKS'),
-    teaCoffee: computeTodayCount('TEA_COFFEE')
+    breakfast: todayMeals.reduce((sum, req) => sum + getRequestCategoryGuestCount(req, 'breakfast'), 0),
+    lunch: todayMeals.reduce((sum, req) => sum + getRequestCategoryGuestCount(req, 'lunch'), 0),
+    dinner: todayMeals.reduce((sum, req) => sum + getRequestCategoryGuestCount(req, 'dinner'), 0),
+    snacks: todayMeals.reduce((sum, req) => sum + getRequestCategoryGuestCount(req, 'snacks'), 0),
+    teaCoffee: todayMeals.reduce((sum, req) => sum + getRequestCategoryGuestCount(req, 'teaCoffee'), 0)
   };
 
   const filteredRequests = requests.filter(req => {
@@ -141,14 +393,17 @@ export default function MealsAdmin() {
     const matchesSearch = 
       !q ||
       (req.eventName?.toLowerCase() || '').includes(q) ||
+      (req.eventTitle?.toLowerCase() || '').includes(q) ||
       (req.department?.toLowerCase() || '').includes(q) ||
       (req.venue?.toLowerCase() || '').includes(q) ||
       (req.requestId?.toLowerCase() || '').includes(q) ||
       (req.purpose?.toLowerCase() || '').includes(q) ||
-      (req.requestedBy?.toLowerCase() || '').includes(q);
+      (req.requestedBy?.toLowerCase() || '').includes(q) ||
+      (req.requesterUserId?.toLowerCase() || '').includes(q);
 
     const matchesStatus = statusFilter === 'ALL' || req.status === statusFilter;
-    const matchesDate = !dateFilter || req.eventDate === dateFilter;
+    const reqDate = (req.date || req.eventDate || '').trim().substring(0, 10);
+    const matchesDate = !dateFilter || reqDate === dateFilter;
 
     return matchesSearch && matchesStatus && matchesDate;
   });
@@ -224,7 +479,7 @@ export default function MealsAdmin() {
                 <p className="text-xs text-slate-400 mt-0.5">Aggregated guest counts for today's active services</p>
               </div>
               <span className="text-xs text-slate-400 bg-slate-900 px-2.5 py-1 rounded border border-slate-800">
-                Date: <strong className="text-white">{todayStr}</strong>
+                Date: <strong className="text-white">{targetDate}</strong>
               </span>
             </div>
 
@@ -284,7 +539,7 @@ export default function MealsAdmin() {
                 {todayMeals.map(meal => (
                   <div key={meal.id} className="p-3 rounded bg-slate-900/60 border border-slate-800 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
-                      <span className="font-semibold text-white block">{meal.eventName || 'Department Guest Catering'}</span>
+                      <span className="font-semibold text-white block">{meal.eventName || meal.eventTitle || 'Department Guest Catering'}</span>
                       <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
                         <span className="text-sky-400 font-medium">{meal.department}</span>
                         <span>•</span>
@@ -416,6 +671,11 @@ export default function MealsAdmin() {
                           </span>
                         ))}
                       </div>
+                      {req.serviceTime && (
+                        <div className="mt-1 text-[10px] font-semibold text-amber-400">
+                          Service Time: {req.serviceTime}
+                        </div>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-slate-400 max-w-[140px] truncate">
                       {req.dietaryRequirements || 'Standard'}
@@ -426,17 +686,18 @@ export default function MealsAdmin() {
                     <td className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
-                          onClick={() => setSelectedRequest(req)}
-                          className="btn btn-secondary btn-sm p-1.5"
+                          onClick={() => handleOpenDetails(req)}
+                          className="btn btn-secondary btn-sm flex items-center gap-1"
                           title="View Details"
                         >
                           <Eye className="w-3.5 h-3.5" />
+                          <span>View</span>
                         </button>
 
-                        {req.status === 'PENDING' && (
+                        {(req.status === 'PENDING' || req.status === 'UNDER_REVIEW') && (
                           <>
                             <button
-                              onClick={() => handleApprove(req.id)}
+                              onClick={() => handleApproveWithCheck(req.id)}
                               disabled={actionLoading}
                               className="btn btn-success btn-sm flex items-center gap-1"
                             >
@@ -463,121 +724,467 @@ export default function MealsAdmin() {
         </div>
       </div>
 
-      {/* Details Modal */}
+      {/* Details Modal (View, Edit, Save, Review, Approve) */}
       {selectedRequest && (
         <Modal
           isOpen={true}
-          onClose={() => setSelectedRequest(null)}
-          title="Guest Meal Arrangement Details"
+          onClose={() => {
+            setSelectedRequest(null);
+            setIsEditing(false);
+            setIsDirty(false);
+          }}
+          title={isEditing ? `Edit Meal Request (${selectedRequest.requestId})` : "Guest Meal Arrangement Details"}
         >
-          <div className="space-y-4 text-sm text-slate-300">
-            <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-slate-900/80 border border-slate-800">
-              <div>
-                <span className="text-xs text-slate-500 block">Request ID</span>
-                <span className="font-mono font-medium text-white">{selectedRequest.requestId}</span>
+          {/* VIEW / REVIEW MODE */}
+          {!isEditing && (
+            <div className="space-y-4 text-sm text-slate-300">
+              {/* Identity & Status Summary Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-lg bg-slate-900/90 border border-slate-800">
+                <div>
+                  <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold block">Request ID</span>
+                  <span className="font-mono font-bold text-white text-sm">{selectedRequest.requestId}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold block">Status</span>
+                  <div className="mt-0.5">
+                    <StatusBadge status={selectedRequest.status} />
+                  </div>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold block">Department</span>
+                  <span className="font-semibold text-white">{selectedRequest.department}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold block">Created Date</span>
+                  <span className="text-slate-300 font-medium text-xs">
+                    {selectedRequest.createdAt ? new Date(selectedRequest.createdAt).toLocaleDateString() : '—'}
+                  </span>
+                </div>
               </div>
-              <div>
-                <span className="text-xs text-slate-500 block">Status</span>
-                <StatusBadge status={selectedRequest.status} />
-              </div>
-              <div>
-                <span className="text-xs text-slate-500 block">Department</span>
-                <span className="font-medium text-white">{selectedRequest.department}</span>
-              </div>
-              <div>
-                <span className="text-xs text-slate-500 block">Event Date</span>
-                <span className="font-medium text-white">{selectedRequest.eventDate || selectedRequest.date}</span>
-              </div>
-            </div>
 
-            <div>
-              <span className="text-xs text-slate-500 block">Event / Purpose</span>
-              <span className="text-base font-semibold text-white">{selectedRequest.eventName || selectedRequest.eventTitle || 'Institutional Hospitality'}</span>
-              <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5 text-slate-500" />
-                Venue: <strong className="text-slate-200">{selectedRequest.venue}</strong>
-              </p>
-            </div>
+              {/* Requester Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-lg bg-slate-900/50 border border-slate-800/80">
+                <div className="flex items-center gap-2">
+                  <UserIcon className="w-4 h-4 text-blue-400 shrink-0" />
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold block">Requester Name</span>
+                    <span className="font-medium text-slate-200 text-xs">{selectedRequest.requestedBy || 'Faculty Requester'}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-blue-400 shrink-0" />
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold block">Requester Email</span>
+                    <span className="font-mono text-slate-300 text-xs">
+                      {selectedRequest.requesterEmail || (selectedRequest.requesterUserId ? `${selectedRequest.requesterUserId}@nrtec.local` : `${selectedRequest.department?.toLowerCase() || 'cse'}@nrtec.local`)}
+                    </span>
+                  </div>
+                </div>
+              </div>
 
-            {/* Meal Items and Individual Counts */}
-            <div>
-              <span className="text-xs font-semibold text-white block mb-2">Selected Meal Packages & Headcounts</span>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {selectedRequest.mealTypes?.map((mt) => {
-                  const qty = selectedRequest.guestCounts?.[mt] || selectedRequest.totalGuests || 'N/A';
-                  const time = selectedRequest.mealTimes?.[mt] || '';
-                  return (
-                    <div key={mt} className="p-2.5 rounded bg-slate-900/70 border border-slate-800 text-xs">
-                      <span className="font-semibold text-white block uppercase text-[11px]">{mt.replace('_', ' ')}</span>
-                      <div className="flex justify-between items-center mt-1">
-                        <span className="text-slate-400">Headcount:</span>
-                        <strong className="text-blue-400 font-mono">{qty}</strong>
-                      </div>
-                      {time && (
-                        <div className="text-[10px] text-slate-400 mt-0.5">
-                          Time: {time}
-                        </div>
-                      )}
+              {/* Event, Date, Venue & Total Guest Count */}
+              <div className="p-3.5 rounded-lg bg-slate-900/60 border border-slate-800 space-y-2.5">
+                <div>
+                  <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold block">Event / Purpose</span>
+                  <span className="text-base font-bold text-white block mt-0.5">
+                    {selectedRequest.eventTitle || selectedRequest.eventName || 'Institutional Hospitality'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-800/60 text-xs">
+                  <div>
+                    <span className="text-slate-500 block">Date</span>
+                    <span className="font-semibold text-slate-200 flex items-center gap-1.5 mt-0.5">
+                      <Calendar className="w-3.5 h-3.5 text-blue-400" />
+                      {selectedRequest.date || selectedRequest.eventDate}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">Venue / Location</span>
+                    <span className="font-semibold text-slate-200 flex items-center gap-1.5 mt-0.5">
+                      <MapPin className="w-3.5 h-3.5 text-blue-400" />
+                      {selectedRequest.venue}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">Total Guest Count</span>
+                    <span className="font-bold text-amber-400 font-mono text-sm flex items-center gap-1.5 mt-0.5">
+                      <Users className="w-3.5 h-3.5 text-amber-400" />
+                      {selectedRequest.totalGuests || (selectedRequest.mealItems && selectedRequest.mealItems[0]?.guestCount) || '—'} guests
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Service Time Banner for Snacks / Tea & Coffee */}
+              {(selectedRequest.mealTypes?.some(t => t.toLowerCase().includes('snack') || t.toLowerCase().includes('tea') || t.toLowerCase().includes('coffee')) || selectedRequest.serviceTime) && (
+                <div className="p-3 rounded-lg bg-sky-950/40 border border-sky-800/60 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <Clock className="w-4 h-4 text-sky-400 shrink-0" />
+                    <div>
+                      <span className="text-xs font-semibold text-sky-200 block">Refreshments Service Time</span>
+                      <span className="text-[11px] text-sky-400">Scheduled serving window for Snacks & Beverages</span>
                     </div>
-                  );
-                })}
+                  </div>
+                  <span className="px-3 py-1 rounded-md text-xs font-bold font-mono tracking-wider bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                    {selectedRequest.serviceTime || 'NOT SET'}
+                  </span>
+                </div>
+              )}
+
+              {/* Selected Meal Types & Items Quantities */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-white block">Selected Meal Packages & Quantities</span>
+                  <div className="flex flex-wrap gap-1">
+                    {selectedRequest.mealTypes?.map((mt) => (
+                      <span key={mt} className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-300 border border-blue-500/20">
+                        {mt}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                  {selectedRequest.mealTypes?.map((mt) => {
+                    const itemDetail = selectedRequest.mealItems?.find(i => i.mealType && i.mealType.toLowerCase() === mt.toLowerCase());
+                    const qty = itemDetail?.guestCount || selectedRequest.guestCounts?.[mt] || selectedRequest.totalGuests || 'N/A';
+                    const isRef = mt.toLowerCase().includes('snack') || mt.toLowerCase().includes('tea') || mt.toLowerCase().includes('coffee');
+                    return (
+                      <div key={mt} className="p-3 rounded-lg bg-slate-900/80 border border-slate-800 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-white text-xs">{mt}</span>
+                          <span className="font-mono font-bold text-amber-400 text-xs">{qty} guests</span>
+                        </div>
+                        {isRef && selectedRequest.serviceTime && (
+                          <div className="mt-1 text-[11px] font-medium text-sky-400 flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            <span>Service Time: {selectedRequest.serviceTime}</span>
+                          </div>
+                        )}
+                        {itemDetail?.description && (
+                          <div className="mt-1 text-[11px] text-slate-400 italic">
+                            "{itemDetail.description}"
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Special Requirements */}
+              {selectedRequest.specialRequirements && (
+                <div>
+                  <span className="text-xs text-slate-400 block mb-1">Special Requirements / Dietary Notes</span>
+                  <p className="text-slate-200 bg-slate-900/60 p-3 rounded-lg border border-slate-800 text-xs leading-relaxed">
+                    {selectedRequest.specialRequirements}
+                  </p>
+                </div>
+              )}
+
+              {/* Modal Footer Actions */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-800">
+                <div>
+                  {(selectedRequest.status === 'PENDING' || selectedRequest.status === 'UNDER_REVIEW') && (
+                    <button
+                      onClick={handleStartEdit}
+                      className="btn btn-secondary btn-sm flex items-center gap-1.5"
+                      title="Edit request details before approval"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-blue-400" />
+                      <span>Edit Request</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {(selectedRequest.status === 'PENDING' || selectedRequest.status === 'UNDER_REVIEW') && (
+                    <>
+                      <button
+                        onClick={() => handleOpenReject(selectedRequest.id)}
+                        disabled={actionLoading}
+                        className="px-3.5 py-1.5 rounded-lg bg-rose-600/90 hover:bg-rose-500 text-white text-xs font-medium transition"
+                      >
+                        Reject Request
+                      </button>
+                      <button
+                        onClick={() => handleApproveWithCheck(selectedRequest.id)}
+                        disabled={actionLoading}
+                        className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition shadow-md flex items-center gap-1.5"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Approve Catering Plan</span>
+                      </button>
+                    </>
+                  )}
+
+                  {selectedRequest.status === 'APPROVED' && (
+                    <button
+                      onClick={() => {
+                        const req = selectedRequest;
+                        setSelectedRequest(null);
+                        setDocModalRequest(req);
+                      }}
+                      className="px-4 py-2 rounded-lg bg-blue-600/90 hover:bg-blue-500 text-white text-xs font-medium flex items-center gap-1.5 transition shadow-sm"
+                      id="btn-view-official-doc-meals"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>View Official Document & PDF</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
+          )}
 
-            {selectedRequest.dietaryRequirements && (
-              <div>
-                <span className="text-xs text-slate-500 block mb-1">Dietary Requirements</span>
-                <p className="text-slate-300 bg-slate-900/50 p-2.5 rounded border border-slate-800/80 text-xs">
-                  {selectedRequest.dietaryRequirements}
-                </p>
+          {/* EDIT MODE */}
+          {isEditing && (
+            <div className="space-y-4 text-sm text-slate-300">
+              {/* Notice & System Controlled Identity Fields */}
+              <div className="p-3 rounded-lg bg-slate-900/90 border border-slate-800 space-y-2">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-xs">
+                  <span className="font-semibold text-slate-400 flex items-center gap-1.5">
+                    <ShieldAlert className="w-3.5 h-3.5 text-blue-400" />
+                    System-Controlled Identity Fields (Read-Only)
+                  </span>
+                  <StatusBadge status={selectedRequest.status} />
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  <div>
+                    <span className="text-[10px] text-slate-500 uppercase block">Request ID</span>
+                    <span className="font-mono font-medium text-white">{selectedRequest.requestId}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 uppercase block">Department</span>
+                    <span className="font-medium text-white">{selectedRequest.department}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 uppercase block">Requester</span>
+                    <span className="font-medium text-slate-300 truncate block">{selectedRequest.requestedBy}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 uppercase block">Email</span>
+                    <span className="font-mono text-slate-400 text-[11px] truncate block">
+                      {selectedRequest.requesterEmail || (selectedRequest.requesterUserId ? `${selectedRequest.requesterUserId}@nrtec.local` : 'faculty@nrtec.local')}
+                    </span>
+                  </div>
+                </div>
               </div>
-            )}
 
-            {selectedRequest.specialRequirements && (
-              <div>
-                <span className="text-xs text-slate-500 block mb-1">Special Requirements / Menu Notes</span>
-                <p className="text-slate-300 bg-slate-900/50 p-2.5 rounded border border-slate-800/80 text-xs">
-                  {selectedRequest.specialRequirements}
-                </p>
+              {/* Editable Fields */}
+              <div className="space-y-3.5 bg-slate-900/40 p-4 rounded-xl border border-slate-800/80">
+                {/* Event Title & Date & Venue */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">
+                      Event / Purpose <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editForm.eventTitle}
+                      onChange={(e) => {
+                        setIsDirty(true);
+                        setEditForm(prev => ({ ...prev, eventTitle: e.target.value }));
+                      }}
+                      placeholder="e.g. National Conference on AI Hospitality"
+                      className="admin-filter-input w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">
+                      Date <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={editForm.date}
+                      onChange={(e) => {
+                        setIsDirty(true);
+                        setEditForm(prev => ({ ...prev, date: e.target.value }));
+                      }}
+                      className="admin-filter-input w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">
+                      Venue / Location <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editForm.venue}
+                      onChange={(e) => {
+                        setIsDirty(true);
+                        setEditForm(prev => ({ ...prev, venue: e.target.value }));
+                      }}
+                      placeholder="e.g. Mechanical Seminar Hall Dining"
+                      className="admin-filter-input w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">
+                      Total Guest Count <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={editForm.totalGuests}
+                      onChange={(e) => {
+                        setIsDirty(true);
+                        const val = parseInt(e.target.value, 10) || 0;
+                        setEditForm(prev => ({ ...prev, totalGuests: val }));
+                      }}
+                      className="admin-filter-input w-full font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Meal Types Selector */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                    Meal Types <span className="text-rose-400">*</span>
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {['Breakfast', 'Lunch', 'Dinner', 'Snacks', 'Tea / Coffee'].map((type) => {
+                      const isSelected = editForm.mealTypes.includes(type);
+                      return (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => handleToggleMealType(type)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition border ${
+                            isSelected
+                              ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
+                              : 'bg-slate-900/90 text-slate-400 border-slate-700 hover:text-white'
+                          }`}
+                        >
+                          {type}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Service Time Section (Mandatory if Snacks or Tea / Coffee is selected) */}
+                {editForm.mealTypes.some(t => t === 'Snacks' || t.toLowerCase().includes('tea') || t.toLowerCase().includes('coffee')) && (
+                  <div className="p-3.5 rounded-lg bg-sky-950/40 border border-sky-800/80 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-sky-200 flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-sky-400" />
+                        <span>Service Time for Snacks / Tea & Coffee <span className="text-rose-400">*</span></span>
+                      </label>
+                      <span className="text-[10px] text-sky-300 font-medium">Select Serving Window</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsDirty(true);
+                          setEditForm(prev => ({ ...prev, serviceTime: 'FORENOON' }));
+                        }}
+                        className={`p-2.5 rounded-lg text-xs font-bold text-center border transition ${
+                          editForm.serviceTime === 'FORENOON'
+                            ? 'bg-sky-600 text-white border-sky-400 shadow-sm'
+                            : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800'
+                        }`}
+                      >
+                        FORENOON
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsDirty(true);
+                          setEditForm(prev => ({ ...prev, serviceTime: 'AFTERNOON' }));
+                        }}
+                        className={`p-2.5 rounded-lg text-xs font-bold text-center border transition ${
+                          editForm.serviceTime === 'AFTERNOON'
+                            ? 'bg-sky-600 text-white border-sky-400 shadow-sm'
+                            : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800'
+                        }`}
+                      >
+                        AFTERNOON
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Per-Item Quantities Breakdown */}
+                {editForm.mealTypes.length > 0 && (
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                      Meal Items & Quantities
+                    </label>
+                    <div className="space-y-2">
+                      {editForm.mealTypes.map((mt) => {
+                        const item = editForm.mealItems.find(i => i.mealType === mt) || { guestCount: editForm.totalGuests, description: '' };
+                        return (
+                          <div key={mt} className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                            <span className="font-semibold text-white w-28 shrink-0">{mt}</span>
+                            <div className="flex items-center gap-2 grow">
+                              <span className="text-slate-400 text-[11px] shrink-0">Quantity:</span>
+                              <input
+                                type="number"
+                                min="1"
+                                value={item.guestCount}
+                                onChange={(e) => handleUpdateItemGuestCount(mt, e.target.value)}
+                                className="admin-filter-input w-24 font-mono py-1"
+                              />
+                              <input
+                                type="text"
+                                placeholder="Menu notes (optional)"
+                                value={item.description || ''}
+                                onChange={(e) => handleUpdateItemDescription(mt, e.target.value)}
+                                className="admin-filter-input grow py-1 text-slate-200"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Special Requirements */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1">
+                    Special Requirements / Dietary Notes
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={editForm.specialRequirements}
+                    onChange={(e) => {
+                      setIsDirty(true);
+                      setEditForm(prev => ({ ...prev, specialRequirements: e.target.value }));
+                    }}
+                    placeholder="e.g. Vegetarian only. No onion/garlic for VIP table..."
+                    className="admin-filter-input w-full text-xs"
+                  />
+                </div>
               </div>
-            )}
 
-            {selectedRequest.status === 'PENDING' && (
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+              {/* Edit Mode Buttons */}
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
                 <button
-                  onClick={() => handleOpenReject(selectedRequest.id)}
-                  disabled={actionLoading}
-                  className="px-3.5 py-1.5 rounded-lg bg-rose-600/90 hover:bg-rose-500 text-white text-xs font-medium transition"
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition"
                 >
-                  Reject Request
+                  Cancel Edit
                 </button>
                 <button
-                  onClick={() => handleApprove(selectedRequest.id)}
-                  disabled={actionLoading}
-                  className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition shadow-md"
+                  type="button"
+                  onClick={handleSaveChanges}
+                  disabled={saving}
+                  className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition shadow-md flex items-center gap-1.5"
                 >
-                  Approve Catering Plan
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{saving ? 'Saving...' : 'Save Changes'}</span>
                 </button>
               </div>
-            )}
-
-            {selectedRequest.status === 'APPROVED' && (
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
-                <button
-                  onClick={() => {
-                    const req = selectedRequest;
-                    setSelectedRequest(null);
-                    setDocModalRequest(req);
-                  }}
-                  className="px-4 py-2 rounded-lg bg-blue-600/90 hover:bg-blue-500 text-white text-xs font-medium flex items-center gap-1.5 transition shadow-sm"
-                  id="btn-view-official-doc-meals"
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>View Official Document & PDF</span>
-                </button>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </Modal>
       )}
 

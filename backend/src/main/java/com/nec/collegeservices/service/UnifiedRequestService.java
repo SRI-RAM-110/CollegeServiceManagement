@@ -325,7 +325,7 @@ public class UnifiedRequestService {
                 .department(m.getDepartment())
                 .requestedBy(m.getRequestedBy())
                 .requesterUserId(m.getRequesterUserId())
-                .details(String.join(", ", m.getMealTypes() != null ? m.getMealTypes() : List.of()) + " for " + m.getTotalGuests() + " guests")
+                .details(String.join(", ", m.getMealTypes() != null ? m.getMealTypes() : List.of()) + (m.getServiceTime() != null ? " (" + m.getServiceTime() + ")" : "") + " for " + m.getTotalGuests() + " guests")
                 .status(m.getStatus())
                 .createdAt(m.getCreatedAt())
                 .approvedBy(m.getApprovedBy())

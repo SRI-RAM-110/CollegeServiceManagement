@@ -149,6 +149,20 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
+  const clearNotifications = async () => {
+    try {
+      await notificationApi.clearAll();
+      setNotifications([]);
+      setUnreadCount(0);
+      showToast('Notifications cleared', 'success');
+      return true;
+    } catch (err) {
+      console.error('Failed to clear notifications:', err);
+      showToast(err.response?.data?.message || err.message || 'Failed to clear notifications', 'error');
+      throw err;
+    }
+  };
+
   return (
     <NotificationContext.Provider
       value={{
@@ -157,6 +171,7 @@ export const NotificationProvider = ({ children }) => {
         fetchNotifications,
         markAsRead,
         markAllAsRead,
+        clearNotifications,
         showToast,
         addToast: showToast,
         // Web Push Exports

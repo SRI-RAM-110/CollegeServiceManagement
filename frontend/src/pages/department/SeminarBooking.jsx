@@ -18,6 +18,7 @@ import {
   MapPin,
   Building,
   RefreshCw,
+  Info,
 } from 'lucide-react';
 import { seminarApi } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
@@ -950,509 +951,499 @@ export const SeminarBooking = () => {
 
       {activeTab === 'booking' ? (
         <>
-          {/* 1. SELECT SEMINAR HALL — Compact & Full-Width */}
-          <div className="card-panel seminar-hall-selection-panel">
-            <span className="card-title seminar-hall-title">Select Seminar Hall</span>
-            <div className="resource-grid seminar-hall-grid">
-              {halls.map((hall) => {
-                const isSelected = selectedHallId === hall.hallId;
-                const isAvail = !hall.status || hall.status.toLowerCase() === 'available';
-                return (
-                  <div
-                    key={hall.hallId}
-                    onClick={() => setSelectedHallId(hall.hallId)}
-                    className={`resource-card seminar-hall-card ${isSelected ? 'border-primary selected' : ''} cursor-pointer`}
+          {/* 1. UNIFIED SEMINAR BOOKING CONTAINER */}
+          <div className="card-panel">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-800">
+              <div>
+                <span className="card-title text-base font-bold flex items-center gap-2">
+                  <CalendarRange size={18} color="var(--arctic-blue)" />
+                  Seminar Hall Booking Request
+                </span>
+                <p className="card-subtitle text-xs text-slate-400 mt-0.5">
+                  Select a seminar hall, verify slot availability, and submit your reservation request.
+                </p>
+              </div>
+            </div>
+
+            <div className="two-column-layout balanced">
+              {/* Left Column: Hall Selection, Schedule & Live Availability */}
+              <div className="column-stack">
+                {/* 1. Seminar Hall Dropdown */}
+                <div className="form-group">
+                  <label className="form-label text-xs">Seminar Hall *</label>
+                  <select
+                    value={selectedHallId}
+                    onChange={(e) => setSelectedHallId(e.target.value)}
+                    className="w-full text-xs"
                   >
-                    <div className="resource-card-header">
-                      <span className="resource-name">{hall.name}</span>
-                      <StatusBadge status={isAvail ? 'AVAILABLE' : 'MAINTENANCE'} />
-                    </div>
+                    {halls.map((hall) => (
+                      <option key={hall.hallId} value={hall.hallId}>
+                        {hall.name} ({hall.hallId}) — {hall.capacity} Seats — {hall.location}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-                    <div className="resource-details">
-                      <div className="resource-detail-row">
-                        <span className="detail-label">Hall ID</span>
-                        <span className="detail-value">{hall.hallId}</span>
-                      </div>
-                      <div className="resource-detail-row">
-                        <span className="detail-label">Location</span>
-                        <span className="detail-value">{hall.location}</span>
-                      </div>
-                      <div className="resource-detail-row">
-                        <span className="detail-label">Capacity</span>
-                        <span className="detail-value">{hall.capacity} Seats</span>
-                      </div>
+                {/* 2. Selected Hall Information */}
+                {currentHall && (
+                  <div className="p-3 rounded-lg bg-slate-900/80 border border-slate-800 text-xs space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Hall ID:</span>
+                      <span className="font-mono text-arctic-blue font-semibold">{currentHall.hallId}</span>
                     </div>
-
-                    {(hall.hasProjector || hall.hasAc || hall.hasAudioSystem || hall.hasWifi) && (
-                      <div className="flex flex-wrap gap-1 mt-1.5 seminar-hall-amenities">
-                        {hall.hasProjector && <span className="badge text-[10px]"><Projector size={10} /> Projector</span>}
-                        {hall.hasAc && <span className="badge text-[10px]"><AirVent size={10} /> AC</span>}
-                        {hall.hasAudioSystem && <span className="badge text-[10px]"><Volume2 size={10} /> Audio</span>}
-                        {hall.hasWifi && <span className="badge text-[10px]"><Wifi size={10} /> Wi-Fi</span>}
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Location:</span>
+                      <span className="text-slate-200">{currentHall.location}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Capacity:</span>
+                      <span className="text-slate-200">{currentHall.capacity} Seats</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Status:</span>
+                      <StatusBadge status={isHallAvailable ? 'AVAILABLE' : 'MAINTENANCE'} />
+                    </div>
+                    {(currentHall.hasProjector || currentHall.hasAc || currentHall.hasAudioSystem || currentHall.hasWifi) && (
+                      <div className="pt-1.5 border-t border-slate-800/80">
+                        <span className="text-slate-400 block text-[10px] mb-1">Facilities:</span>
+                        <div className="flex flex-wrap gap-1">
+                          {currentHall.hasProjector && <span className="badge text-[10px]"><Projector size={10} /> Projector</span>}
+                          {currentHall.hasAc && <span className="badge text-[10px]"><AirVent size={10} /> AC</span>}
+                          {currentHall.hasAudioSystem && <span className="badge text-[10px]"><Volume2 size={10} /> Audio</span>}
+                          {currentHall.hasWifi && <span className="badge text-[10px]"><Wifi size={10} /> Wi-Fi</span>}
+                        </div>
                       </div>
                     )}
                   </div>
-                );
-              })}
-            </div>
-          </div>
+                )}
 
-          {/* 2. BALANCED TWO-COLUMN WORKFLOW GRID: Left = Slot Availability & Schedule, Right = Submit Booking Form */}
-          <div className="two-column-layout balanced">
-            {/* Left Column: Slot Availability & Scheduling */}
-            <div className="card-panel">
-              {/* Booking Type Toggle Bar */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-slate-800">
-                <div>
-                  <span className="card-title text-sm flex items-center gap-1.5 font-bold">
-                    <CalendarRange size={16} color="var(--arctic-blue)" />
-                    Slot Availability & Schedule
-                  </span>
-                  <p className="card-subtitle text-[11px] text-slate-400">
-                    {currentHall.name} &bull; Capacity: {currentHall.capacity} Seats
-                  </p>
+                {/* 3. Booking Type Toggle Bar */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-slate-800">
+                  <span className="text-xs font-semibold text-slate-300">Booking Type</span>
+                  <div className="flex flex-wrap items-center gap-1.5 bg-slate-900/90 p-1 rounded-lg border border-slate-700/60">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBookingType('ONE_TIME');
+                        setToDate(selectedDate);
+                      }}
+                      className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition ${bookingType === 'ONE_TIME'
+                          ? 'bg-blue-600 text-white shadow'
+                          : 'text-slate-400 hover:text-white'
+                        }`}
+                    >
+                      <CalendarDays size={13} /> One-Time
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBookingType('MULTI_DAY');
+                        if (!toDate || toDate < selectedDate) setToDate(selectedDate);
+                      }}
+                      className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition ${bookingType === 'MULTI_DAY'
+                          ? 'bg-blue-600 text-white shadow'
+                          : 'text-slate-400 hover:text-white'
+                        }`}
+                    >
+                      <CalendarRange size={13} /> Multi-Day
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBookingType('RECURRING');
+                        if (!toDate || toDate < selectedDate) setToDate(selectedDate);
+                      }}
+                      className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition ${bookingType === 'RECURRING'
+                          ? 'bg-blue-600 text-white shadow'
+                          : 'text-slate-400 hover:text-white'
+                        }`}
+                    >
+                      <Repeat size={13} /> Recurring
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-1.5 bg-slate-900/90 p-1 rounded-lg border border-slate-700/60 self-start sm:self-auto">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setBookingType('ONE_TIME');
-                      setToDate(selectedDate);
-                    }}
-                    className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition ${bookingType === 'ONE_TIME'
-                        ? 'bg-blue-600 text-white shadow'
-                        : 'text-slate-400 hover:text-white'
-                      }`}
-                  >
-                    <CalendarDays size={13} /> One-Time
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setBookingType('MULTI_DAY');
-                      if (!toDate || toDate < selectedDate) setToDate(selectedDate);
-                    }}
-                    className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition ${bookingType === 'MULTI_DAY'
-                        ? 'bg-blue-600 text-white shadow'
-                        : 'text-slate-400 hover:text-white'
-                      }`}
-                  >
-                    <CalendarRange size={13} /> Multi-Day
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setBookingType('RECURRING');
-                      if (!toDate || toDate < selectedDate) setToDate(selectedDate);
-                    }}
-                    className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition ${bookingType === 'RECURRING'
-                        ? 'bg-blue-600 text-white shadow'
-                        : 'text-slate-400 hover:text-white'
-                      }`}
-                  >
-                    <Repeat size={13} /> Recurring
-                  </button>
-                </div>
-              </div>
-
-              {/* Date Pickers based on Booking Type */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 my-3">
-                <div className="form-group">
-                  <label className="form-label text-xs">
-                    {bookingType === 'ONE_TIME' ? 'Event Date *' : 'Series Start Date *'}
-                  </label>
-                  <input
-                    type="date"
-                    min={getTodayStr()}
-                    value={selectedDate}
-                    onChange={(e) => {
-                      setSelectedDate(e.target.value);
-                      if (bookingType === 'ONE_TIME') setToDate(e.target.value);
-                    }}
-                    className="w-full text-xs"
-                    required
-                  />
-                </div>
-
-                {bookingType !== 'ONE_TIME' && (
+                {/* 4. Date Pickers based on Booking Type */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div className="form-group">
                     <label className="form-label text-xs">
-                      {bookingType === 'MULTI_DAY' ? 'End Date (Inclusive) *' : 'Series End Date *'}
+                      {bookingType === 'ONE_TIME' ? 'Event Date *' : 'Series Start Date *'}
                     </label>
                     <input
                       type="date"
-                      min={selectedDate || getTodayStr()}
-                      value={toDate}
-                      onChange={(e) => setToDate(e.target.value)}
+                      min={getTodayStr()}
+                      value={selectedDate}
+                      onChange={(e) => {
+                        setSelectedDate(e.target.value);
+                        if (bookingType === 'ONE_TIME') setToDate(e.target.value);
+                      }}
                       className="w-full text-xs"
                       required
                     />
                   </div>
-                )}
 
-                {bookingType === 'RECURRING' && (
-                  <div className="form-group sm:col-span-2">
-                    <label className="form-label text-xs mb-1.5">Repeat On Weekdays *</label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {WEEKDAYS.map((w) => {
-                        const isSel = recurrenceDays.includes(w.key);
-                        return (
-                          <button
-                            key={w.key}
-                            type="button"
-                            onClick={() => toggleRecurrenceDay(w.key)}
-                            className={`px-2.5 py-1 text-xs rounded-md border font-medium transition ${isSel
-                                ? 'bg-blue-600 border-blue-500 text-white shadow'
-                                : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-white'
-                              }`}
-                          >
-                            {w.fullLabel}
-                          </button>
-                        );
-                      })}
+                  {bookingType !== 'ONE_TIME' && (
+                    <div className="form-group">
+                      <label className="form-label text-xs">
+                        {bookingType === 'MULTI_DAY' ? 'End Date (Inclusive) *' : 'Series End Date *'}
+                      </label>
+                      <input
+                        type="date"
+                        min={selectedDate || getTodayStr()}
+                        value={toDate}
+                        onChange={(e) => setToDate(e.target.value)}
+                        className="w-full text-xs"
+                        required
+                      />
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
 
-              {/* Slot Availability Selection Buttons */}
-              <div className="my-3">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-semibold text-slate-300">
-                    Slot Availability for {formatDateDisplay(selectedDate)}
-                  </span>
-                  <span className="text-[11px] text-blue-400 font-mono font-medium">Selected: {selectedSlot}</span>
+                  {bookingType === 'RECURRING' && (
+                    <div className="form-group sm:col-span-2">
+                      <label className="form-label text-xs mb-1.5">Repeat On Weekdays *</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {WEEKDAYS.map((w) => {
+                          const isSel = recurrenceDays.includes(w.key);
+                          return (
+                            <button
+                              key={w.key}
+                              type="button"
+                              onClick={() => toggleRecurrenceDay(w.key)}
+                              className={`px-2.5 py-1 text-xs rounded-md border font-medium transition ${isSel
+                                  ? 'bg-blue-600 border-blue-500 text-white shadow'
+                                  : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-white'
+                                }`}
+                            >
+                              {w.fullLabel}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {loadingAvail ? (
-                  <div className="py-6 text-center text-xs text-slate-400">Loading slot status...</div>
-                ) : (
-                  <div className="grid grid-cols-3 gap-2">
-                    {['FORENOON', 'AFTERNOON', 'FULL_DAY'].map((slotKey) => {
-                      const isBooked = slotsStatus[slotKey] === 'BOOKED';
-                      const isSelected = selectedSlot === slotKey;
-                      return (
-                        <div
-                          key={slotKey}
-                          onClick={() => handleSlotSelect(slotKey)}
-                          className={`p-2.5 rounded-lg border text-center cursor-pointer transition ${isBooked
-                              ? 'bg-rose-950/20 border-rose-800/40 text-rose-400 cursor-not-allowed opacity-60'
-                              : isSelected
-                                ? 'bg-blue-600/20 border-blue-500 text-white shadow'
-                                : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
-                            }`}
-                        >
-                          <div className="font-semibold text-xs mb-0.5">{slotKey}</div>
-                          <div className="text-[10px] text-slate-400 mb-1.5">
-                            {slotKey === 'FORENOON'
-                              ? '09:00 AM - 12:00 PM'
-                              : slotKey === 'AFTERNOON'
-                                ? '12:00 PM - 04:00 PM'
-                                : '09:00 AM - 04:00 PM'}
-                          </div>
-                          <span
-                            className={`badge text-[10px] ${isBooked ? 'bg-rose-900/60 text-rose-300' : 'bg-emerald-900/40 text-emerald-300'
-                              }`}
-                          >
-                            {isBooked ? 'BOOKED' : 'AVAILABLE'}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Target occurrences summary badge */}
-              {targetDates.length > 0 && (
-                <div className="my-2.5">
-                  <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
-                    <span className="text-slate-300">
-                      Occurrences: <strong className="text-white">{targetDates.length} date(s)</strong>
+                {/* 5. Slot Availability Selection Buttons */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-semibold text-slate-300">
+                      Slot Availability for {formatDateDisplay(selectedDate)}
                     </span>
-                    {checkingBulk ? (
-                      <span className="text-blue-400">Checking slot availability...</span>
-                    ) : bulkConflictInfo && bulkConflictInfo.conflictCount > 0 ? (
-                      <span className="text-rose-400 font-semibold flex items-center gap-1">
-                        <AlertTriangle size={13} />
-                        {bulkConflictInfo.conflictCount} conflict(s) found
-                      </span>
-                    ) : (
-                      <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                        <CheckCircle2 size={13} /> All occurrences available
-                      </span>
-                    )}
+                    <span className="text-[11px] text-blue-400 font-mono font-medium">Selected: {selectedSlot}</span>
                   </div>
 
-                  {/* Detailed Occurrence & Conflict List (if conflict or multi-day/recurring) */}
-                  {((bulkConflictInfo && bulkConflictInfo.conflictCount > 0) || bookingType !== 'ONE_TIME') && (
-                    <div className="occurrence-list-container mt-2 max-h-[220px] overflow-y-auto">
-                      {(bulkConflictInfo?.occurrences || targetDates.map((d) => ({
-                        date: d,
-                        day: getOccurrenceDateDisplay(d).dayOfWeek,
-                        hallId: currentHall.hallId,
-                        hallName: currentHall.name,
-                        hallLocation: currentHall.location,
-                        slot: selectedSlot,
-                        bookingType: bookingType,
-                        status: checkingBulk ? 'CHECKING' : 'AVAILABLE',
-                      }))).map((occ, idx) => {
-                        const { dateFormatted, dayOfWeek } = getOccurrenceDateDisplay(occ.date);
-                        const isConflict = occ.status === 'CONFLICT';
-                        const isUnavailable = occ.status === 'UNAVAILABLE' || occ.isMaintenance;
-                        const isChecking = occ.status === 'CHECKING' || checkingBulk;
-
+                  {loadingAvail ? (
+                    <div className="py-6 text-center text-xs text-slate-400">Loading slot status...</div>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                      {['FORENOON', 'AFTERNOON', 'FULL_DAY'].map((slotKey) => {
+                        const isBooked = slotsStatus[slotKey] === 'BOOKED';
+                        const isSelected = selectedSlot === slotKey;
                         return (
                           <div
-                            key={`${occ.date}-${idx}`}
-                            className={`occurrence-card ${isConflict
-                                ? 'occurrence-card-conflict'
-                                : isUnavailable
-                                  ? 'occurrence-card-unavailable'
-                                  : 'occurrence-card-available'
+                            key={slotKey}
+                            onClick={() => handleSlotSelect(slotKey)}
+                            className={`p-2.5 rounded-lg border text-center cursor-pointer transition ${isBooked
+                                ? 'bg-rose-950/20 border-rose-800/40 text-rose-400 cursor-not-allowed opacity-60'
+                                : isSelected
+                                  ? 'bg-blue-600/20 border-blue-500 text-white shadow'
+                                  : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
                               }`}
                           >
-                            <div className="occurrence-card-header">
-                              <div className="occurrence-title-group">
-                                <span className="occurrence-index-badge">Occurrence {idx + 1}</span>
-                                <span className="occurrence-date-title">{dateFormatted || occ.date}</span>
-                                <span className="occurrence-day-sub">({occ.day || dayOfWeek})</span>
-                              </div>
-
-                              <div>
-                                {isChecking ? (
-                                  <span className="text-blue-400 text-xs font-semibold flex items-center gap-1">
-                                    <RefreshCw size={12} className="animate-spin" /> Checking...
-                                  </span>
-                                ) : isConflict ? (
-                                  <span className="occurrence-status-badge occurrence-status-conflict">
-                                    <AlertTriangle size={12} /> ⚠ CONFLICT
-                                  </span>
-                                ) : isUnavailable ? (
-                                  <span className="occurrence-status-badge occurrence-status-unavailable">
-                                    <AlertTriangle size={12} /> ⚠ UNAVAILABLE
-                                  </span>
-                                ) : (
-                                  <span className="occurrence-status-badge occurrence-status-available">
-                                    <CheckCircle2 size={12} /> ✓ AVAILABLE
-                                  </span>
-                                )}
-                              </div>
+                            <div className="font-semibold text-xs mb-0.5">{slotKey}</div>
+                            <div className="text-[10px] text-slate-400 mb-1.5">
+                              {slotKey === 'FORENOON'
+                                ? '09:00 AM - 12:00 PM'
+                                : slotKey === 'AFTERNOON'
+                                  ? '12:00 PM - 04:00 PM'
+                                  : '09:00 AM - 04:00 PM'}
                             </div>
-
-                            <div className="occurrence-meta-grid">
-                              <div className="occurrence-meta-item">
-                                <span className="occurrence-meta-label">Seminar Hall</span>
-                                <span className="occurrence-meta-value">{occ.hallName || currentHall.name}</span>
-                              </div>
-                              <div className="occurrence-meta-item">
-                                <span className="occurrence-meta-label">Hall ID</span>
-                                <span className="occurrence-meta-value font-mono">{occ.hallId || currentHall.hallId}</span>
-                              </div>
-                              <div className="occurrence-meta-item">
-                                <span className="occurrence-meta-label">Location</span>
-                                <span className="occurrence-meta-value">{occ.hallLocation || currentHall.location || 'Block 3 – Ground Floor'}</span>
-                              </div>
-                              <div className="occurrence-meta-item">
-                                <span className="occurrence-meta-label">Slot</span>
-                                <span className="occurrence-meta-value text-blue-400 font-semibold">{occ.slot || selectedSlot}</span>
-                              </div>
-                              <div className="occurrence-meta-item">
-                                <span className="occurrence-meta-label">Booking Type</span>
-                                <span className="occurrence-meta-value">{occ.bookingType || bookingType}</span>
-                              </div>
-                            </div>
-
-                            {isConflict && (
-                              <div className="occurrence-conflict-box">
-                                <div className="occurrence-conflict-reason">
-                                  <AlertTriangle size={13} className="flex-shrink-0" />
-                                  <span>{occ.conflictReason || 'Conflict: This hall is already booked for the selected slot.'}</span>
-                                </div>
-
-                                {occ.conflictDetails && (
-                                  <div className="occurrence-conflict-snippet">
-                                    <div>
-                                      <span className="text-slate-400 block text-[10px]">Conflicting Event:</span>
-                                      <span className="font-semibold text-white">{occ.conflictDetails.eventTitle || 'Booked Event'}</span>
-                                    </div>
-                                    <div>
-                                      <span className="text-slate-400 block text-[10px]">Request ID:</span>
-                                      <span className="font-mono text-slate-300">{occ.conflictDetails.requestId || '-'}</span>
-                                    </div>
-                                    <div>
-                                      <span className="text-slate-400 block text-[10px]">Department:</span>
-                                      <span className="text-slate-300">{occ.conflictDetails.department || '-'}</span>
-                                    </div>
-                                    <div>
-                                      <span className="text-slate-400 block text-[10px]">Status:</span>
-                                      <span className="font-semibold text-rose-300">{occ.conflictDetails.status || '-'}</span>
-                                    </div>
-                                  </div>
-                                )}
-
-                                <button
-                                  type="button"
-                                  onClick={() => setConflictModalData({
-                                    ...occ,
-                                    dateFormatted: dateFormatted || occ.date,
-                                    day: occ.day || dayOfWeek,
-                                    hallName: occ.hallName || currentHall.name,
-                                    hallId: occ.hallId || currentHall.hallId,
-                                    hallLocation: occ.hallLocation || currentHall.location,
-                                    slot: occ.slot || selectedSlot,
-                                  })}
-                                  className="btn-view-conflict"
-                                >
-                                  <Eye size={12} /> View Conflict Details
-                                </button>
-                              </div>
-                            )}
-
-                            {isUnavailable && (
-                              <div className="p-2.5 rounded-lg bg-amber-950/40 border border-amber-500/30 text-amber-200 text-xs flex items-center justify-between">
-                                <div className="flex items-center gap-1.5 font-medium">
-                                  <AlertTriangle size={13} className="text-amber-400" />
-                                  <span>{occ.conflictReason || `${currentHall.name} is currently under maintenance.`}</span>
-                                </div>
-                                <span className="badge text-[10px] bg-amber-900/60 text-amber-300 border border-amber-500/40">
-                                  Under Maintenance
-                                </span>
-                              </div>
-                            )}
+                            <span
+                              className={`badge text-[10px] ${isBooked ? 'bg-rose-900/60 text-rose-300' : 'bg-emerald-900/40 text-emerald-300'
+                                }`}
+                            >
+                              {isBooked ? 'BOOKED' : 'AVAILABLE'}
+                            </span>
                           </div>
                         );
                       })}
                     </div>
                   )}
                 </div>
-              )}
 
-              {/* Active Reservations */}
-              {activeBookings.length > 0 && (
-                <div className="mt-3 p-2.5 rounded-lg bg-slate-900/80 border border-slate-800">
-                  <span className="text-xs font-semibold text-slate-300 block mb-1.5">
-                    Active Reservations on this Date:
-                  </span>
-                  <div className="space-y-1 text-xs">
-                    {activeBookings.map((b, i) => (
-                      <div key={i} className="flex justify-between items-center text-slate-400">
-                        <span>{b.eventTitle} ({b.department})</span>
-                        <span className="badge text-[10px] bg-slate-800 text-slate-300">{b.slot}</span>
+                {/* 6. Availability / Conflict Result */}
+                {targetDates.length > 0 && (
+                  <div>
+                    <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <span className="text-slate-300">
+                        Occurrences: <strong className="text-white">{targetDates.length} date(s)</strong>
+                      </span>
+                      {checkingBulk ? (
+                        <span className="text-blue-400 flex items-center gap-1">
+                          <RefreshCw size={12} className="animate-spin" /> Checking slot availability...
+                        </span>
+                      ) : bulkConflictInfo && bulkConflictInfo.conflictCount > 0 ? (
+                        <span className="text-rose-400 font-semibold flex items-center gap-1">
+                          <AlertTriangle size={13} />
+                          ⚠ Conflict Found ({bulkConflictInfo.conflictCount} conflict(s))
+                        </span>
+                      ) : (
+                        <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                          <CheckCircle2 size={13} /> ✓ Available
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Detailed Occurrence & Conflict List (if conflict or multi-day/recurring) */}
+                    {((bulkConflictInfo && bulkConflictInfo.conflictCount > 0) || bookingType !== 'ONE_TIME') && (
+                      <div className="occurrence-list-container mt-2 max-h-[200px] overflow-y-auto">
+                        {(bulkConflictInfo?.occurrences || targetDates.map((d) => ({
+                          date: d,
+                          day: getOccurrenceDateDisplay(d).dayOfWeek,
+                          hallId: currentHall.hallId,
+                          hallName: currentHall.name,
+                          hallLocation: currentHall.location,
+                          slot: selectedSlot,
+                          bookingType: bookingType,
+                          status: checkingBulk ? 'CHECKING' : 'AVAILABLE',
+                        }))).map((occ, idx) => {
+                          const { dateFormatted, dayOfWeek } = getOccurrenceDateDisplay(occ.date);
+                          const isConflict = occ.status === 'CONFLICT';
+                          const isUnavailable = occ.status === 'UNAVAILABLE' || occ.isMaintenance;
+                          const isChecking = occ.status === 'CHECKING' || checkingBulk;
+
+                          return (
+                            <div
+                              key={`${occ.date}-${idx}`}
+                              className={`occurrence-card ${isConflict
+                                  ? 'occurrence-card-conflict'
+                                  : isUnavailable
+                                    ? 'occurrence-card-unavailable'
+                                    : 'occurrence-card-available'
+                                }`}
+                            >
+                              <div className="occurrence-card-header">
+                                <div className="occurrence-title-group">
+                                  <span className="occurrence-index-badge">Occurrence {idx + 1}</span>
+                                  <span className="occurrence-date-title">{dateFormatted || occ.date}</span>
+                                  <span className="occurrence-day-sub">({occ.day || dayOfWeek})</span>
+                                </div>
+
+                                <div>
+                                  {isChecking ? (
+                                    <span className="text-blue-400 text-xs font-semibold flex items-center gap-1">
+                                      <RefreshCw size={12} className="animate-spin" /> Checking...
+                                    </span>
+                                  ) : isConflict ? (
+                                    <span className="occurrence-status-badge occurrence-status-conflict">
+                                      <AlertTriangle size={12} /> ⚠ CONFLICT
+                                    </span>
+                                  ) : isUnavailable ? (
+                                    <span className="occurrence-status-badge occurrence-status-unavailable">
+                                      <AlertTriangle size={12} /> ⚠ UNAVAILABLE
+                                    </span>
+                                  ) : (
+                                    <span className="occurrence-status-badge occurrence-status-available">
+                                      <CheckCircle2 size={12} /> ✓ AVAILABLE
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="occurrence-meta-grid">
+                                <div className="occurrence-meta-item">
+                                  <span className="occurrence-meta-label">Seminar Hall</span>
+                                  <span className="occurrence-meta-value">{occ.hallName || currentHall.name}</span>
+                                </div>
+                                <div className="occurrence-meta-item">
+                                  <span className="occurrence-meta-label">Location</span>
+                                  <span className="occurrence-meta-value">{occ.hallLocation || currentHall.location || 'Campus'}</span>
+                                </div>
+                                <div className="occurrence-meta-item">
+                                  <span className="occurrence-meta-label">Slot</span>
+                                  <span className="occurrence-meta-value text-blue-400 font-semibold">{occ.slot || selectedSlot}</span>
+                                </div>
+                              </div>
+
+                              {isConflict && (
+                                <div className="occurrence-conflict-box">
+                                  <div className="occurrence-conflict-reason">
+                                    <AlertTriangle size={13} className="flex-shrink-0" />
+                                    <span>{occ.conflictReason || 'Conflict: This hall is already booked for the selected slot.'}</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setConflictModalData({
+                                      ...occ,
+                                      dateFormatted: dateFormatted || occ.date,
+                                      day: occ.day || dayOfWeek,
+                                      hallName: occ.hallName || currentHall.name,
+                                      hallId: occ.hallId || currentHall.hallId,
+                                      hallLocation: occ.hallLocation || currentHall.location,
+                                      slot: occ.slot || selectedSlot,
+                                    })}
+                                    className="btn-view-conflict"
+                                  >
+                                    <Eye size={12} /> View Conflict Details
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
+                    )}
                   </div>
-                </div>
-              )}
-            </div>
+                )}
 
-            {/* Right: Booking Form */}
-            <div className="card-panel">
-              <span className="card-title">Submit Booking Request</span>
-              <form onSubmit={handleOpenReview} className="form-column mt-3">
-                <div className="form-group">
-                  <label className="form-label text-xs">Event Title *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. National Symposium on Generative AI"
-                    value={eventTitle}
-                    onChange={(e) => setEventTitle(e.target.value)}
-                    required
-                    className="w-full text-xs"
-                  />
-                </div>
+                {/* Active Reservations */}
+                {activeBookings.length > 0 && (
+                  <div className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800">
+                    <span className="text-xs font-semibold text-slate-300 block mb-1.5">
+                      Active Reservations on this Date:
+                    </span>
+                    <div className="space-y-1 text-xs">
+                      {activeBookings.map((b, i) => (
+                        <div key={i} className="flex justify-between items-center text-slate-400">
+                          <span>{b.eventTitle} ({b.department})</span>
+                          <span className="badge text-[10px] bg-slate-800 text-slate-300">{b.slot}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
 
-                <div className="form-group">
-                  <label className="form-label text-xs">Purpose / Description *</label>
-                  <textarea
-                    rows={3}
-                    placeholder="Provide details of the event, guests, or program schedule..."
-                    value={purpose}
-                    onChange={(e) => setPurpose(e.target.value)}
-                    required
-                    className="w-full text-xs"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Right Column: Request Details Form */}
+              <div className="column-stack">
+                <form onSubmit={handleOpenReview} className="form-column">
                   <div className="form-group">
-                    <label className="form-label text-xs">Expected Participants *</label>
+                    <label className="form-label text-xs">Event Title *</label>
                     <input
-                      type="number"
-                      min={1}
-                      max={currentHall.capacity || 500}
-                      value={expectedParticipants}
-                      onChange={(e) => setExpectedParticipants(e.target.value)}
+                      type="text"
+                      placeholder="e.g. National Symposium on Generative AI"
+                      value={eventTitle}
+                      onChange={(e) => setEventTitle(e.target.value)}
                       required
                       className="w-full text-xs"
                     />
-                    <span className="text-[10px] text-slate-500 mt-1 block">
-                      Hall capacity: {currentHall.capacity || 0} seats
-                    </span>
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label text-xs">Selected Slot *</label>
-                    <input
-                      type="text"
-                      readOnly
-                      value={selectedSlot}
-                      className="w-full text-xs bg-slate-900 border-slate-800 text-blue-400 font-semibold"
+                    <label className="form-label text-xs">Purpose / Description *</label>
+                    <textarea
+                      rows={3}
+                      placeholder="Provide details of the event, guests, or program schedule..."
+                      value={purpose}
+                      onChange={(e) => setPurpose(e.target.value)}
+                      required
+                      className="w-full text-xs"
                     />
                   </div>
-                </div>
 
-                <div className="form-group">
-                  <label className="form-label text-xs">Additional Requirements</label>
-                  <textarea
-                    rows={2}
-                    placeholder="Extra microphones, podium branding, livestreaming setup..."
-                    value={additionalRequirements}
-                    onChange={(e) => setAdditionalRequirements(e.target.value)}
-                    className="w-full text-xs"
-                  />
-                </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="form-group">
+                      <label className="form-label text-xs">Expected Participants *</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={currentHall.capacity || 500}
+                        value={expectedParticipants}
+                        onChange={(e) => setExpectedParticipants(e.target.value)}
+                        required
+                        className="w-full text-xs"
+                      />
+                      <span className="text-[10px] text-slate-500 mt-1 block">
+                        Hall capacity: {currentHall.capacity || 0} seats
+                      </span>
+                    </div>
 
-                <div className="form-actions-row mt-2">
-                  <button
-                    type="button"
-                    onClick={handleReset}
-                    className="btn btn-outline btn-flex-1 text-xs"
-                    disabled={submitting}
-                  >
-                    <RotateCcw size={14} /> Reset
-                  </button>
-                  <button
-                    type="submit"
-                    className="btn btn-primary btn-flex-2 text-xs"
-                    disabled={submitting || !isHallAvailable || isCapacityExceeded}
-                  >
-                    <Send size={14} /> Review & Submit
-                  </button>
-                </div>
-              </form>
+                    <div className="form-group">
+                      <label className="form-label text-xs">Selected Slot *</label>
+                      <input
+                        type="text"
+                        readOnly
+                        value={selectedSlot}
+                        className="w-full text-xs bg-slate-900 border-slate-800 text-blue-400 font-semibold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label text-xs">Additional Requirements</label>
+                    <textarea
+                      rows={2}
+                      placeholder="Extra microphones, podium branding, livestreaming setup..."
+                      value={additionalRequirements}
+                      onChange={(e) => setAdditionalRequirements(e.target.value)}
+                      className="w-full text-xs"
+                    />
+                  </div>
+
+                  <div className="form-actions-row mt-2">
+                    <button
+                      type="button"
+                      onClick={handleReset}
+                      className="btn btn-outline btn-flex-1 text-xs"
+                      disabled={submitting}
+                    >
+                      <RotateCcw size={14} /> Reset
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-primary btn-flex-2 text-xs"
+                      disabled={submitting || !isHallAvailable || isCapacityExceeded}
+                    >
+                      <Send size={14} /> Review & Submit
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
 
-          {/* Quick Calendar */}
-          <div className="card-panel">
-            <QuickCalendar
-              title="Seminar Hall Quick Calendar"
-              selectedDate={selectedDate}
-              onSelectDate={(newDate) => {
-                setSelectedDate(newDate);
-                setToDate(newDate);
-              }}
-              events={allBookings.map((b) => ({
-                date: b.date,
-                title: `${b.hallName || b.hallId}: ${b.eventTitle} (${b.slot})`,
-                status: b.status,
-                type: 'seminar',
-              }))}
-              showLegend={true}
-              showEventsList={true}
-            />
+          {/* Auxiliary 2-Column Row: Guidelines & Quick Calendar */}
+          <div className="two-column-layout balanced mt-6">
+            <div className="column-stack">
+              {/* Seminar Hall Booking Guidelines */}
+              <div className="guidelines-card">
+                <div className="guidelines-header">
+                  <Info size={16} className="text-arctic-blue" />
+                  <span className="guidelines-title text-xs">Seminar Hall Guidelines</span>
+                </div>
+                <ul className="guidelines-list text-xs">
+                  <li>Reservations should be submitted at least 2 working days in advance.</li>
+                  <li>Halls are allocated subject to Coordinator and AO approval.</li>
+                  <li>Audio/visual facilities and AC are prepared according to booked slots.</li>
+                  <li>Check live slot availability to prevent scheduling conflicts.</li>
+                  <li>Requests can be tracked and managed under the My Requests tab.</li>
+                </ul>
+                <div className="guidelines-footer">
+                  <CalendarRange size={14} className="text-emerald" />
+                  <span className="guidelines-tagline text-xs">“Excellence in Academic Gatherings”</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="column-stack">
+              {/* Quick Calendar */}
+              <QuickCalendar
+                title="Seminar Hall Quick Calendar"
+                selectedDate={selectedDate}
+                onSelectDate={(newDate) => {
+                  setSelectedDate(newDate);
+                  setToDate(newDate);
+                }}
+                events={allBookings.map((b) => ({
+                  date: b.date,
+                  title: `${b.hallName || b.hallId}: ${b.eventTitle} (${b.slot})`,
+                  status: b.status,
+                  type: 'seminar',
+                }))}
+                showLegend={true}
+                showEventsList={true}
+              />
+            </div>
           </div>
 
           {/* MY REQUESTS SECTION (Also rendered on the Booking tab when scrolling down) */}

@@ -530,6 +530,24 @@ img, svg, canvas, video {
     width: 100% !important;
     max-width: 100% !important;
   }
+
+  /* Quick Calendar Mobile (<= 640px) */
+  .calendar-card {
+    padding: 14px 12px;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .calendar-weekdays-grid,
+  .calendar-days-grid {
+    gap: 3px;
+  }
+
+  .calendar-day-btn {
+    min-height: 32px;
+    font-size: 0.74rem;
+  }
 }
 
 /* ------------------------------------------------------------
@@ -625,6 +643,37 @@ img, svg, canvas, video {
   .calendar-card {
     padding: 10px 8px;
     max-width: 100%;
+    border-radius: var(--radius-sm, 8px);
+  }
+
+  .calendar-header {
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+  }
+
+  .calendar-title {
+    font-size: 0.82rem;
+  }
+
+  .calendar-active-date-badge {
+    font-size: 0.65rem;
+    padding: 1px 5px;
+  }
+
+  .calendar-nav-bar {
+    margin-bottom: 8px;
+    padding: 2px 4px;
+  }
+
+  .calendar-month-title {
+    font-size: 0.78rem;
+  }
+
+  .calendar-nav-btn {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    min-height: 24px;
   }
 
   .calendar-weekdays-grid,
@@ -633,14 +682,37 @@ img, svg, canvas, video {
   }
 
   .calendar-weekday-cell {
-    font-size: 0.65rem;
+    font-size: 0.62rem;
     padding: 2px 0;
   }
 
   .calendar-day-btn {
-    min-height: 32px;
-    font-size: 0.70rem;
-    padding: 2px 1px;
+    min-height: 28px;
+    font-size: 0.68rem;
+    padding: 1px;
+    border-radius: var(--radius-xs, 4px);
+  }
+
+  .calendar-event-dot {
+    width: 3px;
+    height: 3px;
+    bottom: 2px;
+  }
+
+  .calendar-events-section {
+    margin-top: 8px;
+    padding-top: 6px;
+  }
+
+  .calendar-events-list {
+    max-height: 90px;
+  }
+
+  .calendar-legend-container {
+    gap: 6px;
+    font-size: 0.62rem;
+    margin-top: 8px;
+    padding-top: 6px;
   }
 
   .login-card {
