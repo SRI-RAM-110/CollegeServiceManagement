@@ -621,7 +621,7 @@ export default function UserManagement() {
       {/* Users Table Card */}
       <div className="rounded-xl border border-slate-800/80 bg-slate-900/60 backdrop-blur-md shadow-2xl">
         <div className="overflow-x-auto min-h-[400px] pb-12">
-          <table className="w-full text-left text-xs border-collapse">
+          <table className="w-full min-w-[850px] text-left text-xs border-collapse">
             <thead className="bg-slate-900/90 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-800 text-[11px]">
               <tr>
                 <th className="py-2.5 px-3">Full Name</th>

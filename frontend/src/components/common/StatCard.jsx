@@ -5,9 +5,12 @@ export const StatCard = ({
   title,
   value,
   subtitle,
+  trend,
   color = 'blue',
   onClick,
 }) => {
+  const displaySubtitle = subtitle || trend;
+
   return (
     <div
       className={`stat-card-gradient stat-card-${color} ${onClick ? 'stat-card-clickable' : ''}`}
@@ -22,16 +25,16 @@ export const StatCard = ({
         <span className="stat-card-value">
           {value !== undefined ? value : 0}
         </span>
-        {subtitle && (
+        {displaySubtitle && (
           <span className="stat-card-subtitle">
-            {subtitle}
+            {displaySubtitle}
           </span>
         )}
       </div>
 
       {Icon && (
         <div className="stat-card-icon-container">
-          <Icon size={24} color="#ffffff" />
+          <Icon size={22} color="#ffffff" aria-hidden="true" />
         </div>
       )}
     </div>

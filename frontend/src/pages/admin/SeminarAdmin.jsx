@@ -256,27 +256,28 @@ export default function SeminarAdmin() {
   };
 
   // Upcoming bookings
+  const DASHBOARD_PREVIEW_LIMIT = 5;
   const todayStr = getTodayStr();
   const upcomingBookings = requests
     .filter(r => (r.status === 'APPROVED' || r.status === 'BOOKED') && ((r.date || r.bookingDate) >= todayStr))
     .sort((a, b) => (a.date || a.bookingDate || '').localeCompare(b.date || b.bookingDate || ''))
-    .slice(0, 5);
+    .slice(0, DASHBOARD_PREVIEW_LIMIT);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3.5 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-white tracking-tight">
+      <div className="coordinator-portal-header">
+        <div className="coordinator-header-info">
+          <div className="coordinator-title-wrap">
+            <h1 className="coordinator-portal-title">
               {isCoordinatorOnly ? 'Seminar Coordinator Portal' : 'Seminar Hall Management'}
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              {isCoordinatorOnly ? `Coordinator: ${user?.userId || user?.name || ''}` : 'Admin Portal'}
+            <span className="coordinator-role-badge">
+              <ShieldCheck className="coordinator-badge-icon" />
+              <span>{isCoordinatorOnly ? `Coordinator: ${user?.userId || user?.name || ''}` : 'Admin Portal'}</span>
             </span>
           </div>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="coordinator-portal-subtitle">
             {isCoordinatorOnly 
               ? `Manage assigned halls (${assignedHallIds.join(', ') || 'None'}), review booking requests, cancellations, and reschedules.`
               : 'Manage hall requests, series occurrences, cancellation/reschedule workflows, and slot availability.'}
@@ -285,52 +286,53 @@ export default function SeminarAdmin() {
         <button
           onClick={fetchData}
           disabled={refreshing}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 text-sm border border-slate-700/60 transition"
+          className="coordinator-refresh-btn"
+          aria-label="Refresh seminar data"
         >
-          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-blue-400' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 flex-shrink-0 ${refreshing ? 'animate-spin text-blue-400' : ''}`} />
           <span>Refresh</span>
         </button>
       </div>
 
       {/* My Assigned Halls Section (Section 35) */}
       {isCoordinatorOnly && (
-        <div className="card-panel p-5 space-y-3">
-          <div className="flex items-center justify-between">
+        <div className="card-panel coordinator-assigned-halls-card">
+          <div className="coordinator-assigned-halls-header">
             <div className="flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-blue-400" />
-              <h2 className="text-base font-semibold text-white">My Assigned Halls</h2>
+              <Building2 className="w-4 h-4 text-blue-400 flex-shrink-0" />
+              <h2 className="text-sm sm:text-base font-semibold text-white">My Assigned Halls</h2>
             </div>
-            <span className="text-xs text-blue-300 bg-blue-500/10 px-2.5 py-1 rounded-full border border-blue-500/30 font-medium">
+            <span className="coordinator-assigned-count-badge">
               {halls.filter(isHallAssignedToUser).length} Assigned Hall(s)
             </span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3">
             {halls.filter(isHallAssignedToUser).map((hall) => (
-              <div key={hall.id} className="bg-slate-900/80 border border-slate-800 rounded-lg p-3.5">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-sm font-semibold text-white">{hall.name}</h3>
+              <div key={hall.id} className="coordinator-hall-card">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-semibold text-white truncate">{hall.name}</h3>
                     <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
-                      <MapPin className="w-3 h-3 text-slate-500" />
-                      {hall.location || `${hall.block}, ${hall.floor}`}
+                      <MapPin className="w-3 h-3 text-slate-500 flex-shrink-0" />
+                      <span className="truncate">{hall.location || `${hall.block}, ${hall.floor}`}</span>
                     </p>
                   </div>
-                  <span className="text-xs font-medium text-slate-300 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700/50">
+                  <span className="coordinator-capacity-pill">
                     Cap: {hall.capacity}
                   </span>
                 </div>
-                <div className="mt-2.5 flex items-center justify-between text-xs">
-                  <div className="flex flex-wrap gap-1">
+                <div className="coordinator-hall-footer">
+                  <div className="coordinator-facilities-wrap">
                     {(hall.facilities || []).slice(0, 3).map((f, i) => (
-                      <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">
+                      <span key={i} className="coordinator-facility-tag">
                         {f}
                       </span>
                     ))}
                   </div>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                  <span className={`coordinator-status-tag ${
                     hall.status === 'Available' || !hall.status
-                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                      : 'bg-rose-500/10 text-rose-400 border-rose-500/30'
+                      ? 'status-avail'
+                      : 'status-busy'
                   }`}>
                     {hall.status || 'Available'}
                   </span>
@@ -341,8 +343,8 @@ export default function SeminarAdmin() {
         </div>
       )}
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Stat Cards - 2 cols on mobile for balanced density, 4 cols on desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <StatCard
           title="Total Requests"
           value={stats.total}
@@ -481,10 +483,23 @@ export default function SeminarAdmin() {
 
           {/* Upcoming Bookings mini list */}
           <div className="card-panel p-4">
-            <h2 className="text-sm font-semibold text-white flex items-center gap-2 mb-3">
-              <CalendarIcon className="w-4 h-4 text-emerald-400" />
-              Upcoming Bookings
-            </h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+                <CalendarIcon className="w-4 h-4 text-emerald-400" />
+                Upcoming Bookings
+              </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('seminar-requests-table');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="view-all-link text-xs"
+                title="View complete list of seminar bookings"
+              >
+                View All
+              </button>
+            </div>
             {upcomingBookings.length === 0 ? (
               <p className="text-xs text-slate-500 text-center py-4">No upcoming bookings scheduled.</p>
             ) : (
@@ -511,7 +526,7 @@ export default function SeminarAdmin() {
       </div>
 
       {/* Bottom Section: Seminar Hall Requests Table */}
-      <div className="card-panel p-5 space-y-4">
+      <div id="seminar-requests-table" className="card-panel p-5 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h2 className="text-base font-semibold text-white">Seminar Hall Requests</h2>
@@ -519,7 +534,7 @@ export default function SeminarAdmin() {
           </div>
 
           {/* Filter Bar (Section 26) */}
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="admin-filter-bar flex flex-wrap items-center gap-2.5">
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input

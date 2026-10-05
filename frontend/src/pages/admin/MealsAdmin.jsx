@@ -434,7 +434,7 @@ export default function MealsAdmin() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <StatCard
           title="Total Requests"
           value={stats.total}
@@ -589,7 +589,7 @@ export default function MealsAdmin() {
           </div>
 
           {/* Filter Bar */}
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="admin-filter-bar flex flex-wrap items-center gap-2.5">
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input

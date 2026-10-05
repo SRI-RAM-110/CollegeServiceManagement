@@ -24,6 +24,83 @@ import { Modal } from '../../components/common/Modal';
 import { RequestDetailsModal } from '../../components/common/RequestDetailsModal';
 import { getTodayStr } from '../../utils/dateUtils';
 
+const DASHBOARD_PREVIEW_LIMIT = 5;
+
+// Helper to extract timestamp from request submission / creation (Newest -> Oldest)
+const getRequestCreationTime = (item) => {
+  if (item?.createdAt) {
+    const t = new Date(item.createdAt).getTime();
+    if (!isNaN(t)) return t;
+  }
+  if (item?.date) {
+    const t = new Date(item.date).getTime();
+    if (!isNaN(t)) return t;
+  }
+  return 0;
+};
+
+// Helper to extract event/booking date string
+const getEventDateStr = (item) => {
+  return item?.date || item?.bookingDate || item?.eventDate || item?.tripDate || item?.checkInDate || '';
+};
+
+// Filter out past events; keep upcoming events (today with non-passed time or future dates)
+const isEventUpcoming = (item) => {
+  const dateStr = getEventDateStr(item);
+  if (!dateStr) return false;
+
+  const today = getTodayStr(); // 'YYYY-MM-DD'
+  if (dateStr > today) return true;
+  if (dateStr < today) return false;
+
+  // Date is today - check time/slot if available
+  const now = new Date();
+  const currentHours = now.getHours();
+  const currentMinutes = now.getMinutes();
+
+  const timeStr = item.time || item.departureTime || item.serviceTime || item.timeSlot || item.slot || '';
+  if (!timeStr) return true; // Keep today's events if time is not specified
+
+  const upperSlot = timeStr.toUpperCase();
+  if (upperSlot.includes('MORNING') || upperSlot.includes('FORENOON')) {
+    return currentHours < 13;
+  }
+  if (upperSlot.includes('AFTERNOON')) {
+    return currentHours < 18;
+  }
+  if (upperSlot.includes('EVENING')) {
+    return currentHours < 22;
+  }
+  if (upperSlot.includes('FULL_DAY')) {
+    return currentHours < 20;
+  }
+
+  const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})(?:\s*([AP]M))?/i);
+  if (timeMatch) {
+    let hours = parseInt(timeMatch[1], 10);
+    const mins = parseInt(timeMatch[2], 10);
+    const mer = timeMatch[3]?.toUpperCase();
+    if (mer === 'PM' && hours < 12) hours += 12;
+    if (mer === 'AM' && hours === 12) hours = 0;
+
+    return hours > currentHours || (hours === currentHours && mins >= currentMinutes);
+  }
+
+  return true;
+};
+
+// Chronological sort: nearest upcoming event first
+const sortEventsChronological = (a, b) => {
+  const dateA = getEventDateStr(a);
+  const dateB = getEventDateStr(b);
+  if (dateA !== dateB) {
+    return dateA.localeCompare(dateB);
+  }
+  const timeA = a.time || a.departureTime || a.serviceTime || a.timeSlot || a.slot || '';
+  const timeB = b.time || b.departureTime || b.serviceTime || b.timeSlot || b.slot || '';
+  return timeA.localeCompare(timeB);
+};
+
 export const DepartmentDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -69,19 +146,32 @@ export const DepartmentDashboard = () => {
   const recentRequests = dashboardData?.recentRequests || [];
   const announcements = dashboardData?.announcements || [];
 
-  const filteredUpcomingEvents = upcomingEvents.filter((item) => {
-    if (selectedServiceFilter === 'ALL') return true;
-    if (item.serviceCategory) {
-      return item.serviceCategory.toUpperCase() === selectedServiceFilter;
-    }
-    // Fallback matching
-    if (selectedServiceFilter === 'SEMINAR') return item.service?.toLowerCase().includes('seminar');
-    if (selectedServiceFilter === 'ACCOMMODATION') return item.service?.toLowerCase().includes('accommodation');
-    if (selectedServiceFilter === 'STATIONERY') return item.service?.toLowerCase().includes('stationery');
-    if (selectedServiceFilter === 'MEALS') return item.service?.toLowerCase().includes('meals') || item.service?.toLowerCase().includes('snacks');
-    if (selectedServiceFilter === 'TRANSPORT') return item.service?.toLowerCase().includes('transport');
-    return true;
+  // 1. Recent Requests: Sorted by creation/submission date (Newest -> Oldest), preview limited to 5
+  const sortedRecentRequests = [...recentRequests].sort((a, b) => {
+    return getRequestCreationTime(b) - getRequestCreationTime(a);
   });
+  const displayRecentRequests = sortedRecentRequests.slice(0, DASHBOARD_PREVIEW_LIMIT);
+
+  // 2. Upcoming Events: Past events filtered out, filtered by service tab, sorted chronologically (Nearest -> Furthest), preview limited to 5
+  const validUpcomingEvents = upcomingEvents.filter(isEventUpcoming);
+
+  const filteredUpcomingEvents = validUpcomingEvents
+    .filter((item) => {
+      if (selectedServiceFilter === 'ALL') return true;
+      if (item.serviceCategory) {
+        return item.serviceCategory.toUpperCase() === selectedServiceFilter;
+      }
+      // Fallback matching
+      if (selectedServiceFilter === 'SEMINAR') return item.service?.toLowerCase().includes('seminar');
+      if (selectedServiceFilter === 'ACCOMMODATION') return item.service?.toLowerCase().includes('accommodation');
+      if (selectedServiceFilter === 'STATIONERY') return item.service?.toLowerCase().includes('stationery');
+      if (selectedServiceFilter === 'MEALS') return item.service?.toLowerCase().includes('meals') || item.service?.toLowerCase().includes('snacks');
+      if (selectedServiceFilter === 'TRANSPORT') return item.service?.toLowerCase().includes('transport');
+      return true;
+    })
+    .sort(sortEventsChronological);
+
+  const displayUpcomingEvents = filteredUpcomingEvents.slice(0, DASHBOARD_PREVIEW_LIMIT);
 
   const getEmptyMessage = (filterKey) => {
     switch (filterKey) {
@@ -96,7 +186,7 @@ export const DepartmentDashboard = () => {
       case 'TRANSPORT':
         return 'No upcoming Transport events found.';
       default:
-        return 'No upcoming events found.';
+        return 'No upcoming events';
     }
   };
 
@@ -221,8 +311,24 @@ export const DepartmentDashboard = () => {
                 Upcoming Events / Bookings
               </span>
               <button
-                onClick={() => navigate('/my-requests')}
+                type="button"
+                onClick={() => {
+                  const serviceParamMap = {
+                    SEMINAR: 'Seminar Hall',
+                    ACCOMMODATION: 'Accommodation',
+                    TRANSPORT: 'Transport',
+                    STATIONERY: 'Stationery',
+                    MEALS: 'Snacks & Meals',
+                  };
+                  const mapped = serviceParamMap[selectedServiceFilter];
+                  if (mapped) {
+                    navigate(`/my-requests?service=${encodeURIComponent(mapped)}`);
+                  } else {
+                    navigate('/my-requests');
+                  }
+                }}
                 className="view-all-link"
+                title="View complete list of authorized requests and bookings"
               >
                 View All
               </button>
@@ -254,16 +360,16 @@ export const DepartmentDashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredUpcomingEvents.length === 0 ? (
+                  {displayUpcomingEvents.length === 0 ? (
                     <tr>
                       <td colSpan="5" className="table-empty-cell">
                         {getEmptyMessage(selectedServiceFilter)}
                       </td>
                     </tr>
                   ) : (
-                    filteredUpcomingEvents.map((item, idx) => (
+                    displayUpcomingEvents.map((item, idx) => (
                       <tr key={item.id || idx}>
-                        <td className="table-cell-date">{item.date}</td>
+                        <td className="table-cell-date">{item.date || item.bookingDate || item.eventDate || item.tripDate || item.checkInDate || '-'}</td>
                         <td className="table-cell-service">{item.service}</td>
                         <td>{item.details}</td>
                         <td>
@@ -293,8 +399,10 @@ export const DepartmentDashboard = () => {
                 Recent Requests
               </span>
               <button
+                type="button"
                 onClick={() => navigate('/my-requests')}
                 className="view-all-link"
+                title="View complete list of all requests"
               >
                 View All
               </button>
@@ -311,16 +419,16 @@ export const DepartmentDashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentRequests.length === 0 ? (
+                  {displayRecentRequests.length === 0 ? (
                     <tr>
                       <td colSpan="4" className="table-empty-cell">
-                        No recent requests.
+                        No recent requests
                       </td>
                     </tr>
                   ) : (
-                    recentRequests.map((item, idx) => (
+                    displayRecentRequests.map((item, idx) => (
                       <tr key={item.id || idx}>
-                        <td className="table-cell-date">{item.date}</td>
+                        <td className="table-cell-date">{item.date || (item.createdAt ? String(item.createdAt).substring(0, 10) : '-')}</td>
                         <td className="table-cell-service">{item.service}</td>
                         <td>{item.details}</td>
                         <td>

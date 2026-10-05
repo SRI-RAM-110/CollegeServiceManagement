@@ -495,7 +495,7 @@ export const SnacksMeals = () => {
                 )}
               </div>
 
-              <div className="selected-meals-list max-h-[200px] overflow-y-auto">
+              <div className="selected-meals-list">
                 {Object.keys(selectedMeals).length === 0 ? (
                   <div className="text-center py-4 text-slate-500 text-xs">
                     No meal categories selected yet. Click meal types above.

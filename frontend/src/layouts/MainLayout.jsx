@@ -8,15 +8,6 @@ export const MainLayout = () => {
 
   return (
     <div className="main-layout-container">
-      {/* Mobile Drawer Backdrop */}
-      {sidebarOpen && (
-        <div
-          onClick={() => setSidebarOpen(false)}
-          className="mobile-drawer-backdrop"
-          aria-hidden="true"
-        />
-      )}
-
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 

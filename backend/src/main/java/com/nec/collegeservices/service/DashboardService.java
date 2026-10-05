@@ -84,7 +84,7 @@ public class DashboardService {
         // Show ONLY service requests that were created/submitted by the currently logged-in user.
         List<UnifiedRequestService.UnifiedRequestItem> userUpcoming = getUserUpcomingEvents(user);
         data.put("upcomingEvents", userUpcoming);
-        data.put("recentRequests", userRequests.stream().limit(6).toList());
+        data.put("recentRequests", userRequests);
 
         // Announcements: COLLEGE-WIDE & Department Announcements remain unchanged (Requirement 9 & 23)
         data.put("announcements", announcementRepository.findByActiveTrue());
@@ -298,8 +298,8 @@ public class DashboardService {
         data.put("pendingByService", pendingByService);
 
         List<UnifiedRequestService.UnifiedRequestItem> allRecent = unifiedRequestService.getAllRequests("ALL", "ALL", "ALL", null);
-        data.put("recentRequests", allRecent.stream().limit(8).toList());
-        data.put("upcomingEvents", allRecent.stream().filter(r -> "APPROVED".equalsIgnoreCase(r.getStatus()) || "PENDING".equalsIgnoreCase(r.getStatus())).limit(5).toList());
+        data.put("recentRequests", allRecent);
+        data.put("upcomingEvents", allRecent.stream().filter(r -> "APPROVED".equalsIgnoreCase(r.getStatus()) || "PENDING".equalsIgnoreCase(r.getStatus())).toList());
 
         Map<String, Long> byDepartment = new LinkedHashMap<>();
         for (UnifiedRequestService.UnifiedRequestItem item : allRecent) {

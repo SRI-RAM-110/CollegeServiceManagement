@@ -692,6 +692,231 @@
   line-height: 1.35;
 }
 
+/* User Profile Details Dropdown Panel - Footer */
+.user-dropdown-footer {
+  padding: 10px 16px;
+  background: rgba(15, 23, 42, 0.75);
+  border-top: 1px solid var(--glass-border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.user-dropdown-logout-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.30);
+  border-radius: var(--radius-sm);
+  color: #fca5a5;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.user-dropdown-logout-btn:hover {
+  background: rgba(239, 68, 68, 0.22);
+  color: #ffffff;
+  border-color: rgba(239, 68, 68, 0.55);
+}
+
+/* ============================================================
+   COORDINATOR / ADMIN PORTAL HEADER & CARDS
+   ============================================================ */
+.coordinator-portal-header {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+}
+
+.coordinator-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.coordinator-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.coordinator-portal-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.coordinator-role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: rgba(59, 130, 246, 0.12);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.coordinator-badge-icon {
+  width: 14px;
+  height: 14px;
+  color: #60a5fa;
+  flex-shrink: 0;
+}
+
+.coordinator-portal-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin: 2px 0 0 0;
+}
+
+.coordinator-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 14px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(71, 85, 105, 0.6);
+  color: #cbd5e1;
+  font-size: 0.84rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.coordinator-refresh-btn:hover {
+  background: rgba(51, 65, 85, 0.9);
+  color: #ffffff;
+  border-color: rgba(100, 116, 139, 0.8);
+}
+
+.coordinator-refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Assigned Halls Card */
+.coordinator-assigned-halls-card {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.coordinator-assigned-halls-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.coordinator-assigned-count-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(59, 130, 246, 0.12);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.30);
+  white-space: nowrap;
+}
+
+.coordinator-hall-card {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(51, 65, 85, 0.65);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color var(--transition-fast);
+}
+
+.coordinator-hall-card:hover {
+  border-color: rgba(96, 165, 250, 0.4);
+}
+
+.coordinator-capacity-pill {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #cbd5e1;
+  background: rgba(30, 41, 59, 0.8);
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid rgba(71, 85, 105, 0.5);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.coordinator-hall-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.coordinator-facilities-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.coordinator-facility-tag {
+  font-size: 0.65rem;
+  font-weight: 500;
+  padding: 1.5px 6px;
+  border-radius: 4px;
+  background: rgba(30, 41, 59, 0.9);
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.coordinator-status-tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.coordinator-status-tag.status-avail {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.coordinator-status-tag.status-busy {
+  background: rgba(244, 63, 94, 0.12);
+  color: #fb7185;
+  border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
 .progress-fill {
   width: var(--progress-width, 0%);
 }
@@ -907,25 +1132,32 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
 }
 
 .modal-dialog {
   width: 100%;
   max-width: var(--modal-max-width, 550px);
-  background: rgba(11, 27, 48, 0.88);
+  margin: auto;
+  background: rgba(11, 27, 48, 0.95);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid rgba(120, 174, 245, 0.24);
   border-radius: var(--radius-lg);
   box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.40),
+    0 20px 60px rgba(0, 0, 0, 0.50),
     0 0 30px rgba(77, 163, 255, 0.08);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  max-height: 90vh;
+  max-height: calc(100dvh - 32px);
   animation: fadeIn 0.22s ease-out;
+  box-sizing: border-box;
 }
 
 .modal-header {
@@ -1209,6 +1441,8 @@
 .login-card {
   width: 100%;
   max-width: 480px;
+  margin: auto;
+  box-sizing: border-box;
   background: rgba(11, 27, 48, 0.88);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
@@ -1767,7 +2001,8 @@
   margin: 10px 0 4px 0;
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-xs);
-  overflow: hidden;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .doc-view-table-title {

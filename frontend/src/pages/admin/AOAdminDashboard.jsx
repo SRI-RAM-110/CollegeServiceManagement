@@ -279,6 +279,58 @@ export default function AOAdminDashboard() {
     { key: 'TRANSPORT', label: 'Transport' },
   ];
 
+const DASHBOARD_PREVIEW_LIMIT = 5;
+
+// Helper to extract event date string
+const getEventDateStr = (item) => {
+  return item?.date || item?.bookingDate || item?.eventDate || item?.tripDate || item?.checkInDate || '';
+};
+
+// Filter out past events; keep upcoming events (today with non-passed time or future dates)
+const isEventUpcoming = (item) => {
+  const dateStr = getEventDateStr(item);
+  if (!dateStr) return false;
+
+  const today = getTodayStr(); // 'YYYY-MM-DD'
+  if (dateStr > today) return true;
+  if (dateStr < today) return false;
+
+  // Date is today - check time/slot if available
+  const now = new Date();
+  const currentHours = now.getHours();
+  const currentMinutes = now.getMinutes();
+
+  const timeStr = item.time || item.departureTime || item.serviceTime || item.timeSlot || item.slot || '';
+  if (!timeStr) return true;
+
+  const upperSlot = timeStr.toUpperCase();
+  if (upperSlot.includes('MORNING') || upperSlot.includes('FORENOON')) return currentHours < 13;
+  if (upperSlot.includes('AFTERNOON')) return currentHours < 18;
+  if (upperSlot.includes('EVENING')) return currentHours < 22;
+  if (upperSlot.includes('FULL_DAY')) return currentHours < 20;
+
+  const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})(?:\s*([AP]M))?/i);
+  if (timeMatch) {
+    let hours = parseInt(timeMatch[1], 10);
+    const mins = parseInt(timeMatch[2], 10);
+    const mer = timeMatch[3]?.toUpperCase();
+    if (mer === 'PM' && hours < 12) hours += 12;
+    if (mer === 'AM' && hours === 12) hours = 0;
+    return hours > currentHours || (hours === currentHours && mins >= currentMinutes);
+  }
+  return true;
+};
+
+// Chronological sort: nearest upcoming event first
+const sortEventsChronological = (a, b) => {
+  const dateA = getEventDateStr(a);
+  const dateB = getEventDateStr(b);
+  if (dateA !== dateB) return dateA.localeCompare(dateB);
+  const timeA = a.time || a.departureTime || a.serviceTime || a.timeSlot || a.slot || '';
+  const timeB = b.time || b.departureTime || b.serviceTime || b.timeSlot || b.slot || '';
+  return timeA.localeCompare(timeB);
+};
+
   const getUpcomingEmptyMessage = (filterKey) => {
     switch (filterKey) {
       case 'SEMINAR':
@@ -292,26 +344,33 @@ export default function AOAdminDashboard() {
       case 'TRANSPORT':
         return 'No upcoming Transport events found.';
       default:
-        return 'No upcoming events found.';
+        return 'No upcoming events';
     }
   };
 
-  const filteredUpcomingEvents = (
+  const baseUpcomingSource = (
     dashboardData?.upcomingEvents ||
     allRequests.filter(r => r.status === 'APPROVED' || r.status === 'PENDING')
-  ).filter((item) => {
-    if (upcomingServiceFilter === 'ALL') return true;
-    if (item.serviceCategory) {
-      return item.serviceCategory.toUpperCase() === upcomingServiceFilter;
-    }
-    const s = (item.service || '').toLowerCase();
-    if (upcomingServiceFilter === 'SEMINAR') return s.includes('seminar');
-    if (upcomingServiceFilter === 'ACCOMMODATION') return s.includes('accommodation');
-    if (upcomingServiceFilter === 'STATIONERY') return s.includes('stationery');
-    if (upcomingServiceFilter === 'MEALS') return s.includes('meal') || s.includes('snack');
-    if (upcomingServiceFilter === 'TRANSPORT') return s.includes('transport');
-    return true;
-  });
+  );
+
+  const filteredUpcomingEvents = baseUpcomingSource
+    .filter(isEventUpcoming)
+    .filter((item) => {
+      if (upcomingServiceFilter === 'ALL') return true;
+      if (item.serviceCategory) {
+        return item.serviceCategory.toUpperCase() === upcomingServiceFilter;
+      }
+      const s = (item.service || '').toLowerCase();
+      if (upcomingServiceFilter === 'SEMINAR') return s.includes('seminar');
+      if (upcomingServiceFilter === 'ACCOMMODATION') return s.includes('accommodation');
+      if (upcomingServiceFilter === 'STATIONERY') return s.includes('stationery');
+      if (upcomingServiceFilter === 'MEALS') return s.includes('meal') || s.includes('snack');
+      if (upcomingServiceFilter === 'TRANSPORT') return s.includes('transport');
+      return true;
+    })
+    .sort(sortEventsChronological);
+
+  const displayUpcomingEvents = filteredUpcomingEvents.slice(0, DASHBOARD_PREVIEW_LIMIT);
 
   if (refreshing && !dashboardData) {
     return (
@@ -375,7 +434,7 @@ export default function AOAdminDashboard() {
       </div>
 
       {/* Primary KPI Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <StatCard
           title="Total College Requests"
           value={total}
@@ -407,7 +466,7 @@ export default function AOAdminDashboard() {
       </div>
 
       {/* Service Statistics Cards (5 Cards) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3.5">
         {[
           { name: 'Seminar Hall', icon: Building2, color: 'text-blue-400', border: 'hover:border-blue-500/40', route: '/admin/seminar' },
           { name: 'Accommodation', icon: Home, color: 'text-emerald-400', border: 'hover:border-emerald-500/40', route: '/admin/accommodation' },
@@ -627,14 +686,29 @@ export default function AOAdminDashboard() {
 
           {/* Upcoming Events / Bookings Section with Service Filters */}
           <div className="card-panel p-5 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800/60">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800/60">
               <h3 className="text-base font-semibold text-white flex items-center gap-2">
                 <CalendarDays className="w-4 h-4 text-blue-400" />
                 Upcoming Events & Bookings
               </h3>
-              <span className="text-xs text-slate-400 bg-slate-900 px-2.5 py-1 rounded border border-slate-800">
-                Active: <strong className="text-white">{filteredUpcomingEvents.length}</strong>
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-slate-400 bg-slate-900 px-2.5 py-1 rounded border border-slate-800">
+                  Active: <strong className="text-white">{filteredUpcomingEvents.length}</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById('master-requests-register');
+                    if (el) {
+                      el.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }}
+                  className="view-all-link"
+                  title="View complete Master Requests Register"
+                >
+                  View All
+                </button>
+              </div>
             </div>
 
             {/* Service Filters */}
@@ -664,16 +738,16 @@ export default function AOAdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredUpcomingEvents.length === 0 ? (
+                  {displayUpcomingEvents.length === 0 ? (
                     <tr>
                       <td colSpan="6" className="py-6 text-center text-slate-500">
                         {getUpcomingEmptyMessage(upcomingServiceFilter)}
                       </td>
                     </tr>
                   ) : (
-                    filteredUpcomingEvents.map((item, idx) => (
+                    displayUpcomingEvents.map((item, idx) => (
                       <tr key={item.id || idx} className="hover:bg-slate-800/40 transition">
-                        <td className="py-2.5 px-3 font-mono text-slate-300">{item.date}</td>
+                        <td className="py-2.5 px-3 font-mono text-slate-300">{item.date || item.bookingDate || item.eventDate || item.tripDate || item.checkInDate || '-'}</td>
                         <td className="py-2.5 px-3 font-medium text-white">{item.service}</td>
                         <td className="py-2.5 px-3 text-slate-300">{item.department}</td>
                         <td className="py-2.5 px-3 text-slate-300 truncate max-w-[200px]">{item.details}</td>
@@ -730,7 +804,7 @@ export default function AOAdminDashboard() {
       </div>
 
       {/* Bottom Section: All Requests Master Table */}
-      <div className="card-panel p-5 space-y-4">
+      <div id="master-requests-register" className="card-panel p-5 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h2 className="text-base font-semibold text-white">Master Requests Register</h2>
@@ -738,7 +812,7 @@ export default function AOAdminDashboard() {
           </div>
 
           {/* Filter Bar */}
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="admin-filter-bar flex flex-wrap items-center gap-2.5">
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input

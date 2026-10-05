@@ -8,8 +8,8 @@
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
-  overflow-y: auto;
-  max-height: 480px;
+  overflow-y: visible;
+  max-height: none;
   box-sizing: border-box;
   border-radius: var(--radius-md);
   border: 1px solid var(--glass-border);

@@ -14,6 +14,9 @@
   padding: 22px;
   position: relative;
   transition: all var(--transition-normal);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .glass-card:hover,
@@ -33,6 +36,9 @@
   padding: 22px;
   position: relative;
   transition: all var(--transition-normal);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .recent-card-panel:hover {
@@ -47,6 +53,7 @@
   align-items: center;
   margin-bottom: 18px;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .card-title {
@@ -175,19 +182,27 @@
 @media (max-width: 1100px) {
   .service-cards-grid {
     grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
   }
 }
 
 @media (max-width: 768px) {
   .service-cards-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
   }
 }
 
 @media (max-width: 500px) {
   .service-cards-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .service-cards-grid > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 }
 
@@ -317,11 +332,21 @@
   color: var(--arctic-blue);
   cursor: pointer;
   font-weight: 600;
-  transition: color var(--transition-fast);
+  transition: color var(--transition-fast), background var(--transition-fast);
+  background: transparent;
+  border: none;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  line-height: 1.2;
 }
 
 .view-all-link:hover {
   color: var(--arctic-blue-hover);
+  background: rgba(77, 163, 255, 0.08);
 }
 
 /* Vehicle List Styles */
@@ -329,8 +354,8 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  max-height: 280px;
-  overflow-y: auto;
+  max-height: none;
+  overflow-y: visible;
   overscroll-behavior: auto;
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
@@ -403,8 +428,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: 280px;
-  overflow-y: auto;
+  max-height: none;
+  overflow-y: visible;
   overscroll-behavior: auto;
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
@@ -496,8 +521,8 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 16px;
-  max-height: 580px;
-  overflow-y: auto;
+  max-height: none;
+  overflow-y: visible;
   overscroll-behavior: auto;
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
@@ -555,8 +580,8 @@
 
 /* Shopping Cart */
 .cart-items-scroll {
-  max-height: 250px;
-  overflow-y: auto;
+  max-height: none;
+  overflow-y: visible;
   overscroll-behavior: auto;
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
@@ -778,8 +803,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: 280px;
-  overflow-y: auto;
+  max-height: none;
+  overflow-y: visible;
   overscroll-behavior: auto;
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;

@@ -348,20 +348,37 @@ img, svg, canvas, video {
   }
 
   .service-cards-grid {
-    grid-template-columns: 1fr !important;
-    gap: 12px;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
   }
 
-  .stat-grid-4,
-  .stat-grid-3,
+  .stat-grid-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .stat-grid-3 {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .stat-grid-3 > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
   .three-column-layout {
     grid-template-columns: 1fr !important;
     gap: 12px;
   }
 
+  .main-content-layout {
+    padding: 14px 12px 32px 12px !important;
+  }
+
+  /* Compact modern mobile topbar */
   .topbar-header {
-    height: 60px;
-    padding: 0 10px;
+    height: 52px !important;
+    padding: 0 12px !important;
   }
 
   .topbar-left {
@@ -378,34 +395,156 @@ img, svg, canvas, video {
     gap: 6px !important;
   }
 
-  .user-menu-pill {
+  .topbar-icon-btn {
+    width: 36px !important;
     height: 36px !important;
-    padding: 3px 10px 3px 5px !important;
-    gap: 6px !important;
-    max-width: 150px !important;
+    padding: 0 !important;
+  }
+
+  .topbar-logo-circle {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+  }
+
+  .topbar-logo {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  /* User profile pill on mobile: compact avatar + chevron, no ugly truncated text */
+  .user-menu-pill {
+    height: 34px !important;
+    padding: 2px 6px 2px 2px !important;
+    gap: 4px !important;
+    max-width: none !important;
+    border-radius: var(--radius-pill) !important;
   }
 
   .user-avatar-circle {
     width: 28px !important;
     height: 28px !important;
     min-width: 28px !important;
-    font-size: 0.8rem !important;
+    font-size: 0.82rem !important;
   }
 
   .user-name {
-    font-size: 0.82rem !important;
-    max-width: 85px !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-    display: block !important;
+    display: none !important;
   }
 
+  .user-menu-chevron {
+    width: 13px !important;
+    height: 13px !important;
+  }
+
+  /* Hide redundant header signout button on mobile; signout is in profile dropdown */
   .topbar-signout-btn {
-    height: 36px !important;
-    padding: 0 10px !important;
-    gap: 5px !important;
+    display: none !important;
+  }
+
+  /* Mobile Stat Cards: sleek, compact, high-density */
+  .stat-card-gradient {
+    min-height: 60px !important;
+    padding: 8px 10px !important;
+    border-radius: var(--radius-sm) !important;
+    gap: 6px !important;
+  }
+
+  .stat-card-content {
+    gap: 2px !important;
+    min-width: 0 !important;
+  }
+
+  .stat-card-title {
+    font-size: 0.70rem !important;
+    line-height: 1.15 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .stat-card-value {
+    font-size: 1.25rem !important;
+    font-weight: 800 !important;
+    line-height: 1.1 !important;
+  }
+
+  .stat-card-subtitle {
+    font-size: 0.64rem !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .stat-card-icon-container {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    min-height: 28px !important;
+    border-radius: var(--radius-sm) !important;
+    padding: 0 !important;
+  }
+
+  .stat-card-icon-container svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  /* Coordinator Portal Mobile Layout */
+  .coordinator-portal-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+
+  .coordinator-title-wrap {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+  }
+
+  .coordinator-portal-title {
+    font-size: clamp(1.18rem, 4.8vw, 1.38rem) !important;
+    line-height: 1.25 !important;
+  }
+
+  .coordinator-portal-subtitle {
     font-size: 0.78rem !important;
+    line-height: 1.35 !important;
+    margin-top: 1px !important;
+  }
+
+  .coordinator-role-badge {
+    align-self: flex-start !important;
+    margin-top: 2px !important;
+    font-size: 0.70rem !important;
+    padding: 2.5px 8px !important;
+  }
+
+  .coordinator-refresh-btn {
+    height: 32px !important;
+    padding: 0 11px !important;
+    font-size: 0.78rem !important;
+    align-self: flex-start !important;
+    margin-top: 2px !important;
+  }
+
+  .coordinator-assigned-halls-card {
+    padding: 12px 14px !important;
+    gap: 8px !important;
+  }
+
+  .coordinator-hall-card {
+    padding: 10px 12px !important;
+    gap: 8px !important;
+  }
+
+  .coordinator-assigned-count-badge {
+    font-size: 0.68rem !important;
+    padding: 2px 8px !important;
   }
 
   .modal-dialog {
@@ -548,6 +687,51 @@ img, svg, canvas, video {
     min-height: 32px;
     font-size: 0.74rem;
   }
+
+  /* Admin Search and Filter Controls on Mobile */
+  .admin-filter-bar,
+  .admin-filters-container,
+  .filter-controls-group {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+
+  .admin-filter-bar > div,
+  .filter-controls-group > div {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .admin-filter-input,
+  .admin-filter-select,
+  .admin-filter-input.w-48,
+  .admin-filter-input.w-44,
+  .admin-filter-input.w-52 {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+}
+
+/* ------------------------------------------------------------
+   PHABLETS & MID MOBILES (<= 480px)
+   ------------------------------------------------------------ */
+@media (max-width: 480px) {
+  .topbar-signout-text {
+    display: none !important;
+  }
+
+  .topbar-signout-btn {
+    padding: 0 8px !important;
+    min-width: 36px !important;
+    width: 36px !important;
+    height: 36px !important;
+    justify-content: center !important;
+  }
 }
 
 /* ------------------------------------------------------------
@@ -560,12 +744,14 @@ img, svg, canvas, video {
    ------------------------------------------------------------ */
 @media (max-width: 430px) {
   .main-content-layout {
-    padding: 10px 8px !important;
+    padding: 12px 10px 32px 10px !important;
   }
 
   .card-header {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
     gap: 8px;
   }
 
@@ -770,20 +956,74 @@ img, svg, canvas, video {
     min-width: 30px !important;
   }
 
-  .user-menu-pill {
-    max-width: 110px !important;
+  .user-name {
+    display: none !important;
   }
 
-  .user-name {
-    max-width: 52px !important;
+  .user-menu-pill {
+    height: 34px !important;
+    padding: 2px 6px 2px 2px !important;
+    max-width: none !important;
   }
 
   .topbar-signout-btn {
+    display: none !important;
+  }
+}
+
+/* ------------------------------------------------------------
+   ULTRA-COMPACT HANDHELDS (<= 340px / 320px)
+   ------------------------------------------------------------ */
+@media (max-width: 340px) {
+  html {
+    font-size: 13.5px;
+  }
+
+  .topbar-header {
     padding: 0 6px !important;
   }
 
-  .topbar-signout-text {
-    font-size: 0.72rem !important;
+  .topbar-brand {
+    gap: 4px !important;
+  }
+
+  .topbar-logo-circle {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    min-height: 30px !important;
+  }
+
+  .user-name {
+    display: none !important;
+  }
+
+  .user-menu-pill {
+    max-width: 34px !important;
+    width: 34px !important;
+    height: 34px !important;
+    padding: 2px !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+  }
+
+  .user-menu-pill svg.lucide-chevron-down {
+    display: none !important;
+  }
+
+  .calendar-day-btn {
+    min-height: 24px !important;
+    font-size: 0.65rem !important;
+    padding: 0 !important;
+  }
+
+  .card-panel {
+    padding: 10px 8px !important;
+  }
+
+  .btn {
+    padding: 6px 8px !important;
+    font-size: 0.75rem !important;
   }
 }
 

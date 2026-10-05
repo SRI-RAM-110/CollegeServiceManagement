@@ -51,8 +51,8 @@ export const MyRequests = () => {
   const [selectedDate, setSelectedDate] = useState(getTodayStr());
 
   // Filters
-  const [selectedService, setSelectedService] = useState('All');
-  const [selectedStatus, setSelectedStatus] = useState('ALL');
+  const [selectedService, setSelectedService] = useState(searchParams.get('service') || 'All');
+  const [selectedStatus, setSelectedStatus] = useState(searchParams.get('status') || 'ALL');
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [selectedReqModal, setSelectedReqModal] = useState(null);
 
@@ -138,6 +138,14 @@ export const MyRequests = () => {
     if (q !== null && q !== undefined) {
       setSearchQuery(q);
       loadRequests(q);
+    }
+    const s = searchParams.get('service');
+    if (s && SERVICE_TABS.includes(s)) {
+      setSelectedService(s);
+    }
+    const st = searchParams.get('status');
+    if (st) {
+      setSelectedStatus(st);
     }
   }, [searchParams]);
 

@@ -319,7 +319,7 @@ export const Transport = () => {
                   {vehicles.length} Fleet
                 </span>
               </div>
-              <div className="vehicle-list max-h-[200px] overflow-y-auto">
+              <div className="vehicle-list">
                 {vehicles.length === 0 ? (
                   <div className="text-center py-4 text-slate-500 text-xs">
                     No vehicles registered.

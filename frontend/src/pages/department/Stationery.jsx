@@ -328,7 +328,7 @@ export const Stationery = () => {
             </div>
 
             {/* Items Grid */}
-            <div className="stationery-grid max-h-[380px] overflow-y-auto">
+            <div className="stationery-grid">
               {filteredItems.length === 0 ? (
                 <div className="empty-state-branded" style={{ gridColumn: '1 / -1', padding: '24px' }}>
                   <PackageCheck size={28} className="text-muted" />
@@ -441,7 +441,7 @@ export const Stationery = () => {
 
               <form onSubmit={handleSubmit} className="form-column">
                 {/* Cart Items Table */}
-                <div className="cart-items-scroll max-h-[180px] overflow-y-auto">
+                <div className="cart-items-scroll">
                   {cart.length === 0 ? (
                     <div className="table-empty-cell text-xs py-4 text-center text-slate-500">
                       Cart is empty. Select from dropdown or click "Add to Request" on cards.

@@ -574,6 +574,19 @@ export const Topbar = ({ onToggleSidebar, searchPlaceholder = 'Search anything..
                   </div>
                 )}
               </div>
+
+              {/* User Dropdown Footer with Mobile Sign Out Action */}
+              <div className="user-dropdown-footer">
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="user-dropdown-logout-btn"
+                  aria-label="Sign Out from account"
+                >
+                  <LogOut size={15} aria-hidden="true" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
             </div>
           )}
         </div>
