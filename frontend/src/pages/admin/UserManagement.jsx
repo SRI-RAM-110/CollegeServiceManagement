@@ -41,6 +41,7 @@ const DEPARTMENTS = [
   { code: 'MBA', name: 'Master of Business Administration' },
   { code: 'PHARM', name: 'Pharmacy' },
   { code: 'ADMIN', name: 'Administrative Office' },
+  { code: 'PLACEMENT OFFICER', name: 'Training And Placement Cell' },
 ];
 
 const ROLES_LIST = [
@@ -87,7 +88,7 @@ export default function UserManagement() {
           }))
         );
       }
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   // Data states
@@ -458,455 +459,451 @@ export default function UserManagement() {
     <div className="w-full">
       {/* Outer User Management Container (Wide & Clean Layout) */}
       <div className="w-full space-y-6 animate-fade-in">
-      {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
+        {/* Top Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl font-bold text-white tracking-tight">USER MANAGEMENT</h1>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Super Admin Control
+              </span>
+            </div>
+            <p className="text-sm text-slate-400 mt-1">
+              Create users and manage their application access.
+            </p>
+          </div>
+
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-bold text-white tracking-tight">USER MANAGEMENT</h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              Super Admin Control
-            </span>
+            <button
+              onClick={fetchData}
+              disabled={refreshing}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 text-sm border border-slate-700/60 transition"
+              title="Refresh User List"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-blue-400' : ''}`} />
+              <span>Refresh</span>
+            </button>
+            <button
+              onClick={handleOpenRegister}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg shadow-lg shadow-blue-500/20 transition active:scale-[0.98]"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>+ Register User</span>
+            </button>
           </div>
-          <p className="text-sm text-slate-400 mt-1">
-            Create users and manage their application access.
-          </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={fetchData}
-            disabled={refreshing}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 text-sm border border-slate-700/60 transition"
-            title="Refresh User List"
-          >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-blue-400' : ''}`} />
-            <span>Refresh</span>
-          </button>
-          <button
-            onClick={handleOpenRegister}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg shadow-lg shadow-blue-500/20 transition active:scale-[0.98]"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>+ Register User</span>
-          </button>
+        {/* Real Database Statistics Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <StatCard
+            title="Total Users"
+            value={stats.totalUsers}
+            icon={Users}
+            color="blue"
+            subtitle="Real DB Count"
+          />
+          <StatCard
+            title="Active Users"
+            value={stats.activeUsers}
+            icon={UserCheck}
+            color="emerald"
+            subtitle="Authorized"
+          />
+          <StatCard
+            title="Inactive Users"
+            value={stats.inactiveUsers}
+            icon={UserX}
+            color="rose"
+            subtitle="Suspended"
+          />
+          <StatCard
+            title="HODs"
+            value={stats.hods}
+            icon={Building2}
+            color="purple"
+            subtitle="Dept Heads"
+          />
+          <StatCard
+            title="Service Admins"
+            value={stats.serviceAdmins}
+            icon={Layers}
+            color="amber"
+            subtitle="Module Admins"
+          />
+          <StatCard
+            title="Seminar Coord."
+            value={stats.seminarCoordinators}
+            icon={Shield}
+            color="indigo"
+            subtitle="Hall Specific"
+          />
         </div>
-      </div>
 
-      {/* Real Database Statistics Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <StatCard
-          title="Total Users"
-          value={stats.totalUsers}
-          icon={Users}
-          color="blue"
-          subtitle="Real DB Count"
-        />
-        <StatCard
-          title="Active Users"
-          value={stats.activeUsers}
-          icon={UserCheck}
-          color="emerald"
-          subtitle="Authorized"
-        />
-        <StatCard
-          title="Inactive Users"
-          value={stats.inactiveUsers}
-          icon={UserX}
-          color="rose"
-          subtitle="Suspended"
-        />
-        <StatCard
-          title="HODs"
-          value={stats.hods}
-          icon={Building2}
-          color="purple"
-          subtitle="Dept Heads"
-        />
-        <StatCard
-          title="Service Admins"
-          value={stats.serviceAdmins}
-          icon={Layers}
-          color="amber"
-          subtitle="Module Admins"
-        />
-        <StatCard
-          title="Seminar Coord."
-          value={stats.seminarCoordinators}
-          icon={Shield}
-          color="indigo"
-          subtitle="Hall Specific"
-        />
-      </div>
+        {/* Search & Multi-Filters Card */}
+        <div className="card-panel p-4 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            {/* Search Box */}
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name, username, dept..."
+                className="w-full pl-9 pr-3 py-2 bg-slate-900/90 border border-slate-700/80 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              />
+            </div>
 
-      {/* Search & Multi-Filters Card */}
-      <div className="card-panel p-4 space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          {/* Search Box */}
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name, username, dept..."
-              className="w-full pl-9 pr-3 py-2 bg-slate-900/90 border border-slate-700/80 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-            />
-          </div>
+            {/* Role Filter */}
+            <div>
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-900/90 border border-slate-700/80 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
+              >
+                <option value="ALL">All Roles</option>
+                <option value="CREATOR">Creator</option>
+                <option value="DEPARTMENT_HOD">Department HOD</option>
+                <option value="SEMINAR_COORDINATOR">Seminar Coordinator</option>
+                <option value="SERVICE_ADMIN">Service Admin</option>
+                <option value="AO_ADMIN">AO Admin</option>
+                <option value="DEPARTMENT_USER">Department User</option>
+              </select>
+            </div>
 
-          {/* Role Filter */}
-          <div>
-            <select
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-900/90 border border-slate-700/80 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
-            >
-              <option value="ALL">All Roles</option>
-              <option value="CREATOR">Creator</option>
-              <option value="DEPARTMENT_HOD">Department HOD</option>
-              <option value="SEMINAR_COORDINATOR">Seminar Coordinator</option>
-              <option value="SERVICE_ADMIN">Service Admin</option>
-              <option value="AO_ADMIN">AO Admin</option>
-              <option value="DEPARTMENT_USER">Department User</option>
-            </select>
-          </div>
+            {/* Department Filter */}
+            <div>
+              <select
+                value={deptFilter}
+                onChange={(e) => setDeptFilter(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-900/90 border border-slate-700/80 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
+              >
+                <option value="ALL">All Departments</option>
+                {DEPARTMENTS.map((d) => (
+                  <option key={d.code} value={d.code}>
+                    {d.code} – {d.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* Department Filter */}
-          <div>
-            <select
-              value={deptFilter}
-              onChange={(e) => setDeptFilter(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-900/90 border border-slate-700/80 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
-            >
-              <option value="ALL">All Departments</option>
-              {DEPARTMENTS.map((d) => (
-                <option key={d.code} value={d.code}>
-                  {d.code} – {d.name}
-                </option>
-              ))}
-            </select>
-          </div>
+            {/* Status Filter */}
+            <div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-900/90 border border-slate-700/80 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
+              </select>
+            </div>
 
-          {/* Status Filter */}
-          <div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-900/90 border border-slate-700/80 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
-            >
-              <option value="ALL">All Statuses</option>
-              <option value="ACTIVE">Active</option>
-              <option value="INACTIVE">Inactive</option>
-            </select>
-          </div>
-
-          {/* Service Filter */}
-          <div>
-            <select
-              value={serviceFilter}
-              onChange={(e) => setServiceFilter(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-900/90 border border-slate-700/80 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
-            >
-              <option value="ALL">All Service Admins</option>
-              <option value="SEMINAR">Seminar Admin</option>
-              <option value="ACCOMMODATION">Accommodation Admin</option>
-              <option value="TRANSPORT">Transport Admin</option>
-              <option value="STATIONERY">Stationery Admin</option>
-              <option value="MEALS">Meals Admin</option>
-            </select>
+            {/* Service Filter */}
+            <div>
+              <select
+                value={serviceFilter}
+                onChange={(e) => setServiceFilter(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-900/90 border border-slate-700/80 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
+              >
+                <option value="ALL">All Service Admins</option>
+                <option value="SEMINAR">Seminar Admin</option>
+                <option value="ACCOMMODATION">Accommodation Admin</option>
+                <option value="TRANSPORT">Transport Admin</option>
+                <option value="STATIONERY">Stationery Admin</option>
+                <option value="MEALS">Meals Admin</option>
+              </select>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Users Table Card */}
-      <div className="rounded-xl border border-slate-800/80 bg-slate-900/60 backdrop-blur-md shadow-2xl">
-        <div className="overflow-x-auto min-h-[400px] pb-12">
-          <table className="w-full min-w-[850px] text-left text-xs border-collapse">
-            <thead className="bg-slate-900/90 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-800 text-[11px]">
-              <tr>
-                <th className="py-2.5 px-3">Full Name</th>
-                <th className="py-2.5 px-2">Email (Login ID)</th>
-                <th className="py-2.5 px-1.5 text-center w-[60px]">Dept</th>
-                <th className="py-2.5 px-2">Roles</th>
-                <th className="py-2.5 px-2">Services</th>
-                <th className="py-2.5 px-2">Seminar Halls</th>
-                <th className="py-2.5 px-1.5 text-center w-[75px]">Status</th>
-                <th className="py-2.5 pl-2 pr-4 text-right w-[100px]">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 font-normal">
-              {loading ? (
+        {/* Users Table Card */}
+        <div className="rounded-xl border border-slate-800/80 bg-slate-900/60 backdrop-blur-md shadow-2xl">
+          <div className="overflow-x-auto min-h-[400px] pb-12">
+            <table className="w-full min-w-[850px] text-left text-xs border-collapse">
+              <thead className="bg-slate-900/90 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-800 text-[11px]">
                 <tr>
-                  <td colSpan="8" className="py-8 text-center text-slate-400">
-                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-400" />
-                    Loading user registry...
-                  </td>
+                  <th className="py-2.5 px-3">Full Name</th>
+                  <th className="py-2.5 px-2">Email (Login ID)</th>
+                  <th className="py-2.5 px-1.5 text-center w-[60px]">Dept</th>
+                  <th className="py-2.5 px-2">Roles</th>
+                  <th className="py-2.5 px-2">Services</th>
+                  <th className="py-2.5 px-2">Seminar Halls</th>
+                  <th className="py-2.5 px-1.5 text-center w-[75px]">Status</th>
+                  <th className="py-2.5 pl-2 pr-4 text-right w-[100px]">Actions</th>
                 </tr>
-              ) : users.length === 0 ? (
-                <tr>
-                  <td colSpan="8" className="py-8 text-center text-slate-500">
-                    No users found matching current filters.
-                  </td>
-                </tr>
-              ) : (
-                users.map((u, idx) => {
-                  const isCoord = (u.roles || []).includes('SEMINAR_COORDINATOR');
-                  const isHOD = (u.roles || []).includes('DEPARTMENT_HOD');
-                  const isAO = (u.roles || []).includes('AO_ADMIN');
-                  const isTargetCreator = (u.roles || []).includes('CREATOR') || u.userId === 'CREATOR001';
-                  const isCallerCreator = (currentUser?.roles || []).includes('CREATOR') || currentUser?.role === 'CREATOR';
-                  const isSelf = !!(currentUser?.userId && u.userId?.toLowerCase() === currentUser?.userId?.toLowerCase()) ||
-                                 !!(currentUser?.email && u.email?.toLowerCase() === currentUser?.email?.toLowerCase());
-                  const isMenuOpen = openMenuUserId === u.userId;
-                  const isNearBottom = idx >= users.length - 4 && users.length > 4;
+              </thead>
+              <tbody className="divide-y divide-slate-800/60 font-normal">
+                {loading ? (
+                  <tr>
+                    <td colSpan="8" className="py-8 text-center text-slate-400">
+                      <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-400" />
+                      Loading user registry...
+                    </td>
+                  </tr>
+                ) : users.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" className="py-8 text-center text-slate-500">
+                      No users found matching current filters.
+                    </td>
+                  </tr>
+                ) : (
+                  users.map((u, idx) => {
+                    const isCoord = (u.roles || []).includes('SEMINAR_COORDINATOR');
+                    const isHOD = (u.roles || []).includes('DEPARTMENT_HOD');
+                    const isAO = (u.roles || []).includes('AO_ADMIN');
+                    const isTargetCreator = (u.roles || []).includes('CREATOR') || u.userId === 'CREATOR001';
+                    const isCallerCreator = (currentUser?.roles || []).includes('CREATOR') || currentUser?.role === 'CREATOR';
+                    const isSelf = !!(currentUser?.userId && u.userId?.toLowerCase() === currentUser?.userId?.toLowerCase()) ||
+                      !!(currentUser?.email && u.email?.toLowerCase() === currentUser?.email?.toLowerCase());
+                    const isMenuOpen = openMenuUserId === u.userId;
+                    const isNearBottom = idx >= users.length - 4 && users.length > 4;
 
-                  return (
-                    <tr
-                      key={u.id || u.userId}
-                      className="hover:bg-slate-800/40 transition"
-                      style={isMenuOpen ? { position: 'relative', zIndex: 100 } : undefined}
-                    >
-                      <td className="py-2 px-3">
-                        <div className="font-semibold text-white flex items-center gap-1.5">
-                          {u.name}
-                          {u.mustChangePassword && (
-                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-normal border border-amber-500/30" title="Must change temporary password">
-                              Temp PW
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                          {u.designation && <span>{u.designation}</span>}
-                          {u.userId && <span className="font-mono text-[10px] text-slate-500">ID: {u.userId}</span>}
-                        </div>
-                      </td>
-
-                      <td className="py-2 px-2 text-slate-200">
-                        <div className="text-xs font-medium text-blue-300 truncate max-w-[200px]" title={u.email}>{u.email || '—'}</div>
-                        {u.phone && <div className="text-[10px] text-slate-500">{u.phone}</div>}
-                      </td>
-
-                      <td className="py-2 px-1.5 text-center">
-                        <span className={`px-2 py-0.5 rounded font-bold text-[11px] ${isAO ? 'bg-rose-500/10 text-rose-300 border border-rose-500/30' : 'bg-slate-800 text-slate-300 border border-slate-700'}`}>
-                          {isAO ? 'GLOBAL' : (u.department || '—')}
-                        </span>
-                      </td>
-
-                      {/* Multi-roles list */}
-                      <td className="py-2 px-2">
-                        <div className="flex flex-wrap gap-1 max-w-[150px]">
-                          {(u.roles || []).map((r) => {
-                            let badgeStyle = 'bg-slate-800 text-slate-300 border-slate-700';
-                            if (r === 'CREATOR') badgeStyle = 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm shadow-amber-500/20 font-bold';
-                            else if (r === 'AO_ADMIN') badgeStyle = 'bg-rose-500/10 text-rose-400 border-rose-500/30';
-                            else if (r === 'DEPARTMENT_HOD') badgeStyle = 'bg-purple-500/10 text-purple-400 border-purple-500/30';
-                            else if (r === 'SEMINAR_COORDINATOR') badgeStyle = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
-                            else if (r.endsWith('_ADMIN')) badgeStyle = 'bg-amber-500/10 text-amber-400 border-amber-500/30';
-
-                            return (
-                              <span key={r} className={`text-[10px] px-1.5 py-0.5 rounded font-semibold border ${badgeStyle}`}>
-                                {r.replace('_', ' ')}
+                    return (
+                      <tr
+                        key={u.id || u.userId}
+                        className="hover:bg-slate-800/40 transition"
+                        style={isMenuOpen ? { position: 'relative', zIndex: 100 } : undefined}
+                      >
+                        <td className="py-2 px-3">
+                          <div className="font-semibold text-white flex items-center gap-1.5">
+                            {u.name}
+                            {u.mustChangePassword && (
+                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-normal border border-amber-500/30" title="Must change temporary password">
+                                Temp PW
                               </span>
-                            );
-                          })}
-                        </div>
-                      </td>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                            {u.designation && <span>{u.designation}</span>}
+                            {u.userId && <span className="font-mono text-[10px] text-slate-500">ID: {u.userId}</span>}
+                          </div>
+                        </td>
 
-                      {/* Service permissions */}
-                      <td className="py-2 px-2">
-                        <div className="flex flex-wrap gap-1 max-w-[120px]">
-                          {(u.servicePermissions && u.servicePermissions.length > 0) ? (
-                            u.servicePermissions.map((sp) => (
-                              <span key={sp} className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                                {sp.replace('_ADMIN', '')}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-slate-500 text-[11px]">None</span>
-                          )}
-                        </div>
-                      </td>
+                        <td className="py-2 px-2 text-slate-200">
+                          <div className="text-xs font-medium text-blue-300 truncate max-w-[200px]" title={u.email}>{u.email || '—'}</div>
+                          {u.phone && <div className="text-[10px] text-slate-500">{u.phone}</div>}
+                        </td>
 
-                      {/* Seminar Hall Access */}
-                      <td className="py-2 px-2">
-                        <div className="flex flex-wrap gap-1 max-w-[130px]">
-                          {isCoord ? (
-                            (u.assignedHallIds && u.assignedHallIds.length > 0) ? (
-                              u.assignedHallIds.map((h) => (
-                                <span key={h} className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-blue-500/15 text-blue-300 border border-blue-500/30">
-                                  {h}
+                        <td className="py-2 px-1.5 text-center">
+                          <span className={`px-2 py-0.5 rounded font-bold text-[11px] ${isAO ? 'bg-rose-500/10 text-rose-300 border border-rose-500/30' : 'bg-slate-800 text-slate-300 border border-slate-700'}`}>
+                            {isAO ? 'GLOBAL' : (u.department || '—')}
+                          </span>
+                        </td>
+
+                        {/* Multi-roles list */}
+                        <td className="py-2 px-2">
+                          <div className="flex flex-wrap gap-1 max-w-[150px]">
+                            {(u.roles || []).map((r) => {
+                              let badgeStyle = 'bg-slate-800 text-slate-300 border-slate-700';
+                              if (r === 'CREATOR') badgeStyle = 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm shadow-amber-500/20 font-bold';
+                              else if (r === 'AO_ADMIN') badgeStyle = 'bg-rose-500/10 text-rose-400 border-rose-500/30';
+                              else if (r === 'DEPARTMENT_HOD') badgeStyle = 'bg-purple-500/10 text-purple-400 border-purple-500/30';
+                              else if (r === 'SEMINAR_COORDINATOR') badgeStyle = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
+                              else if (r.endsWith('_ADMIN')) badgeStyle = 'bg-amber-500/10 text-amber-400 border-amber-500/30';
+
+                              return (
+                                <span key={r} className={`text-[10px] px-1.5 py-0.5 rounded font-semibold border ${badgeStyle}`}>
+                                  {r.replace('_', ' ')}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </td>
+
+                        {/* Service permissions */}
+                        <td className="py-2 px-2">
+                          <div className="flex flex-wrap gap-1 max-w-[120px]">
+                            {(u.servicePermissions && u.servicePermissions.length > 0) ? (
+                              u.servicePermissions.map((sp) => (
+                                <span key={sp} className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                                  {sp.replace('_ADMIN', '')}
                                 </span>
                               ))
                             ) : (
-                              <span className="text-rose-400 text-[10px] italic">No Halls Assigned</span>
-                            )
-                          ) : (isAO || isTargetCreator) ? (
-                            <span className="text-emerald-400 text-[10px] font-medium">All Halls ({isTargetCreator ? 'Creator' : 'Global'})</span>
-                          ) : (
-                            <span className="text-slate-500 text-[11px]">N/A</span>
-                          )}
-                        </div>
-                      </td>
+                              <span className="text-slate-500 text-[11px]">None</span>
+                            )}
+                          </div>
+                        </td>
 
-                      {/* Status */}
-                      <td className="py-2 px-1.5 text-center">
-                        <button
-                          onClick={() => handleToggleStatus(u)}
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border transition ${
-                            u.active
-                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
-                              : 'bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20'
-                          }`}
-                          title="Click to toggle status"
-                        >
-                          {u.active ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                          {u.active ? 'ACTIVE' : 'INACTIVE'}
-                        </button>
-                      </td>
+                        {/* Seminar Hall Access */}
+                        <td className="py-2 px-2">
+                          <div className="flex flex-wrap gap-1 max-w-[130px]">
+                            {isCoord ? (
+                              (u.assignedHallIds && u.assignedHallIds.length > 0) ? (
+                                u.assignedHallIds.map((h) => (
+                                  <span key={h} className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-blue-500/15 text-blue-300 border border-blue-500/30">
+                                    {h}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-rose-400 text-[10px] italic">No Halls Assigned</span>
+                              )
+                            ) : (isAO || isTargetCreator) ? (
+                              <span className="text-emerald-400 text-[10px] font-medium">All Halls ({isTargetCreator ? 'Creator' : 'Global'})</span>
+                            ) : (
+                              <span className="text-slate-500 text-[11px]">N/A</span>
+                            )}
+                          </div>
+                        </td>
 
-                      {/* Actions Column: Unified Dropdown Menu */}
-                      <td
-                        className="py-2 pl-2 pr-4 text-right"
-                        style={isMenuOpen ? { position: 'relative', zIndex: 100 } : undefined}
-                      >
-                        {isTargetCreator && !isCallerCreator ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                            <Lock className="w-3 h-3" /> System Master
-                          </span>
-                        ) : (
-                        <div
-                          className="inline-block text-left"
+                        {/* Status */}
+                        <td className="py-2 px-1.5 text-center">
+                          <button
+                            onClick={() => handleToggleStatus(u)}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border transition ${u.active
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                                : 'bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20'
+                              }`}
+                            title="Click to toggle status"
+                          >
+                            {u.active ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                            {u.active ? 'ACTIVE' : 'INACTIVE'}
+                          </button>
+                        </td>
+
+                        {/* Actions Column: Unified Dropdown Menu */}
+                        <td
+                          className="py-2 pl-2 pr-4 text-right"
                           style={isMenuOpen ? { position: 'relative', zIndex: 100 } : undefined}
                         >
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenMenuUserId(isMenuOpen ? null : u.userId);
-                            }}
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition shadow-sm ${
-                              isMenuOpen
-                                ? 'bg-blue-600/20 text-blue-300 border-blue-500/60 ring-1 ring-blue-500/40'
-                                : 'bg-slate-800/90 hover:bg-slate-700/90 text-slate-200 hover:text-white border-slate-700 hover:border-blue-500/50 active:scale-95'
-                            }`}
-                            aria-expanded={isMenuOpen}
-                            title="Actions Menu"
-                          >
-                            <span>Actions</span>
-                            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isMenuOpen ? 'rotate-180 text-blue-400' : 'text-slate-400'}`} />
-                          </button>
-
-                          {isMenuOpen && (
+                          {isTargetCreator && !isCallerCreator ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                              <Lock className="w-3 h-3" /> System Master
+                            </span>
+                          ) : (
                             <div
-                              ref={actionMenuRef}
-                              onClick={(e) => e.stopPropagation()}
-                              className="user-mgmt-action-menu absolute right-0 left-auto w-44 py-1.5 bg-[#0f172a] border border-slate-700 rounded-xl shadow-2xl z-50 animate-fade-in"
-                              style={{
-                                right: 0,
-                                left: 'auto',
-                                top: isNearBottom ? 'auto' : '100%',
-                                bottom: isNearBottom ? '100%' : 'auto',
-                                marginTop: isNearBottom ? undefined : '6px',
-                                marginBottom: isNearBottom ? '6px' : undefined,
-                                minWidth: '175px',
-                                minHeight: '190px',
-                                backgroundColor: '#0f172a',
-                                opacity: 1,
-                                zIndex: 1000,
-                                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.9), 0 10px 10px -5px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(51, 65, 85, 0.9)',
-                              }}
+                              className="inline-block text-left"
+                              style={isMenuOpen ? { position: 'relative', zIndex: 100 } : undefined}
                             >
-                              {/* 1. Edit */}
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setOpenMenuUserId(null);
-                                  handleOpenEdit(u);
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenMenuUserId(isMenuOpen ? null : u.userId);
                                 }}
-                                className="w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800 hover:text-white flex items-center gap-2.5 transition"
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition shadow-sm ${isMenuOpen
+                                    ? 'bg-blue-600/20 text-blue-300 border-blue-500/60 ring-1 ring-blue-500/40'
+                                    : 'bg-slate-800/90 hover:bg-slate-700/90 text-slate-200 hover:text-white border-slate-700 hover:border-blue-500/50 active:scale-95'
+                                  }`}
+                                aria-expanded={isMenuOpen}
+                                title="Actions Menu"
                               >
-                                <Edit className="w-3.5 h-3.5 text-slate-400" />
-                                <span>Edit</span>
+                                <span>Actions</span>
+                                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isMenuOpen ? 'rotate-180 text-blue-400' : 'text-slate-400'}`} />
                               </button>
 
-                              {/* 2. Manage Access */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setOpenMenuUserId(null);
-                                  handleOpenAccess(u);
-                                }}
-                                className="w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800 hover:text-blue-300 flex items-center gap-2.5 transition"
-                              >
-                                <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-                                <span>Manage Access</span>
-                              </button>
+                              {isMenuOpen && (
+                                <div
+                                  ref={actionMenuRef}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="user-mgmt-action-menu absolute right-0 left-auto w-44 py-1.5 bg-[#0f172a] border border-slate-700 rounded-xl shadow-2xl z-50 animate-fade-in"
+                                  style={{
+                                    right: 0,
+                                    left: 'auto',
+                                    top: isNearBottom ? 'auto' : '100%',
+                                    bottom: isNearBottom ? '100%' : 'auto',
+                                    marginTop: isNearBottom ? undefined : '6px',
+                                    marginBottom: isNearBottom ? '6px' : undefined,
+                                    minWidth: '175px',
+                                    minHeight: '190px',
+                                    backgroundColor: '#0f172a',
+                                    opacity: 1,
+                                    zIndex: 1000,
+                                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.9), 0 10px 10px -5px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(51, 65, 85, 0.9)',
+                                  }}
+                                >
+                                  {/* 1. Edit */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenMenuUserId(null);
+                                      handleOpenEdit(u);
+                                    }}
+                                    className="w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800 hover:text-white flex items-center gap-2.5 transition"
+                                  >
+                                    <Edit className="w-3.5 h-3.5 text-slate-400" />
+                                    <span>Edit</span>
+                                  </button>
 
-                              {/* 3. Reset Password */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setOpenMenuUserId(null);
-                                  handleOpenResetPw(u);
-                                }}
-                                className="w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800 hover:text-amber-300 flex items-center gap-2.5 transition"
-                              >
-                                <KeyRound className="w-3.5 h-3.5 text-amber-400" />
-                                <span>Reset Password</span>
-                              </button>
+                                  {/* 2. Manage Access */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenMenuUserId(null);
+                                      handleOpenAccess(u);
+                                    }}
+                                    className="w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800 hover:text-blue-300 flex items-center gap-2.5 transition"
+                                  >
+                                    <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+                                    <span>Manage Access</span>
+                                  </button>
 
-                              {/* 4. Activate / Deactivate (Dynamic State) */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setOpenMenuUserId(null);
-                                  handleToggleStatus(u);
-                                }}
-                                className={`w-full px-3 py-2 text-left text-xs flex items-center gap-2.5 transition ${
-                                  u.active
-                                    ? 'text-slate-200 hover:bg-slate-800 hover:text-amber-300'
-                                    : 'text-slate-200 hover:bg-slate-800 hover:text-emerald-300'
-                                }`}
-                              >
-                                <Power className={`w-3.5 h-3.5 ${u.active ? 'text-amber-400' : 'text-emerald-400'}`} />
-                                <span>{u.active ? 'Deactivate' : 'Activate'}</span>
-                              </button>
+                                  {/* 3. Reset Password */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenMenuUserId(null);
+                                      handleOpenResetPw(u);
+                                    }}
+                                    className="w-full px-3 py-2 text-left text-xs text-slate-200 hover:bg-slate-800 hover:text-amber-300 flex items-center gap-2.5 transition"
+                                  >
+                                    <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+                                    <span>Reset Password</span>
+                                  </button>
 
-                              {/* Divider */}
-                              <div className="my-1 border-t border-slate-800" />
+                                  {/* 4. Activate / Deactivate (Dynamic State) */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenMenuUserId(null);
+                                      handleToggleStatus(u);
+                                    }}
+                                    className={`w-full px-3 py-2 text-left text-xs flex items-center gap-2.5 transition ${u.active
+                                        ? 'text-slate-200 hover:bg-slate-800 hover:text-amber-300'
+                                        : 'text-slate-200 hover:bg-slate-800 hover:text-emerald-300'
+                                      }`}
+                                  >
+                                    <Power className={`w-3.5 h-3.5 ${u.active ? 'text-amber-400' : 'text-emerald-400'}`} />
+                                    <span>{u.active ? 'Deactivate' : 'Activate'}</span>
+                                  </button>
 
-                              {/* 5. Remove User */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (isSelf) return;
-                                  setOpenMenuUserId(null);
-                                  handleOpenRemove(u);
-                                }}
-                                disabled={isSelf}
-                                className={`w-full px-3 py-2 text-left text-xs flex items-center gap-2.5 transition ${
-                                  isSelf
-                                    ? 'opacity-40 cursor-not-allowed text-slate-500'
-                                    : 'text-rose-400 hover:bg-slate-800 hover:text-rose-200'
-                                }`}
-                                title={isSelf ? 'Cannot remove currently logged-in account' : 'Permanently remove user'}
-                              >
-                                <Trash2 className={`w-3.5 h-3.5 ${isSelf ? 'text-slate-500' : 'text-rose-400'}`} />
-                                <span>Remove User</span>
-                              </button>
+                                  {/* Divider */}
+                                  <div className="my-1 border-t border-slate-800" />
+
+                                  {/* 5. Remove User */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (isSelf) return;
+                                      setOpenMenuUserId(null);
+                                      handleOpenRemove(u);
+                                    }}
+                                    disabled={isSelf}
+                                    className={`w-full px-3 py-2 text-left text-xs flex items-center gap-2.5 transition ${isSelf
+                                        ? 'opacity-40 cursor-not-allowed text-slate-500'
+                                        : 'text-rose-400 hover:bg-slate-800 hover:text-rose-200'
+                                      }`}
+                                    title={isSelf ? 'Cannot remove currently logged-in account' : 'Permanently remove user'}
+                                  >
+                                    <Trash2 className={`w-3.5 h-3.5 ${isSelf ? 'text-slate-500' : 'text-rose-400'}`} />
+                                    <span>Remove User</span>
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           )}
-                        </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
       </div>
 
       {/* ======================================================== */}
@@ -1037,11 +1034,10 @@ export default function UserManagement() {
                 return (
                   <label
                     key={r.id}
-                    className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition ${
-                      checked
+                    className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition ${checked
                         ? 'bg-blue-600/15 border-blue-500/40 text-white'
                         : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
-                    }`}
+                      }`}
                   >
                     <input
                       type="checkbox"
@@ -1077,11 +1073,10 @@ export default function UserManagement() {
                 return (
                   <label
                     key={s.id}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition ${
-                      checked
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition ${checked
                         ? 'bg-amber-500/20 border-amber-500/50 text-amber-200'
                         : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
-                    }`}
+                      }`}
                   >
                     <input
                       type="checkbox"
@@ -1120,11 +1115,10 @@ export default function UserManagement() {
                   return (
                     <label
                       key={h.id}
-                      className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition ${
-                        checked
+                      className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition ${checked
                           ? 'bg-blue-600/20 border-blue-500 text-white shadow-sm'
                           : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
-                      }`}
+                        }`}
                     >
                       <input
                         type="checkbox"
@@ -1269,11 +1263,10 @@ export default function UserManagement() {
                 return (
                   <label
                     key={r.id}
-                    className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition ${
-                      checked
+                    className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition ${checked
                         ? 'bg-blue-600/15 border-blue-500/40 text-white'
                         : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
-                    }`}
+                      }`}
                   >
                     <input
                       type="checkbox"
@@ -1309,11 +1302,10 @@ export default function UserManagement() {
                 return (
                   <label
                     key={s.id}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition ${
-                      checked
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition ${checked
                         ? 'bg-amber-500/20 border-amber-500/50 text-amber-200'
                         : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
-                    }`}
+                      }`}
                   >
                     <input
                       type="checkbox"
@@ -1352,11 +1344,10 @@ export default function UserManagement() {
                   return (
                     <label
                       key={h.id}
-                      className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition ${
-                        checked
+                      className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition ${checked
                           ? 'bg-blue-600/20 border-blue-500 text-white shadow-sm'
                           : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
-                      }`}
+                        }`}
                     >
                       <input
                         type="checkbox"
@@ -1427,11 +1418,10 @@ export default function UserManagement() {
                 return (
                   <label
                     key={r.id}
-                    className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition ${
-                      checked
+                    className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition ${checked
                         ? 'bg-blue-600/15 border-blue-500/40 text-white'
                         : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
-                    }`}
+                      }`}
                   >
                     <input
                       type="checkbox"
@@ -1466,11 +1456,10 @@ export default function UserManagement() {
                 return (
                   <label
                     key={s.id}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition ${
-                      checked
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition ${checked
                         ? 'bg-amber-500/20 border-amber-500/50 text-amber-200'
                         : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
-                    }`}
+                      }`}
                   >
                     <input
                       type="checkbox"
@@ -1509,11 +1498,10 @@ export default function UserManagement() {
                   return (
                     <label
                       key={h.id}
-                      className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition ${
-                        checked
+                      className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition ${checked
                           ? 'bg-blue-600/20 border-blue-500 text-white shadow-sm'
                           : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
-                      }`}
+                        }`}
                     >
                       <input
                         type="checkbox"
