@@ -457,7 +457,7 @@ export const Accommodation = () => {
                       const prefix = r.hostel?.includes('Girls') ? 'GH' : 'BH';
                       return (
                         <option key={r.roomId} value={r.roomId}>
-                          {prefix} — {r.roomId} — {r.roomType} ({r.capacity} Guests)
+                          {prefix} — {r.roomType}
                         </option>
                       );
                     })}
@@ -475,10 +475,7 @@ export const Accommodation = () => {
                       <span className="text-slate-400">Room Code:</span>
                       <span className="font-mono text-arctic-blue font-semibold">{selectedRoomObj.roomId}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Capacity:</span>
-                      <span className="text-slate-200">{selectedRoomObj.capacity} Guests</span>
-                    </div>
+
                     {selectedRoomObj.location && (
                       <div className="flex justify-between items-center">
                         <span className="text-slate-400">Location:</span>
@@ -541,11 +538,10 @@ export const Accommodation = () => {
                   </div>
                 ) : liveAvailabilityStatus ? (
                   <div
-                    className={`p-2.5 rounded-lg border text-xs flex items-center justify-between ${
-                      liveAvailabilityStatus.isAvailable
-                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                        : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
-                    }`}
+                    className={`p-2.5 rounded-lg border text-xs flex items-center justify-between ${liveAvailabilityStatus.isAvailable
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                      : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                      }`}
                   >
                     <div className="flex items-center gap-1.5 font-medium">
                       {liveAvailabilityStatus.isAvailable ? (
