@@ -278,22 +278,22 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void seedSeminarHalls() {
-        seedOrUpdateHall("SH-1", "Seminar Hall 1", "Block 3 – Ground Floor", "Block 3", "Ground Floor",
+        seedOrUpdateHall("SH-1", "Block 3 Seminar Hall", "3102-Ground Floor", "Block 3", "Ground Floor",
                 300, List.of("Projector", "AC", "Audio System", "Wi-Fi"), "/assets/halls/hall1.jpg", "Available", List.of("seminarcoordinator1"));
 
-        seedOrUpdateHall("SH-2", "Seminar Hall 2", "Block 3 – Third Floor", "Block 3", "Third Floor",
+        seedOrUpdateHall("SH-2", "Block 3 Seminar Hall", "3404-Third Floor", "Block 3", "Third Floor",
                 200, List.of("Projector", "AC", "Audio System", "Wi-Fi"), "/assets/halls/hall2.jpg", "Available", List.of("seminarcoordinator2"));
 
-        seedOrUpdateHall("SH-3", "Seminar Hall 3", "Block 4 – Ground Floor", "Block 4", "Ground Floor",
+        seedOrUpdateHall("SH-3", "Block 4 Seminar Hall", "GF02-Ground Floor", "Block 4", "Ground Floor",
                 350, List.of("Projector", "AC", "Audio System", "Wi-Fi"), "/assets/halls/hall3.jpg", "Available", List.of("seminarcoordinator3"));
 
-        seedOrUpdateHall("SH-4", "Seminar Hall 4", "Pharma Block – Ground Floor", "Pharma Block", "Ground Floor",
+        seedOrUpdateHall("SH-4", "Pharma Block Seminar Hall", "Pharma Block", "Pharma Block", "Ground Floor",
                 200, List.of("Projector", "AC", "Audio System", "Wi-Fi"), "/assets/halls/hall4.jpg", "Available", List.of("seminarcoordinator4"));
 
-        seedOrUpdateHall("SH-5", "Tech Hub", "Block 3 – Third Floor", "Block 3", "Third Floor",
+        seedOrUpdateHall("SH-5", "Tech Hub Wifi center", "3401-Third Floor", "Block 3", "Third Floor",
                 150, List.of("Projector", "AC", "Audio System", "Wi-Fi"), "/assets/halls/techhub.jpg", "Available", List.of("seminarcoordinator5"));
 
-        seedOrUpdateHall("SH-6", "Block 2 Seminar hall", "Block 2 – Ground Floor", "Block 2", "Ground Floor",
+        seedOrUpdateHall("SH-6", "Block 2 Seminar hall", "2104-Ground Floor", "Block 2", "Ground Floor",
                 250, List.of("Projector", "AC", "Audio System", "Wi-Fi"), "/assets/halls/hall2.jpg", "Available", List.of("seminarcoordinator6"));
 
         // If legacy TECH-HUB exists as a separate document, update it as well
