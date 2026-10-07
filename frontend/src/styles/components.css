@@ -1155,6 +1155,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  max-height: calc(100vh - 32px);
   max-height: calc(100dvh - 32px);
   animation: fadeIn 0.22s ease-out;
   box-sizing: border-box;
@@ -1198,7 +1199,9 @@
   overflow-y: auto;
   flex: 1;
   min-height: 0;
-  overscroll-behavior: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
 }

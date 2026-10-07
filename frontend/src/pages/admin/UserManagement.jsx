@@ -907,6 +907,7 @@ export default function UserManagement() {
           </table>
         </div>
       </div>
+      </div>
 
       {/* ======================================================== */}
       {/* MODAL 1: REGISTER NEW USER                               */}
@@ -1679,7 +1680,6 @@ export default function UserManagement() {
           </div>
         </div>
       </Modal>
-      </div>
     </div>
   );
 }
