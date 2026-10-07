@@ -15,7 +15,6 @@ public class SeminarBookingRequestDTO {
     @NotBlank(message = "Event title is required")
     private String eventTitle;
 
-    @NotBlank(message = "Purpose is required")
     private String purpose;
 
     @NotNull(message = "Expected participants count is required")

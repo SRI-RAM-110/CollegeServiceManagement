@@ -348,10 +348,7 @@ export const SeminarBooking = () => {
       showToast('Please enter an event title', 'warning');
       return;
     }
-    if (!purpose.trim()) {
-      showToast('Please describe the purpose of the event', 'warning');
-      return;
-    }
+
     if (!expectedParticipants || Number(expectedParticipants) <= 0) {
       showToast('Expected participants must be at least 1', 'warning');
       return;
@@ -1028,8 +1025,8 @@ export const SeminarBooking = () => {
                         setToDate(selectedDate);
                       }}
                       className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition ${bookingType === 'ONE_TIME'
-                          ? 'bg-blue-600 text-white shadow'
-                          : 'text-slate-400 hover:text-white'
+                        ? 'bg-blue-600 text-white shadow'
+                        : 'text-slate-400 hover:text-white'
                         }`}
                     >
                       <CalendarDays size={13} /> One-Time
@@ -1041,8 +1038,8 @@ export const SeminarBooking = () => {
                         if (!toDate || toDate < selectedDate) setToDate(selectedDate);
                       }}
                       className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition ${bookingType === 'MULTI_DAY'
-                          ? 'bg-blue-600 text-white shadow'
-                          : 'text-slate-400 hover:text-white'
+                        ? 'bg-blue-600 text-white shadow'
+                        : 'text-slate-400 hover:text-white'
                         }`}
                     >
                       <CalendarRange size={13} /> Multi-Day
@@ -1054,8 +1051,8 @@ export const SeminarBooking = () => {
                         if (!toDate || toDate < selectedDate) setToDate(selectedDate);
                       }}
                       className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition ${bookingType === 'RECURRING'
-                          ? 'bg-blue-600 text-white shadow'
-                          : 'text-slate-400 hover:text-white'
+                        ? 'bg-blue-600 text-white shadow'
+                        : 'text-slate-400 hover:text-white'
                         }`}
                     >
                       <Repeat size={13} /> Recurring
@@ -1110,8 +1107,8 @@ export const SeminarBooking = () => {
                               type="button"
                               onClick={() => toggleRecurrenceDay(w.key)}
                               className={`px-2.5 py-1 text-xs rounded-md border font-medium transition ${isSel
-                                  ? 'bg-blue-600 border-blue-500 text-white shadow'
-                                  : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-white'
+                                ? 'bg-blue-600 border-blue-500 text-white shadow'
+                                : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-white'
                                 }`}
                             >
                               {w.fullLabel}
@@ -1144,10 +1141,10 @@ export const SeminarBooking = () => {
                             key={slotKey}
                             onClick={() => handleSlotSelect(slotKey)}
                             className={`p-2.5 rounded-lg border text-center cursor-pointer transition ${isBooked
-                                ? 'bg-rose-950/20 border-rose-800/40 text-rose-400 cursor-not-allowed opacity-60'
-                                : isSelected
-                                  ? 'bg-blue-600/20 border-blue-500 text-white shadow'
-                                  : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                              ? 'bg-rose-950/20 border-rose-800/40 text-rose-400 cursor-not-allowed opacity-60'
+                              : isSelected
+                                ? 'bg-blue-600/20 border-blue-500 text-white shadow'
+                                : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
                               }`}
                           >
                             <div className="font-semibold text-xs mb-0.5">{slotKey}</div>
@@ -1216,10 +1213,10 @@ export const SeminarBooking = () => {
                             <div
                               key={`${occ.date}-${idx}`}
                               className={`occurrence-card ${isConflict
-                                  ? 'occurrence-card-conflict'
-                                  : isUnavailable
-                                    ? 'occurrence-card-unavailable'
-                                    : 'occurrence-card-available'
+                                ? 'occurrence-card-conflict'
+                                : isUnavailable
+                                  ? 'occurrence-card-unavailable'
+                                  : 'occurrence-card-available'
                                 }`}
                             >
                               <div className="occurrence-card-header">
@@ -1330,13 +1327,12 @@ export const SeminarBooking = () => {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label text-xs">Purpose / Description *</label>
+                    <label className="form-label text-xs">Purpose / Description </label>
                     <textarea
                       rows={3}
                       placeholder="Provide details of the event, guests, or program schedule..."
                       value={purpose}
                       onChange={(e) => setPurpose(e.target.value)}
-                      required
                       className="w-full text-xs"
                     />
                   </div>
@@ -1599,8 +1595,8 @@ export const SeminarBooking = () => {
             {/* Alert banner */}
             <div
               className={`p-3 rounded-lg border ${cancelItem.status === 'APPROVED' || cancelItem.status === 'BOOKED'
-                  ? 'bg-amber-950/40 border-amber-500/40 text-amber-200'
-                  : 'bg-rose-950/40 border-rose-500/40 text-rose-200'
+                ? 'bg-amber-950/40 border-amber-500/40 text-amber-200'
+                : 'bg-rose-950/40 border-rose-500/40 text-rose-200'
                 }`}
             >
               <div className="flex items-center gap-2 font-semibold text-sm mb-1">
@@ -1719,8 +1715,8 @@ export const SeminarBooking = () => {
               <button
                 type="submit"
                 className={`btn btn-primary ${cancelItem.status === 'APPROVED' || cancelItem.status === 'BOOKED'
-                    ? 'bg-amber-600 hover:bg-amber-500'
-                    : 'bg-rose-600 hover:bg-rose-500'
+                  ? 'bg-amber-600 hover:bg-amber-500'
+                  : 'bg-rose-600 hover:bg-rose-500'
                   } text-white`}
                 disabled={cancelLoading}
               >
