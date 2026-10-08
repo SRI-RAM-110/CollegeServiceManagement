@@ -975,7 +975,7 @@ export const SeminarBooking = () => {
                   >
                     {halls.map((hall) => (
                       <option key={hall.hallId} value={hall.hallId}>
-                        {hall.name} ({hall.hallId}) — {hall.capacity} Seats — {hall.location}
+                        {hall.name} — {hall.capacity} Seats — {hall.location}
                       </option>
                     ))}
                   </select>
