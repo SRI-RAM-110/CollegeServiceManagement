@@ -1,5 +1,6 @@
 package com.nec.collegeservices.service;
 
+import com.nec.collegeservices.dto.AccommodationBulkAvailabilityRequestDTO;
 import com.nec.collegeservices.dto.AccommodationCancelRequestDTO;
 import com.nec.collegeservices.dto.AccommodationRequestDTO;
 import com.nec.collegeservices.dto.AccommodationRescheduleRequestDTO;
@@ -17,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
@@ -148,39 +150,203 @@ public class AccommodationService {
     }
 
     /**
-     * Submit Accommodation Request.
+     * Check availability across multiple dates for recurring or multi-day room booking.
+     */
+    public Map<String, Object> checkBulkAvailability(AccommodationBulkAvailabilityRequestDTO dto) {
+        String roomId = dto.getRoomId();
+        List<String> dates = dto.getDates() != null ? dto.getDates() : Collections.emptyList();
+        String bookingType = dto.getBookingType() != null && !dto.getBookingType().isBlank()
+                ? dto.getBookingType().toUpperCase()
+                : (dates.size() > 1 ? "MULTI_DAY" : "ONE_TIME");
+
+        AccommodationRoom room = roomRepository.findByRoomId(roomId)
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found: " + roomId));
+
+        boolean isMaintenance = room.getStatus() != null && !room.getStatus().equalsIgnoreCase("Available");
+        String maintenanceReason = isMaintenance
+                ? "Room " + room.getRoomId() + " (" + room.getHostel() + ") is currently under " + room.getStatus() + "."
+                : null;
+
+        List<Map<String, Object>> conflicts = new ArrayList<>();
+        List<Map<String, Object>> occurrences = new ArrayList<>();
+        int availableCount = 0;
+
+        List<AccommodationRequest> activeBookings = requestRepository.findActiveBookingsForRoom(roomId);
+
+        for (String dateStr : dates) {
+            String dayOfWeek = "";
+            try {
+                LocalDate ld = LocalDate.parse(dateStr);
+                dayOfWeek = ld.getDayOfWeek().getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH);
+            } catch (Exception ignored) {}
+
+            Map<String, Object> occ = new HashMap<>();
+            occ.put("date", dateStr);
+            occ.put("day", dayOfWeek);
+            occ.put("roomId", roomId);
+            occ.put("roomType", room.getRoomType());
+            occ.put("hostel", room.getHostel());
+            occ.put("bookingType", bookingType);
+
+            if (isMaintenance) {
+                occ.put("status", "UNAVAILABLE");
+                occ.put("conflictReason", maintenanceReason);
+                occ.put("isMaintenance", true);
+
+                Map<String, Object> c = new HashMap<>();
+                c.put("date", dateStr);
+                c.put("day", dayOfWeek);
+                c.put("roomId", roomId);
+                c.put("status", "MAINTENANCE");
+                c.put("conflictReason", maintenanceReason);
+                conflicts.add(c);
+                occurrences.add(occ);
+                continue;
+            }
+
+            LocalDate inDate = LocalDate.parse(dateStr);
+            LocalDate outDate = inDate.plusDays(1);
+            AccommodationRequest conflictingBooking = null;
+
+            for (AccommodationRequest existing : activeBookings) {
+                if (isBlockingStatus(existing.getStatus()) &&
+                        isDatesConflicting(existing.getCheckInDate(), existing.getCheckOutDate(), inDate.toString(), outDate.toString())) {
+                    conflictingBooking = existing;
+                    break;
+                }
+            }
+
+            if (conflictingBooking != null) {
+                String reason = "Room " + roomId + " is already booked (" + conflictingBooking.getRequestId() + " [" + conflictingBooking.getStatus() + "]).";
+                occ.put("status", "CONFLICT");
+                occ.put("conflictReason", reason);
+
+                Map<String, Object> c = new HashMap<>();
+                c.put("date", dateStr);
+                c.put("day", dayOfWeek);
+                c.put("roomId", roomId);
+                c.put("status", "CONFLICT");
+                c.put("conflictReason", reason);
+                conflicts.add(c);
+            } else {
+                occ.put("status", "AVAILABLE");
+                availableCount++;
+            }
+            occurrences.add(occ);
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("roomId", roomId);
+        result.put("totalDates", dates.size());
+        result.put("availableCount", availableCount);
+        result.put("conflictCount", conflicts.size());
+        result.put("occurrences", occurrences);
+        result.put("conflicts", conflicts);
+        return result;
+    }
+
+    /**
+     * Submit Accommodation Request (supports single stay and multiple dates).
      */
     public AccommodationRequest createRequest(AccommodationRequestDTO dto, User user) {
         if (user == null) {
             throw new AccessDeniedException("Authentication required.");
         }
 
-        // 1. Date parsing and validation
-        if (dto.getCheckInDate() == null || dto.getCheckInDate().isBlank()) {
-            throw new BadRequestException("Check-in date is required.");
-        }
-        if (dto.getCheckOutDate() == null || dto.getCheckOutDate().isBlank()) {
-            throw new BadRequestException("Check-out date is required.");
-        }
-
-        LocalDate checkIn;
-        LocalDate checkOut;
-        try {
-            checkIn = LocalDate.parse(dto.getCheckInDate());
-            checkOut = LocalDate.parse(dto.getCheckOutDate());
-        } catch (DateTimeParseException e) {
-            throw new BadRequestException("Invalid date format. Expected YYYY-MM-DD.");
-        }
-
         LocalDate today = LocalDate.now();
-        if (checkIn.isBefore(today)) {
-            throw new BadRequestException("Check-in date cannot be in the past (" + dto.getCheckInDate() + ").");
+        String bookingType = dto.getBookingType() != null && !dto.getBookingType().isBlank()
+                ? dto.getBookingType().toUpperCase().trim()
+                : "ONE_TIME";
+
+        // Determine target dates
+        List<LocalDate> targetDates = new ArrayList<>();
+        if (dto.getDates() != null && !dto.getDates().isEmpty()) {
+            for (String dStr : dto.getDates()) {
+                try {
+                    LocalDate d = LocalDate.parse(dStr.trim());
+                    if (d.isBefore(today)) {
+                        throw new BadRequestException("Accommodation date cannot be in the past (" + dStr + ").");
+                    }
+                    if (!targetDates.contains(d)) {
+                        targetDates.add(d);
+                    }
+                } catch (DateTimeParseException e) {
+                    throw new BadRequestException("Invalid date format: " + dStr);
+                }
+            }
+            Collections.sort(targetDates);
+        } else if ("RECURRING".equals(bookingType)) {
+            String startDateStr = dto.getStartDate() != null ? dto.getStartDate() : dto.getCheckInDate();
+            String endDateStr = dto.getEndDate() != null ? dto.getEndDate() : dto.getCheckOutDate();
+            if (startDateStr == null || endDateStr == null || startDateStr.isBlank() || endDateStr.isBlank()) {
+                throw new BadRequestException("Both start date and end date are required for recurring stay.");
+            }
+            LocalDate start = LocalDate.parse(startDateStr);
+            LocalDate end = LocalDate.parse(endDateStr);
+            if (end.isBefore(start)) {
+                throw new BadRequestException("End date (" + endDateStr + ") cannot be earlier than start date (" + startDateStr + ").");
+            }
+            if (start.isBefore(today)) {
+                throw new BadRequestException("Start date cannot be in the past (" + startDateStr + ").");
+            }
+            List<String> repeatDays = dto.getRecurrenceDays();
+            if (repeatDays == null || repeatDays.isEmpty()) {
+                throw new BadRequestException("Select at least one weekday for recurring accommodation.");
+            }
+            Set<DayOfWeek> targetDays = new HashSet<>();
+            for (String day : repeatDays) {
+                targetDays.add(DayOfWeek.valueOf(day.toUpperCase().trim()));
+            }
+            LocalDate curr = start;
+            while (!curr.isAfter(end)) {
+                if (targetDays.contains(curr.getDayOfWeek())) {
+                    targetDates.add(curr);
+                }
+                curr = curr.plusDays(1);
+            }
+        } else if ("MULTI_DAY".equals(bookingType) && dto.getStartDate() != null && !dto.getStartDate().isBlank()) {
+            String startDateStr = dto.getStartDate();
+            String endDateStr = dto.getEndDate() != null ? dto.getEndDate() : startDateStr;
+            LocalDate start = LocalDate.parse(startDateStr);
+            LocalDate end = LocalDate.parse(endDateStr);
+            if (end.isBefore(start)) {
+                throw new BadRequestException("End date (" + endDateStr + ") cannot be earlier than start date (" + startDateStr + ").");
+            }
+            if (start.isBefore(today)) {
+                throw new BadRequestException("Start date cannot be in the past (" + startDateStr + ").");
+            }
+            LocalDate curr = start;
+            while (!curr.isAfter(end)) {
+                targetDates.add(curr);
+                curr = curr.plusDays(1);
+            }
         }
-        if (checkIn.equals(checkOut)) {
-            throw new BadRequestException("Same-day check-in and check-out is not allowed. Check-out must be after check-in.");
-        }
-        if (!checkOut.isAfter(checkIn)) {
-            throw new BadRequestException("Check-out date (" + dto.getCheckOutDate() + ") must be after check-in date (" + dto.getCheckInDate() + ").");
+
+        // 1. Single stay Date parsing and validation fallback
+        LocalDate checkIn = null;
+        LocalDate checkOut = null;
+        if (targetDates.isEmpty()) {
+            if (dto.getCheckInDate() == null || dto.getCheckInDate().isBlank()) {
+                throw new BadRequestException("Check-in date is required.");
+            }
+            if (dto.getCheckOutDate() == null || dto.getCheckOutDate().isBlank()) {
+                throw new BadRequestException("Check-out date is required.");
+            }
+            try {
+                checkIn = LocalDate.parse(dto.getCheckInDate());
+                checkOut = LocalDate.parse(dto.getCheckOutDate());
+            } catch (DateTimeParseException e) {
+                throw new BadRequestException("Invalid date format. Expected YYYY-MM-DD.");
+            }
+            if (checkIn.isBefore(today)) {
+                throw new BadRequestException("Check-in date cannot be in the past (" + dto.getCheckInDate() + ").");
+            }
+            if (checkIn.equals(checkOut)) {
+                throw new BadRequestException("Same-day check-in and check-out is not allowed. Check-out must be after check-in.");
+            }
+            if (!checkOut.isAfter(checkIn)) {
+                throw new BadRequestException("Check-out date (" + dto.getCheckOutDate() + ") must be after check-in date (" + dto.getCheckInDate() + ").");
+            }
         }
 
         // 2. Hostel validation
@@ -207,7 +373,7 @@ public class AccommodationService {
             room = matching.get(0);
         }
 
-        // 4. Room Maintenance / Status check (Step 18)
+        // 4. Room Maintenance / Status check
         if (room.getStatus() != null && !room.getStatus().equalsIgnoreCase("Available")) {
             throw new BadRequestException("Room " + room.getRoomId() + " is currently under " + room.getStatus() + " and cannot be booked.");
         }
@@ -225,23 +391,102 @@ public class AccommodationService {
             throw new BadRequestException("Purpose of stay is required.");
         }
 
-        // 7. Active Booking Overlap check (Step 3, 4, 17)
         List<AccommodationRequest> activeBookings = requestRepository.findActiveBookingsForRoom(room.getRoomId());
+        String requesterName = user.getName() != null ? user.getName() : user.getUserId();
+
+        // 7. MULTIPLE DATES HANDLING (like Seminar Hall)
+        if (targetDates.size() > 1) {
+            List<String> conflictMessages = new ArrayList<>();
+            for (LocalDate d : targetDates) {
+                String inStr = d.toString();
+                String outStr = d.plusDays(1).toString();
+                for (AccommodationRequest existing : activeBookings) {
+                    if (isBlockingStatus(existing.getStatus()) && isDatesConflicting(existing.getCheckInDate(), existing.getCheckOutDate(), inStr, outStr)) {
+                        conflictMessages.add("Room " + room.getRoomId() + " is unavailable on " + inStr +
+                                " (Conflict with: " + existing.getRequestId() + " [" + existing.getStatus() + "])");
+                    }
+                }
+            }
+            if (!conflictMessages.isEmpty()) {
+                throw new ConflictException(String.join(" | ", conflictMessages));
+            }
+
+            int totalOccurrences = targetDates.size();
+            String seriesId = generateSeriesId();
+            List<AccommodationRequest> createdList = new ArrayList<>();
+            int occurrenceIndex = 1;
+            String startDateStr = targetDates.get(0).toString();
+            String endDateStr = targetDates.get(targetDates.size() - 1).plusDays(1).toString();
+            List<String> dateStrings = targetDates.stream().map(LocalDate::toString).toList();
+
+            for (LocalDate d : targetDates) {
+                String inStr = d.toString();
+                String outStr = d.plusDays(1).toString();
+                String requestId = generateRequestId(occurrenceIndex);
+
+                AccommodationRequest.StatusHistoryEntry initialHistory = AccommodationRequest.StatusHistoryEntry.builder()
+                        .status("PENDING")
+                        .actor(requesterName)
+                        .timestamp(LocalDateTime.now())
+                        .comment("Accommodation request submitted by " + user.getDepartment() + " Department")
+                        .build();
+
+                AccommodationRequest request = AccommodationRequest.builder()
+                        .requestId(requestId)
+                        .department(user.getDepartment())
+                        .facultyOrGuestName(dto.getFacultyOrGuestName() != null && !dto.getFacultyOrGuestName().isBlank() ? dto.getFacultyOrGuestName() : requesterName)
+                        .hostel(room.getHostel())
+                        .roomType(room.getRoomType())
+                        .roomId(room.getRoomId())
+                        .roomLocation(room.getLocation())
+                        .checkInDate(inStr)
+                        .checkOutDate(outStr)
+                        .startDate(startDateStr)
+                        .endDate(endDateStr)
+                        .dates(dateStrings)
+                        .guestsCount(dto.getGuestsCount())
+                        .purpose(dto.getPurpose())
+                        .additionalNotes(dto.getAdditionalNotes())
+                        .bookingType(bookingType)
+                        .isRecurring("RECURRING".equals(bookingType))
+                        .seriesId(seriesId)
+                        .recurrencePattern("RECURRING".equals(bookingType) ? dto.getRecurrencePattern() : null)
+                        .recurrenceDays("RECURRING".equals(bookingType) ? dto.getRecurrenceDays() : null)
+                        .occurrenceIndex(occurrenceIndex)
+                        .totalOccurrences(totalOccurrences)
+                        .status("PENDING")
+                        .requestedBy(requesterName)
+                        .requesterUserId(user.getUserId())
+                        .statusHistory(new ArrayList<>(List.of(initialHistory)))
+                        .createdAt(LocalDateTime.now())
+                        .updatedAt(LocalDateTime.now())
+                        .build();
+
+                createdList.add(requestRepository.save(request));
+                occurrenceIndex++;
+            }
+
+            AccommodationRequest primary = createdList.get(0);
+            String notifyMsg = user.getDepartment() + " requested " + totalOccurrences + " stay occurrences for room " + room.getRoomId() + " (" + room.getHostel() + ").";
+            notificationService.sendNotification("ACCOMMODATION_ADMIN", "ADMIN", null, "New Accommodation Request", notifyMsg, "Accommodation", "INFO", primary.getRequestId());
+            notificationService.sendNotification("AO_ADMIN", "ADMIN", null, "New Accommodation Request", notifyMsg, "Accommodation", "INFO", primary.getRequestId());
+            return primary;
+        }
+
+        // 8. SINGLE DATE / CONTINUOUS STAY
+        String finalCheckIn = !targetDates.isEmpty() ? targetDates.get(0).toString() : dto.getCheckInDate();
+        String finalCheckOut = !targetDates.isEmpty() ? targetDates.get(0).plusDays(1).toString() : dto.getCheckOutDate();
+
         for (AccommodationRequest existing : activeBookings) {
-            if (isBlockingStatus(existing.getStatus()) && isDatesConflicting(existing.getCheckInDate(), existing.getCheckOutDate(), dto.getCheckInDate(), dto.getCheckOutDate())) {
-                throw new ConflictException("Room " + room.getRoomId() + " is unavailable from " + dto.getCheckInDate() +
-                        " to " + dto.getCheckOutDate() + " (Conflict with: " + existing.getRequestId() + " [" + existing.getStatus() + "]).");
+            if (isBlockingStatus(existing.getStatus()) && isDatesConflicting(existing.getCheckInDate(), existing.getCheckOutDate(), finalCheckIn, finalCheckOut)) {
+                throw new ConflictException("Room " + room.getRoomId() + " is unavailable from " + finalCheckIn +
+                        " to " + finalCheckOut + " (Conflict with: " + existing.getRequestId() + " [" + existing.getStatus() + "]).");
             }
         }
 
-        // 8. Create and Save Request
-        String requestId = generateRequestId();
-        String bookingType = (checkIn.plusDays(1).equals(checkOut)) ? "ONE_TIME" : "MULTI_DAY";
-        if (dto.getBookingType() != null && !dto.getBookingType().isBlank()) {
-            bookingType = dto.getBookingType().toUpperCase().trim();
-        }
+        String requestId = generateRequestId(0);
+        String effBookingType = (checkIn != null && checkIn.plusDays(1).equals(checkOut)) ? "ONE_TIME" : bookingType;
 
-        String requesterName = user.getName() != null ? user.getName() : user.getUserId();
         AccommodationRequest.StatusHistoryEntry initialHistory = AccommodationRequest.StatusHistoryEntry.builder()
                 .status("PENDING")
                 .actor(requesterName)
@@ -257,12 +502,14 @@ public class AccommodationService {
                 .roomType(room.getRoomType())
                 .roomId(room.getRoomId())
                 .roomLocation(room.getLocation())
-                .checkInDate(dto.getCheckInDate())
-                .checkOutDate(dto.getCheckOutDate())
+                .checkInDate(finalCheckIn)
+                .checkOutDate(finalCheckOut)
+                .startDate(finalCheckIn)
+                .endDate(finalCheckOut)
                 .guestsCount(dto.getGuestsCount())
                 .purpose(dto.getPurpose())
                 .additionalNotes(dto.getAdditionalNotes())
-                .bookingType(bookingType)
+                .bookingType(effBookingType)
                 .status("PENDING")
                 .requestedBy(requesterName)
                 .requesterUserId(user.getUserId())
@@ -275,7 +522,7 @@ public class AccommodationService {
 
         // Notify Admins
         String notifyMsg = user.getDepartment() + " requested " + room.getRoomId() + " (" + room.getHostel() + ") from " +
-                dto.getCheckInDate() + " to " + dto.getCheckOutDate() + " for " + dto.getGuestsCount() + " guest(s).";
+                finalCheckIn + " to " + finalCheckOut + " for " + dto.getGuestsCount() + " guest(s).";
 
         notificationService.sendNotification("ACCOMMODATION_ADMIN", "ADMIN", null, "New Accommodation Request", notifyMsg, "Accommodation", "INFO", saved.getRequestId());
         notificationService.sendNotification("AO_ADMIN", "ADMIN", null, "New Accommodation Request", notifyMsg, "Accommodation", "INFO", saved.getRequestId());
@@ -284,9 +531,22 @@ public class AccommodationService {
     }
 
     private String generateRequestId() {
+        return generateRequestId(0);
+    }
+
+    private String generateRequestId(int index) {
         int year = LocalDate.now().getYear();
         long seq = ID_COUNTER.incrementAndGet() % 100000;
+        if (index > 0) {
+            return String.format("ACC-%d-%05d-%d", year, seq, index);
+        }
         return String.format("ACC-%d-%05d", year, seq);
+    }
+
+    private String generateSeriesId() {
+        int year = LocalDate.now().getYear();
+        long seq = ID_COUNTER.incrementAndGet() % 100000;
+        return String.format("ACC-SERIES-%d-%05d", year, seq);
     }
 
     public List<AccommodationRequest> getAllRequests(String status, String hostel, String date, String fromDate, String toDate, String department, User user) {

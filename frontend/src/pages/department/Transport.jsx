@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Bus,
   Clock,
@@ -12,6 +12,13 @@ import {
   CheckCircle,
   Truck,
   Eye,
+  CalendarDays,
+  CalendarRange,
+  Repeat,
+  AlertTriangle,
+  CheckCircle2,
+  RefreshCw,
+  X,
 } from 'lucide-react';
 import { transportApi } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
@@ -24,6 +31,40 @@ import { RequestDetailsModal } from '../../components/common/RequestDetailsModal
 import { ServiceDateRangeViewer } from '../../components/common/ServiceDateRangeViewer';
 import confetti from 'canvas-confetti';
 import { getTodayStr, getTomorrowStr } from '../../utils/dateUtils';
+
+const WEEKDAYS = [
+  { key: 'MONDAY', label: 'Mon', fullLabel: 'Monday', dayIndex: 1 },
+  { key: 'TUESDAY', label: 'Tue', fullLabel: 'Tuesday', dayIndex: 2 },
+  { key: 'WEDNESDAY', label: 'Wed', fullLabel: 'Wednesday', dayIndex: 3 },
+  { key: 'THURSDAY', label: 'Thu', fullLabel: 'Thursday', dayIndex: 4 },
+  { key: 'FRIDAY', label: 'Fri', fullLabel: 'Friday', dayIndex: 5 },
+  { key: 'SATURDAY', label: 'Sat', fullLabel: 'Saturday', dayIndex: 6 },
+  { key: 'SUNDAY', label: 'Sun', fullLabel: 'Sunday', dayIndex: 0 },
+];
+
+const parseLocalDate = (dateStr) => {
+  const parts = dateStr.split('-').map(Number);
+  return new Date(parts[0], parts[1] - 1, parts[2]);
+};
+
+const formatLocalDate = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const getOccurrenceDateDisplay = (dateStr) => {
+  try {
+    const parts = dateStr.split('-').map(Number);
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    const dayOfWeek = d.toLocaleDateString('en-US', { weekday: 'long' });
+    const dateFormatted = d.toLocaleDateString('en-US', { day: '2-digit', month: 'long', year: 'numeric' });
+    return { dateFormatted, dayOfWeek };
+  } catch {
+    return { dateFormatted: dateStr, dayOfWeek: '' };
+  }
+};
 
 const formatDateDisplay = (dateVal) => {
   if (!dateVal) return '-';
@@ -56,6 +97,14 @@ export const Transport = () => {
   const [expectedPassengers, setExpectedPassengers] = useState(40);
   const [additionalNotes, setAdditionalNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Booking Type: ONE_TIME | MULTI_DAY | RECURRING
+  const [bookingType, setBookingType] = useState('ONE_TIME');
+  const [endDate, setEndDate] = useState(getTomorrowStr());
+  const [recurrenceDays, setRecurrenceDays] = useState(['MONDAY']);
+  const [excludedDates, setExcludedDates] = useState([]);
+  const [bulkConflictInfo, setBulkConflictInfo] = useState(null);
+  const [checkingBulk, setCheckingBulk] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -93,13 +142,108 @@ export const Transport = () => {
     }
   };
 
+  const toggleRecurrenceDay = (dayKey) => {
+    setRecurrenceDays((prev) => {
+      if (prev.includes(dayKey)) {
+        if (prev.length === 1) return prev;
+        return prev.filter((d) => d !== dayKey);
+      } else {
+        return [...prev, dayKey];
+      }
+    });
+  };
+
+  // Compute all target dates based on booking type
+  const targetDates = useMemo(() => {
+    let list = [];
+    if (bookingType === 'ONE_TIME') {
+      if (tripDate) list = [tripDate];
+    } else if (bookingType === 'MULTI_DAY') {
+      if (tripDate) {
+        if (!endDate || endDate === tripDate) {
+          list = [tripDate];
+        } else if (endDate > tripDate) {
+          let cur = parseLocalDate(tripDate);
+          const end = parseLocalDate(endDate);
+          while (cur <= end) {
+            list.push(formatLocalDate(cur));
+            cur.setDate(cur.getDate() + 1);
+          }
+        }
+      }
+    } else {
+      // RECURRING
+      if (tripDate && endDate && endDate >= tripDate && recurrenceDays.length > 0) {
+        const targetDayIndices = recurrenceDays.map((k) => {
+          const found = WEEKDAYS.find((w) => w.key === k);
+          return found ? found.dayIndex : -1;
+        });
+        let cur = parseLocalDate(tripDate);
+        const end = parseLocalDate(endDate);
+        while (cur <= end) {
+          if (targetDayIndices.includes(cur.getDay())) {
+            list.push(formatLocalDate(cur));
+          }
+          cur.setDate(cur.getDate() + 1);
+        }
+      }
+    }
+    return list.filter((d) => !excludedDates.includes(d));
+  }, [bookingType, tripDate, endDate, recurrenceDays, excludedDates]);
+
+  const handleRemoveDate = (dateToRemove) => {
+    setExcludedDates((prev) => [...prev, dateToRemove]);
+  };
+
+  // Live bulk availability check on target dates
+  useEffect(() => {
+    let isCancelled = false;
+    if (!tripType || targetDates.length === 0) {
+      setBulkConflictInfo(null);
+      return;
+    }
+
+    const runBulkCheck = async () => {
+      setCheckingBulk(true);
+      try {
+        const res = await transportApi.checkBulkAvailability({
+          tripType,
+          dates: targetDates,
+          departureTime,
+          returnTime,
+          bookingType,
+        });
+        if (!isCancelled && res.data) {
+          setBulkConflictInfo(res.data);
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          console.warn('Bulk transport check failed:', err);
+        }
+      } finally {
+        if (!isCancelled) setCheckingBulk(false);
+      }
+    };
+
+    runBulkCheck();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [tripType, targetDates, departureTime, returnTime, bookingType]);
+
   const availableVehiclesCount = vehicles.filter((v) => v.status === 'AVAILABLE').length;
   const pendingRequestsCount = requests.filter((r) => r.status === 'PENDING').length;
   const approvedThisMonthCount = requests.filter((r) => r.status === 'APPROVED').length;
 
   const handleReset = () => {
     setTripType('College Bus');
+    setBookingType('ONE_TIME');
     setTripDate(getTomorrowStr());
+    setEndDate(getTomorrowStr());
+    setRecurrenceDays(['MONDAY']);
+    setExcludedDates([]);
+    setBulkConflictInfo(null);
     setDestination('');
     setPurpose('');
     setExpectedPassengers(40);
@@ -111,6 +255,14 @@ export const Transport = () => {
     const today = getTodayStr();
     if (tripDate < today) {
       showToast('Trip date cannot be in the past', 'warning');
+      return;
+    }
+    if (targetDates.length === 0) {
+      showToast('Please select at least one valid date for transport', 'warning');
+      return;
+    }
+    if (bulkConflictInfo && bulkConflictInfo.conflictCount > 0) {
+      showToast(`Cannot submit: ${bulkConflictInfo.conflictCount} conflict(s) detected for selected dates.`, 'error');
       return;
     }
     if (!destination.trim()) {
@@ -130,7 +282,7 @@ export const Transport = () => {
     try {
       const res = await transportApi.createRequest({
         tripType,
-        tripDate,
+        tripDate: targetDates[0] || tripDate,
         roundTrip,
         pickupLocation,
         destination,
@@ -139,6 +291,11 @@ export const Transport = () => {
         returnTime,
         expectedPassengers: Number(expectedPassengers),
         additionalNotes,
+        bookingType,
+        startDate: targetDates[0] || tripDate,
+        endDate: targetDates[targetDates.length - 1] || tripDate,
+        dates: targetDates,
+        recurrenceDays: bookingType === 'RECURRING' ? recurrenceDays : [],
       });
 
       if (res.success) {
@@ -204,7 +361,11 @@ export const Transport = () => {
             <tbody>
               {records.map((t, idx) => (
                 <tr key={t.id || t.requestId || idx}>
-                  <td className="table-cell-date">{formatDateDisplay(t.tripDate)}</td>
+                  <td className="table-cell-date">
+                    {t.dates && t.dates.length > 1
+                      ? `${t.dates.length} Dates (${formatDateDisplay(t.dates[0])} - ${formatDateDisplay(t.dates[t.dates.length - 1])})`
+                      : formatDateDisplay(t.tripDate)}
+                  </td>
                   <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t.requestId}</td>
                   <td>{t.department}</td>
                   <td>{t.pickupLocation || 'Campus'}</td>
@@ -287,17 +448,245 @@ export const Transport = () => {
               </select>
             </div>
 
-            <div className="form-group">
-              <label className="form-label text-xs">Trip Date *</label>
-              <input
-                type="date"
-                value={tripDate}
-                min={getTodayStr()}
-                onChange={(e) => setTripDate(e.target.value)}
-                required
-                className="w-full text-xs"
-              />
+            {/* Booking Type Toggle Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-slate-800">
+              <span className="text-xs font-semibold text-slate-300">Booking Type</span>
+              <div className="flex flex-wrap items-center gap-1.5 bg-slate-900/90 p-1 rounded-lg border border-slate-700/60">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBookingType('ONE_TIME');
+                    setExcludedDates([]);
+                  }}
+                  className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition ${bookingType === 'ONE_TIME'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                    }`}
+                >
+                  <CalendarDays size={13} /> One-Time
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBookingType('MULTI_DAY');
+                    setExcludedDates([]);
+                    if (!endDate || endDate < tripDate) setEndDate(tripDate);
+                  }}
+                  className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition ${bookingType === 'MULTI_DAY'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                    }`}
+                >
+                  <CalendarRange size={13} /> Multi-Day
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBookingType('RECURRING');
+                    setExcludedDates([]);
+                    if (!endDate || endDate < tripDate) setEndDate(tripDate);
+                  }}
+                  className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition ${bookingType === 'RECURRING'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                    }`}
+                >
+                  <Repeat size={13} /> Recurring
+                </button>
+              </div>
             </div>
+
+            {/* Date Pickers based on Booking Type */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="form-group">
+                <label className="form-label text-xs">
+                  {bookingType === 'ONE_TIME' ? 'Trip Date *' : 'Series Start Date *'}
+                </label>
+                <input
+                  type="date"
+                  value={tripDate}
+                  min={getTodayStr()}
+                  onChange={(e) => {
+                    setTripDate(e.target.value);
+                    if (bookingType === 'ONE_TIME') setEndDate(e.target.value);
+                  }}
+                  required
+                  className="w-full text-xs"
+                />
+              </div>
+
+              {bookingType !== 'ONE_TIME' && (
+                <div className="form-group">
+                  <label className="form-label text-xs">
+                    {bookingType === 'MULTI_DAY' ? 'Series End Date (Inclusive) *' : 'Series End Date *'}
+                  </label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    min={tripDate || getTodayStr()}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    required
+                    className="w-full text-xs"
+                  />
+                </div>
+              )}
+
+              {bookingType === 'RECURRING' && (
+                <div className="form-group sm:col-span-2">
+                  <label className="form-label text-xs mb-1.5">Repeat On Weekdays *</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {WEEKDAYS.map((w) => {
+                      const isSel = recurrenceDays.includes(w.key);
+                      return (
+                        <button
+                          key={w.key}
+                          type="button"
+                          onClick={() => toggleRecurrenceDay(w.key)}
+                          className={`px-2.5 py-1 text-xs rounded-md border font-medium transition ${isSel
+                            ? 'bg-blue-600 border-blue-500 text-white shadow'
+                            : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-white'
+                            }`}
+                        >
+                          {w.fullLabel}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Selected Dates List with Removal Capability */}
+            {targetDates.length > 0 && (
+              <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 text-xs space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-slate-300 font-medium">
+                    Selected Dates: <strong className="text-white">{targetDates.length} date(s)</strong>
+                  </span>
+                  {excludedDates.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setExcludedDates([])}
+                      className="text-[11px] text-blue-400 hover:underline"
+                    >
+                      Reset removed ({excludedDates.length})
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1.5 max-h-[85px] overflow-y-auto p-1 bg-slate-950/40 rounded border border-slate-800/60">
+                  {targetDates.map((d) => (
+                    <span
+                      key={d}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800 text-slate-200 text-[11px] border border-slate-700"
+                    >
+                      {d}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveDate(d)}
+                        className="text-slate-400 hover:text-rose-400 transition"
+                        title={`Remove ${d}`}
+                      >
+                        <X size={11} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Availability / Conflict Status & Occurrence Cards Preview */}
+            {targetDates.length > 0 && (
+              <div>
+                <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <span className="text-slate-300">
+                    Occurrences: <strong className="text-white">{targetDates.length} date(s)</strong>
+                  </span>
+                  {checkingBulk ? (
+                    <span className="text-blue-400 flex items-center gap-1">
+                      <RefreshCw size={12} className="animate-spin" /> Checking fleet availability...
+                    </span>
+                  ) : bulkConflictInfo && bulkConflictInfo.conflictCount > 0 ? (
+                    <span className="text-rose-400 font-semibold flex items-center gap-1">
+                      <AlertTriangle size={13} />
+                      ⚠ Conflict Found ({bulkConflictInfo.conflictCount} conflict(s))
+                    </span>
+                  ) : (
+                    <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                      <CheckCircle2 size={13} /> ✓ Available
+                    </span>
+                  )}
+                </div>
+
+                {((bulkConflictInfo && bulkConflictInfo.conflictCount > 0) || bookingType !== 'ONE_TIME') && (
+                  <div className="occurrence-list-container mt-2 max-h-[190px] overflow-y-auto">
+                    {(bulkConflictInfo?.occurrences || targetDates.map((d) => ({
+                      date: d,
+                      day: getOccurrenceDateDisplay(d).dayOfWeek,
+                      tripType: tripType,
+                      status: checkingBulk ? 'CHECKING' : 'AVAILABLE',
+                    }))).map((occ, idx) => {
+                      const { dateFormatted, dayOfWeek } = getOccurrenceDateDisplay(occ.date);
+                      const isConflict = occ.status === 'CONFLICT';
+                      const isUnavailable = occ.status === 'UNAVAILABLE';
+                      const isChecking = occ.status === 'CHECKING' || checkingBulk;
+
+                      return (
+                        <div
+                          key={`${occ.date}-${idx}`}
+                          className={`occurrence-card ${isConflict
+                            ? 'occurrence-card-conflict'
+                            : isUnavailable
+                              ? 'occurrence-card-unavailable'
+                              : 'occurrence-card-available'
+                            }`}
+                        >
+                          <div className="occurrence-card-header">
+                            <div className="occurrence-title-group">
+                              <span className="occurrence-index-badge">Trip {idx + 1}</span>
+                              <span className="occurrence-date-title">{dateFormatted || occ.date}</span>
+                              <span className="occurrence-day-sub">({occ.day || dayOfWeek})</span>
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              {isChecking ? (
+                                <span className="text-blue-400 text-xs font-semibold flex items-center gap-1">
+                                  <RefreshCw size={12} className="animate-spin" /> Checking...
+                                </span>
+                              ) : isConflict ? (
+                                <span className="occurrence-status-badge occurrence-status-conflict">
+                                  <AlertTriangle size={12} /> ⚠ CONFLICT
+                                </span>
+                              ) : isUnavailable ? (
+                                <span className="occurrence-status-badge occurrence-status-unavailable">
+                                  <AlertTriangle size={12} /> ⚠ UNAVAILABLE
+                                </span>
+                              ) : (
+                                <span className="occurrence-status-badge occurrence-status-available">
+                                  <CheckCircle2 size={12} /> ✓ AVAILABLE
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveDate(occ.date)}
+                                className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-rose-400 transition"
+                                title="Remove this date"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          </div>
+                          {isConflict && occ.conflictReason && (
+                            <div className="text-[11px] text-rose-400 mt-1">
+                              {occ.conflictReason}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="checkbox-row my-1">
               <input
@@ -605,7 +994,11 @@ export const Transport = () => {
               ) : (
                 requests.map((r) => (
                   <tr key={r.id || r.requestId}>
-                    <td className="table-cell-date">{formatDateDisplay(r.tripDate || r.createdAt)}</td>
+                    <td className="table-cell-date">
+                      {r.dates && r.dates.length > 1
+                        ? `${r.dates.length} Dates (${formatDateDisplay(r.dates[0])} - ${formatDateDisplay(r.dates[r.dates.length - 1])})`
+                        : formatDateDisplay(r.tripDate || r.createdAt)}
+                    </td>
                     <td>{r.tripType}</td>
                     <td className="table-cell-dest">{r.destination}</td>
                     <td>

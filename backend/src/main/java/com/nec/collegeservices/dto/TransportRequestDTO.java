@@ -39,4 +39,16 @@ public class TransportRequestDTO {
 
     private String vehicleId;
     private String additionalNotes;
+
+    // Booking Type: ONE_TIME, MULTI_DAY, RECURRING
+    @Builder.Default
+    private String bookingType = "ONE_TIME";
+
+    private String startDate;
+    private String endDate;
+    private java.util.List<String> dates;
+    private java.util.List<String> recurrenceDays;
+
+    @Builder.Default
+    private String recurrencePattern = "WEEKLY";
 }

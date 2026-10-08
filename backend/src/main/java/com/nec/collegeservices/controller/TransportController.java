@@ -2,6 +2,7 @@ package com.nec.collegeservices.controller;
 
 import com.nec.collegeservices.dto.ApiResponse;
 import com.nec.collegeservices.dto.RejectRequestDTO;
+import com.nec.collegeservices.dto.TransportBulkAvailabilityRequestDTO;
 import com.nec.collegeservices.dto.TransportRequestDTO;
 import com.nec.collegeservices.model.TransportRequest;
 import com.nec.collegeservices.model.User;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import com.nec.collegeservices.service.UnifiedRequestService;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/transport")
@@ -52,6 +54,12 @@ public class TransportController {
     public ResponseEntity<ApiResponse<Vehicle>> addVehicle(@RequestBody Vehicle vehicle) {
         Vehicle saved = transportService.addVehicle(vehicle);
         return ResponseEntity.ok(ApiResponse.ok("Vehicle added successfully", saved));
+    }
+
+    @PostMapping("/check-bulk-availability")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> checkBulkAvailability(
+            @Valid @RequestBody TransportBulkAvailabilityRequestDTO dto) {
+        return ResponseEntity.ok(ApiResponse.ok("Bulk vehicle availability", transportService.checkBulkAvailability(dto)));
     }
 
     @PostMapping("/requests")

@@ -44,9 +44,21 @@ public class AccommodationRequest {
     private String purpose;
     private String additionalNotes;
 
-    // Booking Type: ONE_TIME, MULTI_DAY
+    // Booking Type: ONE_TIME, MULTI_DAY, RECURRING
     @Builder.Default
     private String bookingType = "ONE_TIME";
+
+    private String startDate; // YYYY-MM-DD
+    private String endDate;   // YYYY-MM-DD
+
+    @Builder.Default
+    private Boolean isRecurring = false;
+    private String seriesId;             // Unique identifier for the entire recurring/multi-day series
+    private String recurrencePattern;    // e.g., "WEEKLY"
+    private List<String> recurrenceDays; // e.g., ["MONDAY", "WEDNESDAY"]
+    private Integer occurrenceIndex;     // e.g., 1
+    private Integer totalOccurrences;    // e.g., 8
+    private List<String> dates;          // List of all dates in the request
 
     // Status: PENDING, APPROVED, REJECTED, CANCELLED, CANCELLATION_REQUESTED, RESCHEDULE_REQUESTED
     private String status;

@@ -1,5 +1,6 @@
 package com.nec.collegeservices.controller;
 
+import com.nec.collegeservices.dto.AccommodationBulkAvailabilityRequestDTO;
 import com.nec.collegeservices.dto.AccommodationCancelRequestDTO;
 import com.nec.collegeservices.dto.AccommodationRequestDTO;
 import com.nec.collegeservices.dto.AccommodationRescheduleRequestDTO;
@@ -75,6 +76,12 @@ public class AccommodationController {
             @RequestParam(required = false) String checkOutDate) {
         Map<String, Object> avail = accommodationService.getRoomAvailability(roomId, checkInDate, checkOutDate);
         return ResponseEntity.ok(ApiResponse.ok("Room availability details", avail));
+    }
+
+    @PostMapping("/check-bulk-availability")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> checkBulkAvailability(
+            @Valid @RequestBody AccommodationBulkAvailabilityRequestDTO dto) {
+        return ResponseEntity.ok(ApiResponse.ok("Bulk room availability", accommodationService.checkBulkAvailability(dto)));
     }
 
     // ==========================================

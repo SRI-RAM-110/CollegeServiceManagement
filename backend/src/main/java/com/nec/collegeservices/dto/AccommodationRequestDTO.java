@@ -41,5 +41,13 @@ public class AccommodationRequestDTO {
     private String additionalNotes;
 
     @Builder.Default
-    private String bookingType = "ONE_TIME"; // ONE_TIME or MULTI_DAY
+    private String bookingType = "ONE_TIME"; // ONE_TIME, MULTI_DAY, RECURRING
+
+    private String startDate;
+    private String endDate;
+    private java.util.List<String> dates;
+    private java.util.List<String> recurrenceDays;
+
+    @Builder.Default
+    private String recurrencePattern = "WEEKLY";
 }

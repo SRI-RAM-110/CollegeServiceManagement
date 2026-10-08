@@ -20,4 +20,6 @@ public interface TransportRequestRepository extends MongoRepository<TransportReq
     List<TransportRequest> findByTripDateAndStatusIn(String tripDate, List<String> statuses);
 
     List<TransportRequest> findByVehicleIdAndTripDateAndStatusIn(String vehicleId, String tripDate, List<String> statuses);
+
+    List<TransportRequest> findBySeriesId(String seriesId);
 }

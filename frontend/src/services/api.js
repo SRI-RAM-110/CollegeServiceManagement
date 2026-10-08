@@ -142,6 +142,7 @@ export const accommodationApi = {
   getRooms: (hostel) => api.get('/accommodation/rooms', { params: hostel ? { hostel } : {} }),
   updateRoomStatus: (roomId, status) => api.put(`/accommodation/rooms/${roomId}/status`, { status }),
   getRoomAvailability: (roomId, params) => api.get(`/accommodation/rooms/${roomId}/availability`, { params }),
+  checkBulkAvailability: (data) => api.post('/accommodation/check-bulk-availability', data),
   createRequest: (data) => api.post('/accommodation/requests', data),
   getRequests: (params = {}) => api.get('/accommodation/requests', { params }),
   getRequestById: (id) => api.get(`/accommodation/requests/${id}`),
@@ -161,6 +162,7 @@ export const accommodationApi = {
 export const transportApi = {
   getVehicles: (date) => api.get('/transport/vehicles', { params: date ? { date } : {} }),
   getTrips: (date) => api.get('/transport/trips', { params: date ? { date } : {} }),
+  checkBulkAvailability: (data) => api.post('/transport/check-bulk-availability', data),
   addVehicle: (data) => api.post('/transport/vehicles/add', data),
   createRequest: (data) => api.post('/transport/requests', data),
   getRequests: (params = {}) => api.get('/transport/requests', { params }),

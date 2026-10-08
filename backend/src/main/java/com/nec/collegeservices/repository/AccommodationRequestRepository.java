@@ -25,4 +25,6 @@ public interface AccommodationRequestRepository extends MongoRepository<Accommod
 
     @Query("{ 'roomId': ?0, 'status': { $in: ['PENDING', 'APPROVED', 'BOOKED', 'CANCELLATION_REQUESTED', 'RESCHEDULE_REQUESTED'] }, $and: [ { 'checkInDate': { $lt: ?2 } }, { 'checkOutDate': { $gt: ?1 } } ] }")
     List<AccommodationRequest> findOverlappingRequests(String roomId, String checkInDate, String checkOutDate);
+
+    List<AccommodationRequest> findBySeriesId(String seriesId);
 }
