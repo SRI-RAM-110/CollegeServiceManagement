@@ -16,6 +16,7 @@ public class AuthResponse {
     private String role;
     private java.util.List<String> roles;
     private java.util.List<String> assignedHallIds;
+    private java.util.List<String> assignedHostels;
     private java.util.List<String> servicePermissions;
     private String department;
     private String designation;

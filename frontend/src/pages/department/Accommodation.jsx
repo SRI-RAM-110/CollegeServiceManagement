@@ -48,6 +48,41 @@ const WEEKDAYS = [
   { key: 'SUNDAY', label: 'Sun', fullLabel: 'Sunday', dayIndex: 0 },
 ];
 
+const parseLocalDate = (dateStr) => {
+  if (!dateStr) return new Date();
+  const parts = dateStr.split('-').map(Number);
+  return new Date(parts[0], parts[1] - 1, parts[2]);
+};
+
+const formatLocalDate = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const getOccurrenceDateDisplay = (dateStr) => {
+  try {
+    const parts = dateStr.split('-').map(Number);
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    const dayOfWeek = d.toLocaleDateString('en-US', { weekday: 'long' });
+    const dateFormatted = d.toLocaleDateString('en-US', { day: '2-digit', month: 'long', year: 'numeric' });
+    return { dateFormatted, dayOfWeek };
+  } catch {
+    return { dateFormatted: dateStr, dayOfWeek: '' };
+  }
+};
+
+const formatDateDisplay = (dateVal) => {
+  if (!dateVal) return '-';
+  if (typeof dateVal === 'string') return dateVal.substring(0, 10);
+  if (Array.isArray(dateVal)) {
+    const [y, m, d] = dateVal;
+    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
+  return String(dateVal);
+};
+
 const computeTargetDates = (bookingType, checkInDate, checkOutDate, recurrenceDays, excludedDates = []) => {
   let list = [];
   if (bookingType === 'ONE_TIME') {
@@ -807,15 +842,15 @@ export const Accommodation = () => {
         hostel: s.hostel,
         roomType: s.roomType,
         roomId: s.roomId,
-        checkInDate: dates[0] || s.checkInDate,
-        checkOutDate: dates.length > 1 ? dates[dates.length - 1] : s.checkOutDate,
+        checkInDate: s.bookingType === 'ONE_TIME' ? s.checkInDate : (dates[0] || s.checkInDate),
+        checkOutDate: s.bookingType === 'ONE_TIME' ? s.checkOutDate : (dates.length > 1 ? dates[dates.length - 1] : s.checkOutDate),
         guestsCount: Number(s.guestsCount),
         purpose: s.purpose.trim(),
         additionalNotes: s.additionalNotes.trim(),
         bookingType: s.bookingType,
-        startDate: dates[0] || s.checkInDate,
-        endDate: dates[dates.length - 1] || s.checkOutDate,
-        dates: dates,
+        startDate: s.bookingType === 'ONE_TIME' ? s.checkInDate : (dates[0] || s.checkInDate),
+        endDate: s.bookingType === 'ONE_TIME' ? s.checkOutDate : (dates.length > 1 ? dates[dates.length - 1] : s.checkOutDate),
+        dates: s.bookingType === 'ONE_TIME' ? [s.checkInDate] : dates,
         recurrenceDays: s.bookingType === 'RECURRING' ? s.recurrenceDays : [],
       });
 

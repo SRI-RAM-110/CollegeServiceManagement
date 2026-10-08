@@ -67,7 +67,10 @@ public class AccommodationRequest {
     private String parentRequestId;      // e.g., ACC-PARENT-2026-00015
 
     // Two-Level Approval: AO Admin (Level 1) Details
-    private String aoApprovalStatus;     // PENDING, APPROVED, REJECTED
+    private String aoApprovalStatus;     // PENDING, APPROVED, REJECTED, FORWARDED
+    private String aoAction;             // DIRECT_APPROVE, FORWARD
+    private String forwardedTo;          // BOYS_HOSTEL_ADMIN, GIRLS_HOSTEL_ADMIN
+    private LocalDateTime forwardedAt;
     private String aoApprovedBy;
     private LocalDateTime aoApprovedAt;
     private String aoRemarks;

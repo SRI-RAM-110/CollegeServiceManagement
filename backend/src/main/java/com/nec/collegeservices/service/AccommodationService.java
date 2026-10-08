@@ -100,6 +100,8 @@ public class AccommodationService {
         return s.equals("PENDING") ||
                s.equals("PENDING_AO_APPROVAL") ||
                s.equals("AO_APPROVED") ||
+               s.equals("FORWARDED_TO_BOYS_ADMIN") ||
+               s.equals("FORWARDED_TO_GIRLS_ADMIN") ||
                s.equals("APPROVED") ||
                s.equals("BOOKED") ||
                s.equals("CANCELLATION_REQUESTED") ||
@@ -534,8 +536,12 @@ public class AccommodationService {
         }
 
         // 8. SINGLE DATE / CONTINUOUS STAY
-        String finalCheckIn = !targetDates.isEmpty() ? targetDates.get(0).toString() : dto.getCheckInDate();
-        String finalCheckOut = !targetDates.isEmpty() ? targetDates.get(0).plusDays(1).toString() : dto.getCheckOutDate();
+        String finalCheckIn = dto.getCheckInDate() != null && !dto.getCheckInDate().isBlank()
+                ? dto.getCheckInDate()
+                : (!targetDates.isEmpty() ? targetDates.get(0).toString() : null);
+        String finalCheckOut = dto.getCheckOutDate() != null && !dto.getCheckOutDate().isBlank()
+                ? dto.getCheckOutDate()
+                : (!targetDates.isEmpty() ? targetDates.get(0).plusDays(1).toString() : null);
 
         for (AccommodationRequest existing : activeBookings) {
             if (isBlockingStatus(existing.getStatus()) && isDatesConflicting(existing.getCheckInDate(), existing.getCheckOutDate(), finalCheckIn, finalCheckOut)) {
@@ -632,8 +638,21 @@ public class AccommodationService {
                         if (!user.isAssignedToHostel(r.getHostel())) {
                             return false;
                         }
-                        // Hostel Admin only receives requests after AO approval (stops if AO rejected or pending)
+                        // Hostel Admin must NOT see:
+                        // - Pending AO requests
+                        // - Requests AO directly approved
+                        // - AO rejected requests
+                        // - Requests belonging to another hostel
                         if ("PENDING_AO_APPROVAL".equalsIgnoreCase(r.getStatus()) || "AO_REJECTED".equalsIgnoreCase(r.getStatus())) {
+                            return false;
+                        }
+                        if ("DIRECT_APPROVE".equalsIgnoreCase(r.getAoAction())) {
+                            return false;
+                        }
+                        boolean isForwardedToThisAdmin = "FORWARD".equalsIgnoreCase(r.getAoAction()) ||
+                                "AO_APPROVED".equalsIgnoreCase(r.getStatus()) ||
+                                (r.getStatus() != null && r.getStatus().startsWith("FORWARDED_TO_"));
+                        if (!isForwardedToThisAdmin) {
                             return false;
                         }
                     }
@@ -681,6 +700,12 @@ public class AccommodationService {
             if (!user.isAssignedToHostel(req.getHostel())) {
                 throw new AccessDeniedException("You are not authorized to view accommodation requests for " + req.getHostel());
             }
+            if ("DIRECT_APPROVE".equalsIgnoreCase(req.getAoAction())) {
+                throw new AccessDeniedException("This request was directly approved by AO Admin and is not accessible to hostel admins.");
+            }
+            if ("PENDING_AO_APPROVAL".equalsIgnoreCase(req.getStatus()) || "AO_REJECTED".equalsIgnoreCase(req.getStatus())) {
+                throw new AccessDeniedException("This request is awaiting AO Admin review.");
+            }
             return req;
         }
 
@@ -692,9 +717,10 @@ public class AccommodationService {
     }
 
     /**
-     * Level 1: AO Admin Approval
+     * Level 1 Option A: AO Admin Direct Approval
+     * The request becomes APPROVED immediately. Neither hostel admin needs to approve it.
      */
-    public AccommodationRequest aoApproveRequest(String id, String remarks, User user) {
+    public AccommodationRequest aoDirectApproveRequest(String id, String remarks, User user) {
         AccommodationRequest req = requestRepository.findById(id)
                 .or(() -> requestRepository.findByRequestId(id))
                 .orElseThrow(() -> new ResourceNotFoundException("Accommodation request not found: " + id));
@@ -703,7 +729,7 @@ public class AccommodationService {
             try { user = authService.getCurrentUser(); } catch (Exception ignored) {}
         }
         if (!isSuperAdmin(user)) {
-            throw new AccessDeniedException("Only AO Admin / Super Admin can perform Level 1 AO Approval.");
+            throw new AccessDeniedException("Only AO Admin / Super Admin can perform Level 1 AO Direct Approval.");
         }
 
         String currentStatus = req.getStatus() != null ? req.getStatus().toUpperCase().trim() : "";
@@ -711,11 +737,110 @@ public class AccommodationService {
             throw new BadRequestException("Request is not awaiting AO approval. Current status: " + currentStatus);
         }
 
-        String actor = user != null ? (user.getName() != null ? user.getName() : user.getUserId()) : "AO Admin";
-        String comment = (remarks != null && !remarks.isBlank()) ? remarks.trim() : "Approved by AO Admin. Forwarded to " + req.getHostel() + " Admin.";
+        // Recheck room conflicts on approval against already APPROVED / BOOKED reservations
+        List<AccommodationRequest> activeBookings = requestRepository.findActiveBookingsForRoom(req.getRoomId());
+        for (AccommodationRequest existing : activeBookings) {
+            if (!existing.getId().equals(req.getId()) && !existing.getRequestId().equals(req.getRequestId())) {
+                boolean isAlreadyApproved = "APPROVED".equalsIgnoreCase(existing.getStatus()) || "BOOKED".equalsIgnoreCase(existing.getStatus());
+                if (isAlreadyApproved && isDatesConflicting(existing.getCheckInDate(), existing.getCheckOutDate(), req.getCheckInDate(), req.getCheckOutDate())) {
+                    throw new ConflictException("Room " + req.getRoomId() + " is no longer available. Conflicting reservation " +
+                            existing.getRequestId() + " is already " + existing.getStatus() + " from " + existing.getCheckInDate() +
+                            " to " + existing.getCheckOutDate() + ".");
+                }
+            }
+        }
 
-        req.setStatus("AO_APPROVED");
+        String actor = user != null ? (user.getName() != null ? user.getName() : user.getUserId()) : "AO Admin";
+        String comment = (remarks != null && !remarks.isBlank()) ? remarks.trim() : "Directly approved by AO Administrator.";
+
+        req.setStatus("APPROVED");
+        req.setAoAction("DIRECT_APPROVE");
         req.setAoApprovalStatus("APPROVED");
+        req.setAoApprovedBy(actor);
+        req.setAoApprovedAt(LocalDateTime.now());
+        req.setApprovedBy(actor);
+        req.setApprovedAt(LocalDateTime.now());
+        req.setAoRemarks(comment);
+        req.setUpdatedAt(LocalDateTime.now());
+
+        if (req.getStatusHistory() == null) req.setStatusHistory(new ArrayList<>());
+        req.getStatusHistory().add(AccommodationRequest.StatusHistoryEntry.builder()
+                .status("AO_DIRECT_APPROVED")
+                .actor(actor)
+                .timestamp(LocalDateTime.now())
+                .comment(comment)
+                .build());
+        req.getStatusHistory().add(AccommodationRequest.StatusHistoryEntry.builder()
+                .status("APPROVED")
+                .actor(actor)
+                .timestamp(LocalDateTime.now())
+                .comment("Accommodation request approved directly by AO Administrator.")
+                .build());
+
+        AccommodationRequest saved = requestRepository.save(req);
+
+        // Update room occupancy
+        if (req.getRoomId() != null) {
+            roomRepository.findByRoomId(req.getRoomId()).ifPresent(room -> {
+                room.setCurrentOccupancy(req.getGuestsCount());
+                roomRepository.save(room);
+            });
+        }
+
+        // Notify Department User (Requester)
+        String requesterId = requesterResolver.resolveRequesterUserId(req.getRequesterUserId(), req.getRequestedBy(), req.getDepartment());
+        notificationService.sendNotification(
+                "DEPARTMENT_USER",
+                req.getDepartment(),
+                requesterId,
+                "Accommodation Request Approved",
+                "Your accommodation request for " + req.getRoomId() + " (" + req.getHostel() + ", " + req.getCheckInDate() + " to " + req.getCheckOutDate() + ") was directly approved by AO Admin.",
+                "Accommodation",
+                "SUCCESS",
+                saved.getRequestId()
+        );
+
+        return saved;
+    }
+
+    public AccommodationRequest aoDirectApproveRequest(String id) {
+        return aoDirectApproveRequest(id, null, null);
+    }
+
+    /**
+     * Level 1 Option B: AO Admin Forward to Hostel Admin
+     * For Boys Hostel -> Forwarded strictly to Boys Hostel Admin (FORWARDED_TO_BOYS_ADMIN)
+     * For Girls Hostel -> Forwarded strictly to Girls Hostel Admin (FORWARDED_TO_GIRLS_ADMIN)
+     */
+    public AccommodationRequest aoForwardRequest(String id, String remarks, User user) {
+        AccommodationRequest req = requestRepository.findById(id)
+                .or(() -> requestRepository.findByRequestId(id))
+                .orElseThrow(() -> new ResourceNotFoundException("Accommodation request not found: " + id));
+
+        if (user == null) {
+            try { user = authService.getCurrentUser(); } catch (Exception ignored) {}
+        }
+        if (!isSuperAdmin(user)) {
+            throw new AccessDeniedException("Only AO Admin / Super Admin can forward accommodation requests.");
+        }
+
+        String currentStatus = req.getStatus() != null ? req.getStatus().toUpperCase().trim() : "";
+        if (!currentStatus.equals("PENDING_AO_APPROVAL") && !currentStatus.equals("PENDING")) {
+            throw new BadRequestException("Request is not awaiting AO approval. Current status: " + currentStatus);
+        }
+
+        boolean isBoys = "Boys Hostel".equalsIgnoreCase(req.getHostel());
+        String targetRole = isBoys ? "BOYS_HOSTEL_ADMIN" : "GIRLS_HOSTEL_ADMIN";
+        String newStatus = isBoys ? "FORWARDED_TO_BOYS_ADMIN" : "FORWARDED_TO_GIRLS_ADMIN";
+
+        String actor = user != null ? (user.getName() != null ? user.getName() : user.getUserId()) : "AO Admin";
+        String comment = (remarks != null && !remarks.isBlank()) ? remarks.trim() : ("Forwarded by AO Admin to " + req.getHostel() + " Admin.");
+
+        req.setStatus(newStatus);
+        req.setAoAction("FORWARD");
+        req.setForwardedTo(targetRole);
+        req.setForwardedAt(LocalDateTime.now());
+        req.setAoApprovalStatus("FORWARDED");
         req.setAoApprovedBy(actor);
         req.setAoApprovedAt(LocalDateTime.now());
         req.setAoRemarks(comment);
@@ -723,7 +848,7 @@ public class AccommodationService {
 
         if (req.getStatusHistory() == null) req.setStatusHistory(new ArrayList<>());
         req.getStatusHistory().add(AccommodationRequest.StatusHistoryEntry.builder()
-                .status("AO_APPROVED")
+                .status(newStatus)
                 .actor(actor)
                 .timestamp(LocalDateTime.now())
                 .comment(comment)
@@ -731,16 +856,27 @@ public class AccommodationService {
 
         AccommodationRequest saved = requestRepository.save(req);
 
-        // Notify Respective Hostel Admin (Level 2)
+        // Notify ONLY the Respective Hostel Admin
         String notifyMsg = "Accommodation request " + req.getRequestId() + " (" + req.getHostel() + ") from " +
-                req.getDepartment() + " has been approved by AO Admin and is awaiting your review.";
-        notificationService.sendNotification("ACCOMMODATION_ADMIN", "ADMIN", null, "New Accommodation Request (AO Approved)", notifyMsg, "Accommodation", "INFO", saved.getRequestId());
+                req.getDepartment() + " has been forwarded to you by AO Admin and is awaiting your review.";
+        notificationService.sendNotification(targetRole, "ADMIN", null, "New Accommodation Request Forwarded", notifyMsg, "Accommodation", "INFO", saved.getRequestId());
 
         return saved;
     }
 
+    public AccommodationRequest aoForwardRequest(String id) {
+        return aoForwardRequest(id, null, null);
+    }
+
+    /**
+     * Level 1: AO Admin Approval (Delegates to Forwarding for backwards-compatibility)
+     */
+    public AccommodationRequest aoApproveRequest(String id, String remarks, User user) {
+        return aoForwardRequest(id, remarks, user);
+    }
+
     public AccommodationRequest aoApproveRequest(String id) {
-        return aoApproveRequest(id, null, null);
+        return aoForwardRequest(id, null, null);
     }
 
     /**
@@ -820,10 +956,14 @@ public class AccommodationService {
         // If in PENDING_AO_APPROVAL:
         if (currentStatus.equals("PENDING_AO_APPROVAL")) {
             if (isSuperAdmin(user)) {
-                return aoApproveRequest(id, "Approved by AO Admin", user);
+                return aoDirectApproveRequest(id, "Directly approved by AO Admin", user);
             } else {
-                throw new BadRequestException("This accommodation request must first be approved by AO Admin before Hostel Admin review.");
+                throw new BadRequestException("This accommodation request must first be processed by AO Admin before Hostel Admin review.");
             }
+        }
+
+        if ("DIRECT_APPROVE".equalsIgnoreCase(req.getAoAction())) {
+            throw new BadRequestException("Cannot approve request: request was already directly approved by AO Admin.");
         }
 
         // State validation guards

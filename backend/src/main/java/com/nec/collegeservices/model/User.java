@@ -73,6 +73,15 @@ public class User {
                 }
             }
         }
+        if (assignedHostels != null) {
+            for (String h : assignedHostels) {
+                if (h != null && (h.equalsIgnoreCase("Boys Hostel") || h.equalsIgnoreCase("Boys"))) {
+                    effective.add("BOYS_HOSTEL_ADMIN");
+                } else if (h != null && (h.equalsIgnoreCase("Girls Hostel") || h.equalsIgnoreCase("Girls"))) {
+                    effective.add("GIRLS_HOSTEL_ADMIN");
+                }
+            }
+        }
         return new java.util.ArrayList<>(effective);
     }
 
@@ -122,7 +131,7 @@ public class User {
         if (assignedHostels != null && !assignedHostels.isEmpty()) {
             return assignedHostels.stream().anyMatch(h -> h != null && (h.equalsIgnoreCase(hostel) || h.equalsIgnoreCase("ALL")));
         }
-        return hasRole("ACCOMMODATION_ADMIN") || hasServicePermission("ACCOMMODATION_ADMIN");
+        return false;
     }
 
     public boolean isSpecificHostelAdmin() {

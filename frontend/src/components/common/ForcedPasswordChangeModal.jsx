@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Lock, Eye, EyeOff, ShieldCheck, AlertCircle } from 'lucide-react';
 import { authApi } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -62,9 +63,25 @@ export const ForcedPasswordChangeModal = () => {
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div className="w-full max-w-md my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl p-6 sm:p-7 space-y-5">
+  return createPortal(
+    <div
+      className="modal-backdrop animate-fade-in"
+      style={{
+        zIndex: 9999,
+        padding: '24px 16px',
+        overflowY: 'auto',
+      }}
+    >
+      <div
+        className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl space-y-4"
+        style={{
+          width: '100%',
+          maxWidth: '480px',
+          margin: 'auto',
+          padding: '24px',
+          boxSizing: 'border-box',
+        }}
+      >
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
             <Lock className="w-5 h-5" />
@@ -168,7 +185,8 @@ export const ForcedPasswordChangeModal = () => {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

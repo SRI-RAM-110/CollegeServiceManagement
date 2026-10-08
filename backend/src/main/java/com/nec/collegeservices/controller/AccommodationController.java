@@ -47,6 +47,12 @@ public class AccommodationController {
     @GetMapping("/rooms")
     public ResponseEntity<ApiResponse<List<AccommodationRoom>>> getAllRooms(
             @RequestParam(required = false) String hostel) {
+        User user = authService.getCurrentUser();
+        if (user != null && !accommodationService.isSuperAdmin(user) && accommodationService.isAccommodationAdmin(user)) {
+            if (user.getAssignedHostels() != null && !user.getAssignedHostels().isEmpty()) {
+                hostel = user.getAssignedHostels().get(0);
+            }
+        }
         List<AccommodationRoom> rooms = hostel != null && !hostel.isBlank()
                 ? accommodationService.getRoomsByHostel(hostel)
                 : accommodationService.getAllRooms();
@@ -112,7 +118,7 @@ public class AccommodationController {
             @RequestParam(required = false) String toDate,
             @RequestParam(required = false) String department) {
         User user = authService.getCurrentUser();
-        boolean isStaffOrAdmin = user != null && (user.hasRole("CREATOR") || user.hasRole("AO_ADMIN") || user.hasRole("ACCOMMODATION_ADMIN") || user.hasServicePermission("ACCOMMODATION_ADMIN"));
+        boolean isStaffOrAdmin = user != null && accommodationService.isAccommodationAdmin(user);
         if (!isStaffOrAdmin && user != null) {
             department = user.getDepartment();
         }
@@ -131,6 +137,28 @@ public class AccommodationController {
     // APPROVAL & REJECTION ENDPOINTS
     // ==========================================
 
+    @PutMapping("/requests/{id}/ao-direct-approve")
+    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN')")
+    public ResponseEntity<ApiResponse<AccommodationRequest>> aoDirectApproveRequest(
+            @PathVariable String id,
+            @RequestBody(required = false) Map<String, String> body) {
+        User user = authService.getCurrentUser();
+        String remarks = body != null ? body.get("remarks") : null;
+        AccommodationRequest approved = accommodationService.aoDirectApproveRequest(id, remarks, user);
+        return ResponseEntity.ok(ApiResponse.ok("Accommodation request directly approved by AO Admin", approved));
+    }
+
+    @PutMapping("/requests/{id}/ao-forward")
+    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN')")
+    public ResponseEntity<ApiResponse<AccommodationRequest>> aoForwardRequest(
+            @PathVariable String id,
+            @RequestBody(required = false) Map<String, String> body) {
+        User user = authService.getCurrentUser();
+        String remarks = body != null ? body.get("remarks") : null;
+        AccommodationRequest forwarded = accommodationService.aoForwardRequest(id, remarks, user);
+        return ResponseEntity.ok(ApiResponse.ok("Accommodation request forwarded to " + forwarded.getHostel() + " Admin", forwarded));
+    }
+
     @PutMapping("/requests/{id}/ao-approve")
     @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN')")
     public ResponseEntity<ApiResponse<AccommodationRequest>> aoApproveRequest(
@@ -138,8 +166,8 @@ public class AccommodationController {
             @RequestBody(required = false) Map<String, String> body) {
         User user = authService.getCurrentUser();
         String remarks = body != null ? body.get("remarks") : null;
-        AccommodationRequest approved = accommodationService.aoApproveRequest(id, remarks, user);
-        return ResponseEntity.ok(ApiResponse.ok("Accommodation request approved by AO Admin", approved));
+        AccommodationRequest approved = accommodationService.aoForwardRequest(id, remarks, user);
+        return ResponseEntity.ok(ApiResponse.ok("Accommodation request forwarded by AO Admin", approved));
     }
 
     @PutMapping("/requests/{id}/ao-reject")

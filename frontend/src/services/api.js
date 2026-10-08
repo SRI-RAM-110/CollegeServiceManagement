@@ -148,6 +148,8 @@ export const accommodationApi = {
   getRequests: (params = {}) => api.get('/accommodation/requests', { params }),
   getRequestById: (id) => api.get(`/accommodation/requests/${id}`),
   aoApprove: (id, remarks) => api.put(`/accommodation/requests/${id}/ao-approve`, { remarks }),
+  aoDirectApprove: (id, remarks) => api.put(`/accommodation/requests/${id}/ao-direct-approve`, { remarks }),
+  aoForward: (id, remarks) => api.put(`/accommodation/requests/${id}/ao-forward`, { remarks }),
   aoReject: (id, reason) => api.put(`/accommodation/requests/${id}/ao-reject`, { reason }),
   approve: (id) => api.put(`/accommodation/requests/${id}/approve`),
   reject: (id, reason) => api.put(`/accommodation/requests/${id}/reject`, { reason }),

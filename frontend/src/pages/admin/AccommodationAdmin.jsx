@@ -21,6 +21,7 @@ import {
   RotateCcw,
   Wrench,
   MapPin,
+  ArrowRight,
 } from 'lucide-react';
 import StatCard from '../../components/common/StatCard';
 import StatusBadge from '../../components/common/StatusBadge';
@@ -34,7 +35,7 @@ import { getTodayStr, formatDateDisplay } from '../../utils/dateUtils';
 
 export default function AccommodationAdmin() {
   const { user } = useAuth();
-  const isAoAdmin = user?.role === 'AO_ADMIN' || user?.role === 'CREATOR';
+  const isAoAdmin = user?.role === 'AO_ADMIN' || user?.role === 'CREATOR' || user?.roles?.includes('AO_ADMIN') || user?.roles?.includes('CREATOR');
   const [searchParams] = useSearchParams();
   const { addToast } = useNotifications();
   const [stats, setStats] = useState({
@@ -102,7 +103,7 @@ export default function AccommodationAdmin() {
 
       const total = reqList.length;
       const pendingAo = reqList.filter((r) => r.status === 'PENDING_AO_APPROVAL').length;
-      const pending = reqList.filter((r) => r.status === 'PENDING' || r.status === 'AO_APPROVED').length;
+      const pending = reqList.filter((r) => r.status === 'PENDING' || r.status === 'AO_APPROVED' || (r.status && r.status.startsWith('FORWARDED_TO_'))).length;
       const approved = reqList.filter((r) => r.status === 'APPROVED' || r.status === 'BOOKED').length;
       const rejected = reqList.filter((r) => r.status === 'REJECTED' || r.status === 'AO_REJECTED').length;
       const cancellationRequested = reqList.filter((r) => r.status === 'CANCELLATION_REQUESTED').length;
@@ -129,19 +130,41 @@ export default function AccommodationAdmin() {
     fetchData();
   }, []);
 
-  // Level 1: AO Admin Approval
-  const handleAoApprove = async (id) => {
+  // Level 1 Option A: AO Admin Direct Approval
+  const handleAoDirectApprove = async (id) => {
     try {
       setActionLoading(true);
-      await accommodationApi.aoApprove(id);
-      addToast('Accommodation request approved by AO Admin and routed to respective hostel admin!', 'success');
+      await accommodationApi.aoDirectApprove(id);
+      addToast('Accommodation request directly approved by AO Admin!', 'success');
       setSelectedRequest(null);
       await fetchData();
     } catch (err) {
-      addToast(err.message || 'Error approving request at AO level', 'error');
+      addToast(err.message || 'Error directly approving request at AO level', 'error');
     } finally {
       setActionLoading(false);
     }
+  };
+
+  // Level 1 Option B: AO Admin Forward to Hostel Admin
+  const handleAoForward = async (id, hostel) => {
+    try {
+      setActionLoading(true);
+      await accommodationApi.aoForward(id);
+      const targetAdmin = hostel === 'Boys Hostel' ? 'Boys Hostel Admin' : 'Girls Hostel Admin';
+      addToast(`Accommodation request forwarded to ${targetAdmin}!`, 'success');
+      setSelectedRequest(null);
+      await fetchData();
+    } catch (err) {
+      addToast(err.message || 'Error forwarding request to hostel admin', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Backwards-compatible AO Approve
+  const handleAoApprove = async (id) => {
+    const target = requests.find((r) => r.id === id || r.requestId === id);
+    return handleAoForward(id, target?.hostel);
   };
 
   // Level 2: Respective Hostel Admin Approval (fresh conflict recheck performed on backend)
@@ -174,7 +197,12 @@ export default function AccommodationAdmin() {
     }
     try {
       setActionLoading(true);
-      await accommodationApi.reject(rejectId, rejectReason.trim());
+      const targetReq = requests.find((r) => r.id === rejectId || r.requestId === rejectId);
+      if (targetReq && (targetReq.status === 'PENDING_AO_APPROVAL' || isAoAdmin)) {
+        await accommodationApi.aoReject(rejectId, rejectReason.trim());
+      } else {
+        await accommodationApi.reject(rejectId, rejectReason.trim());
+      }
       addToast('Accommodation request rejected.', 'info');
       setRejectModalOpen(false);
       setSelectedRequest(null);
@@ -585,10 +613,12 @@ export default function AccommodationAdmin() {
             >
               <option value="ALL">All Status</option>
               <option value="PENDING_AO_APPROVAL">Pending AO Approval</option>
+              <option value="FORWARDED_TO_BOYS_ADMIN">Forwarded to Boys Admin</option>
+              <option value="FORWARDED_TO_GIRLS_ADMIN">Forwarded to Girls Admin</option>
               <option value="AO_APPROVED">AO Approved (Waiting Hostel Admin)</option>
+              <option value="APPROVED">Approved</option>
               <option value="AO_REJECTED">AO Rejected</option>
               <option value="PENDING">Pending (Legacy)</option>
-              <option value="APPROVED">Approved</option>
               <option value="CANCELLATION_REQUESTED">Cancel Requested</option>
               <option value="RESCHEDULE_REQUESTED">Reschedule Requested</option>
               <option value="CANCELLED">Cancelled</option>
@@ -603,12 +633,12 @@ export default function AccommodationAdmin() {
             <thead>
               <tr>
                 <th className="py-3 px-4">Request ID</th>
+                <th className="py-3 px-4">Hostel</th>
+                <th className="py-3 px-4">Requester</th>
                 <th className="py-3 px-4">Department</th>
-                <th className="py-3 px-4">Hostel & Room</th>
-                <th className="py-3 px-4">Check-in</th>
-                <th className="py-3 px-4">Check-out</th>
+                <th className="py-3 px-4">Room</th>
+                <th className="py-3 px-4">Dates</th>
                 <th className="py-3 px-4">Guests</th>
-                <th className="py-3 px-4">Purpose / Notes</th>
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
@@ -631,30 +661,35 @@ export default function AccommodationAdmin() {
                         </span>
                       )}
                     </td>
+                    <td className="py-3 px-4">
+                      <span className={`font-semibold px-2 py-0.5 rounded text-[11px] inline-block ${
+                        req.hostel === 'Boys Hostel'
+                          ? 'bg-blue-500/15 text-blue-300 border border-blue-500/30'
+                          : 'bg-pink-500/15 text-pink-300 border border-pink-500/30'
+                      }`}>
+                        {req.hostel}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-slate-200 font-medium">
+                      {req.facultyOrGuestName || req.requestedBy || '—'}
+                    </td>
                     <td className="py-3 px-4 font-semibold text-white">
                       {req.department}
                     </td>
                     <td className="py-3 px-4">
-                      <div className="text-slate-200 font-medium">{req.hostel}</div>
-                      <div className="text-[10px] text-emerald-400">{req.roomType || req.roomId}</div>
+                      <div className="text-slate-200 font-medium">{req.roomId}</div>
+                      <div className="text-[10px] text-emerald-400">{req.roomType || ''}</div>
                     </td>
                     <td className="py-3 px-4 text-slate-300">
-                      {formatDateDisplay(req.checkInDate)}
-                    </td>
-                    <td className="py-3 px-4 text-slate-300">
-                      {formatDateDisplay(req.checkOutDate)}
+                      <div className="whitespace-nowrap font-mono text-[11px]">
+                        {formatDateDisplay(req.checkInDate)} → {formatDateDisplay(req.checkOutDate)}
+                      </div>
+                      {req.dates && req.dates.length > 1 && (
+                        <span className="text-[10px] text-indigo-400 block">{req.dates.length} Dates</span>
+                      )}
                     </td>
                     <td className="py-3 px-4 font-medium text-white">
                       {req.guestsCount || req.numberOfGuests || 1}
-                    </td>
-                    <td className="py-3 px-4 text-slate-400 max-w-[160px] truncate">
-                      {req.cancellationReason ? (
-                        <span className="text-rose-400">Cancel: {req.cancellationReason}</span>
-                      ) : req.rescheduleReason ? (
-                        <span className="text-blue-400">Resched: {req.rescheduleReason}</span>
-                      ) : (
-                        req.purpose || '—'
-                      )}
                     </td>
                     <td className="py-3 px-4">
                       <StatusBadge status={req.status} />
@@ -669,17 +704,26 @@ export default function AccommodationAdmin() {
                           <Eye className="w-3.5 h-3.5" />
                         </button>
 
-                        {/* Level 1 AO Approval Actions: Allow / Reject */}
-                        {req.status === 'PENDING_AO_APPROVAL' && isAoAdmin && (
+                        {/* Level 1 AO Approval Actions: Direct Approve / Forward / Reject */}
+                        {(req.status === 'PENDING_AO_APPROVAL' || req.status === 'PENDING') && isAoAdmin && (
                           <>
                             <button
-                              onClick={() => handleAoApprove(req.id)}
+                              onClick={() => handleAoDirectApprove(req.id)}
                               disabled={actionLoading}
                               className="btn btn-success btn-sm flex items-center gap-1"
-                              title="Allow (AO Level Approval)"
+                              title="Direct Approve (No Hostel Admin approval needed)"
                             >
                               <Check className="w-3 h-3" />
-                              <span>Allow</span>
+                              <span>Direct Approve</span>
+                            </button>
+                            <button
+                              onClick={() => handleAoForward(req.id, req.hostel)}
+                              disabled={actionLoading}
+                              className="btn btn-primary btn-sm flex items-center gap-1"
+                              title={`Forward to ${req.hostel === 'Boys Hostel' ? 'Boys Hostel Admin' : 'Girls Hostel Admin'}`}
+                            >
+                              <ArrowRight className="w-3 h-3" />
+                              <span>{req.hostel === 'Boys Hostel' ? 'Forward to Boys Hostel Admin' : 'Forward to Girls Hostel Admin'}</span>
                             </button>
                             <button
                               onClick={() => handleOpenReject(req.id)}
@@ -694,7 +738,7 @@ export default function AccommodationAdmin() {
                         )}
 
                         {/* Level 2 Hostel Admin Approval Actions: Approve / Reject */}
-                        {(req.status === 'AO_APPROVED' || req.status === 'PENDING') && (
+                        {(req.status === 'FORWARDED_TO_BOYS_ADMIN' || req.status === 'FORWARDED_TO_GIRLS_ADMIN' || req.status === 'AO_APPROVED' || (req.status === 'PENDING' && !isAoAdmin)) && !isAoAdmin && (
                           <>
                             <button
                               onClick={() => handleApprove(req.id)}
@@ -895,7 +939,35 @@ export default function AccommodationAdmin() {
             )}
 
             {/* Action Bar inside details modal */}
-            {selectedRequest.status === 'PENDING' && (
+            {(selectedRequest.status === 'PENDING_AO_APPROVAL' || selectedRequest.status === 'PENDING') && isAoAdmin && (
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800 flex-wrap">
+                <button
+                  onClick={() => handleOpenReject(selectedRequest.id)}
+                  disabled={actionLoading}
+                  className="px-3.5 py-1.5 rounded-lg bg-rose-600/90 hover:bg-rose-500 text-white text-xs font-medium transition"
+                >
+                  Reject Request
+                </button>
+                <button
+                  onClick={() => handleAoForward(selectedRequest.id, selectedRequest.hostel)}
+                  disabled={actionLoading}
+                  className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition shadow-md flex items-center gap-1.5"
+                >
+                  <ArrowRight className="w-3.5 h-3.5" />
+                  <span>{selectedRequest.hostel === 'Boys Hostel' ? 'Forward to Boys Hostel Admin' : 'Forward to Girls Hostel Admin'}</span>
+                </button>
+                <button
+                  onClick={() => handleAoDirectApprove(selectedRequest.id)}
+                  disabled={actionLoading}
+                  className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition shadow-md flex items-center gap-1.5"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Direct Approve</span>
+                </button>
+              </div>
+            )}
+
+            {(selectedRequest.status === 'FORWARDED_TO_BOYS_ADMIN' || selectedRequest.status === 'FORWARDED_TO_GIRLS_ADMIN' || selectedRequest.status === 'AO_APPROVED' || (selectedRequest.status === 'PENDING' && !isAoAdmin)) && !isAoAdmin && (
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
                 <button
                   onClick={() => handleOpenReject(selectedRequest.id)}
@@ -907,9 +979,10 @@ export default function AccommodationAdmin() {
                 <button
                   onClick={() => handleApprove(selectedRequest.id)}
                   disabled={actionLoading}
-                  className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition shadow-md"
+                  className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition shadow-md flex items-center gap-1.5"
                 >
-                  Approve Room Allocation
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Approve Room Allocation</span>
                 </button>
               </div>
             )}

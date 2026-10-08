@@ -20,6 +20,15 @@ export const StatusBadge = ({ status }) => {
   } else if (normalized === 'UNDER_REVIEW' || normalized === 'UNDER REVIEW') {
     className = 'badge-review';
     label = 'Under Review';
+  } else if (normalized === 'FORWARDED_TO_BOYS_ADMIN' || normalized === 'FORWARDED TO BOYS HOSTEL ADMIN') {
+    className = 'badge-review';
+    label = 'Forwarded to Boys Hostel Admin';
+  } else if (normalized === 'FORWARDED_TO_GIRLS_ADMIN' || normalized === 'FORWARDED TO GIRLS HOSTEL ADMIN') {
+    className = 'badge-review';
+    label = 'Forwarded to Girls Hostel Admin';
+  } else if (normalized === 'AO_DIRECT_APPROVED' || normalized === 'AO DIRECT APPROVED') {
+    className = 'badge-approved';
+    label = 'AO Direct Approved';
   } else if (normalized === 'AO_APPROVED' || normalized === 'AO APPROVED') {
     className = 'badge-review';
     label = 'AO Approved (Waiting for Hostel Admin)';

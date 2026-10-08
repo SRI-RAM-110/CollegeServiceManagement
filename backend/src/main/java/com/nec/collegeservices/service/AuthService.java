@@ -67,6 +67,7 @@ public class AuthService {
                     .role(user.getRole())
                     .roles(user.getEffectiveRoles())
                     .assignedHallIds(user.getAssignedHallIds() != null ? user.getAssignedHallIds() : java.util.List.of())
+                    .assignedHostels(user.getAssignedHostels() != null ? user.getAssignedHostels() : java.util.List.of())
                     .servicePermissions(user.getServicePermissions() != null ? user.getServicePermissions() : java.util.List.of())
                     .department(user.getDepartment())
                     .designation(user.getDesignation())
