@@ -20,11 +20,13 @@ public interface AccommodationRequestRepository extends MongoRepository<Accommod
     List<AccommodationRequest> findByCheckInDate(String checkInDate);
     List<AccommodationRequest> findByCheckOutDate(String checkOutDate);
 
-    @Query("{ 'roomId': ?0, 'status': { $in: ['PENDING', 'APPROVED', 'BOOKED', 'CANCELLATION_REQUESTED', 'RESCHEDULE_REQUESTED'] } }")
+    @Query("{ 'roomId': ?0, 'status': { $in: ['PENDING', 'PENDING_AO_APPROVAL', 'AO_APPROVED', 'APPROVED', 'BOOKED', 'CANCELLATION_REQUESTED', 'RESCHEDULE_REQUESTED'] } }")
     List<AccommodationRequest> findActiveBookingsForRoom(String roomId);
 
-    @Query("{ 'roomId': ?0, 'status': { $in: ['PENDING', 'APPROVED', 'BOOKED', 'CANCELLATION_REQUESTED', 'RESCHEDULE_REQUESTED'] }, $and: [ { 'checkInDate': { $lt: ?2 } }, { 'checkOutDate': { $gt: ?1 } } ] }")
+    @Query("{ 'roomId': ?0, 'status': { $in: ['PENDING', 'PENDING_AO_APPROVAL', 'AO_APPROVED', 'APPROVED', 'BOOKED', 'CANCELLATION_REQUESTED', 'RESCHEDULE_REQUESTED'] }, $and: [ { 'checkInDate': { $lt: ?2 } }, { 'checkOutDate': { $gt: ?1 } } ] }")
     List<AccommodationRequest> findOverlappingRequests(String roomId, String checkInDate, String checkOutDate);
 
     List<AccommodationRequest> findBySeriesId(String seriesId);
+
+    List<AccommodationRequest> findByParentRequestId(String parentRequestId);
 }

@@ -20,6 +20,15 @@ export const StatusBadge = ({ status }) => {
   } else if (normalized === 'UNDER_REVIEW' || normalized === 'UNDER REVIEW') {
     className = 'badge-review';
     label = 'Under Review';
+  } else if (normalized === 'AO_APPROVED' || normalized === 'AO APPROVED') {
+    className = 'badge-review';
+    label = 'AO Approved (Waiting for Hostel Admin)';
+  } else if (normalized === 'AO_REJECTED' || normalized === 'AO REJECTED') {
+    className = 'badge-rejected';
+    label = 'AO Rejected';
+  } else if (normalized === 'PENDING_AO_APPROVAL' || normalized === 'PENDING AO APPROVAL') {
+    className = 'badge-pending';
+    label = 'Pending AO Approval';
   } else if (normalized === 'CANCELLED' || normalized === 'CANCELED') {
     className = 'badge-cancelled';
     label = 'Cancelled';

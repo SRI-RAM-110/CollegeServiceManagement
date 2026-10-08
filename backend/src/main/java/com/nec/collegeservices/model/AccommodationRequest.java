@@ -60,13 +60,23 @@ public class AccommodationRequest {
     private Integer totalOccurrences;    // e.g., 8
     private List<String> dates;          // List of all dates in the request
 
-    // Status: PENDING, APPROVED, REJECTED, CANCELLED, CANCELLATION_REQUESTED, RESCHEDULE_REQUESTED
+    // Status: PENDING_AO_APPROVAL, AO_APPROVED, AO_REJECTED, PENDING, APPROVED, REJECTED, CANCELLED, CANCELLATION_REQUESTED, RESCHEDULE_REQUESTED
     private String status;
+
+    // Parent Request relationship for dual/multi-hostel submissions
+    private String parentRequestId;      // e.g., ACC-PARENT-2026-00015
+
+    // Two-Level Approval: AO Admin (Level 1) Details
+    private String aoApprovalStatus;     // PENDING, APPROVED, REJECTED
+    private String aoApprovedBy;
+    private LocalDateTime aoApprovedAt;
+    private String aoRemarks;
 
     private String requestedBy;
     private String requesterUserId;
     private String rejectionReason;
 
+    // Respective Hostel Admin (Level 2) Details
     private String approvedBy;
     private LocalDateTime approvedAt;
     private String adminRemarks;

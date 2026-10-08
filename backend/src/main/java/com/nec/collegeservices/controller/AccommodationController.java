@@ -2,6 +2,7 @@ package com.nec.collegeservices.controller;
 
 import com.nec.collegeservices.dto.AccommodationBulkAvailabilityRequestDTO;
 import com.nec.collegeservices.dto.AccommodationCancelRequestDTO;
+import com.nec.collegeservices.dto.AccommodationDualRequestDTO;
 import com.nec.collegeservices.dto.AccommodationRequestDTO;
 import com.nec.collegeservices.dto.AccommodationRescheduleRequestDTO;
 import com.nec.collegeservices.dto.ApiResponse;
@@ -95,6 +96,13 @@ public class AccommodationController {
         return ResponseEntity.ok(ApiResponse.ok("Accommodation request submitted successfully", request));
     }
 
+    @PostMapping("/requests/dual")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> createDualRequest(@Valid @RequestBody AccommodationDualRequestDTO dto) {
+        User user = authService.getCurrentUser();
+        Map<String, Object> result = accommodationService.createDualRequest(dto, user);
+        return ResponseEntity.ok(ApiResponse.ok("Accommodation requests submitted successfully for both hostels", result));
+    }
+
     @GetMapping("/requests")
     public ResponseEntity<ApiResponse<List<AccommodationRequest>>> getRequests(
             @RequestParam(required = false) String status,
@@ -123,8 +131,30 @@ public class AccommodationController {
     // APPROVAL & REJECTION ENDPOINTS
     // ==========================================
 
+    @PutMapping("/requests/{id}/ao-approve")
+    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN')")
+    public ResponseEntity<ApiResponse<AccommodationRequest>> aoApproveRequest(
+            @PathVariable String id,
+            @RequestBody(required = false) Map<String, String> body) {
+        User user = authService.getCurrentUser();
+        String remarks = body != null ? body.get("remarks") : null;
+        AccommodationRequest approved = accommodationService.aoApproveRequest(id, remarks, user);
+        return ResponseEntity.ok(ApiResponse.ok("Accommodation request approved by AO Admin", approved));
+    }
+
+    @PutMapping("/requests/{id}/ao-reject")
+    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN')")
+    public ResponseEntity<ApiResponse<AccommodationRequest>> aoRejectRequest(
+            @PathVariable String id,
+            @RequestBody(required = false) RejectRequestDTO rejectDto) {
+        User user = authService.getCurrentUser();
+        String reason = rejectDto != null ? rejectDto.getReason() : null;
+        AccommodationRequest rejected = accommodationService.aoRejectRequest(id, reason, user);
+        return ResponseEntity.ok(ApiResponse.ok("Accommodation request rejected by AO Admin", rejected));
+    }
+
     @PutMapping("/requests/{id}/approve")
-    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN', 'ACCOMMODATION_ADMIN')")
+    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN', 'ACCOMMODATION_ADMIN', 'BOYS_HOSTEL_ADMIN', 'GIRLS_HOSTEL_ADMIN')")
     public ResponseEntity<ApiResponse<AccommodationRequest>> approveRequest(@PathVariable String id) {
         User user = authService.getCurrentUser();
         AccommodationRequest approved = accommodationService.approveRequest(id, user);
@@ -132,7 +162,7 @@ public class AccommodationController {
     }
 
     @PutMapping("/requests/{id}/reject")
-    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN', 'ACCOMMODATION_ADMIN')")
+    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN', 'ACCOMMODATION_ADMIN', 'BOYS_HOSTEL_ADMIN', 'GIRLS_HOSTEL_ADMIN')")
     public ResponseEntity<ApiResponse<AccommodationRequest>> rejectRequest(
             @PathVariable String id,
             @RequestBody(required = false) RejectRequestDTO rejectDto) {

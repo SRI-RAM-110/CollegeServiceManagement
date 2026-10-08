@@ -29,13 +29,17 @@ import Modal from '../../components/common/Modal';
 import { RequestDetailsModal } from '../../components/common/RequestDetailsModal';
 import { accommodationApi } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
+import { useAuth } from '../../context/AuthContext';
 import { getTodayStr, formatDateDisplay } from '../../utils/dateUtils';
 
 export default function AccommodationAdmin() {
+  const { user } = useAuth();
+  const isAoAdmin = user?.role === 'AO_ADMIN' || user?.role === 'CREATOR';
   const [searchParams] = useSearchParams();
   const { addToast } = useNotifications();
   const [stats, setStats] = useState({
     total: 0,
+    pendingAo: 0,
     pending: 0,
     approved: 0,
     rejected: 0,
@@ -97,14 +101,16 @@ export default function AccommodationAdmin() {
       setRequests(reqList);
 
       const total = reqList.length;
-      const pending = reqList.filter((r) => r.status === 'PENDING').length;
+      const pendingAo = reqList.filter((r) => r.status === 'PENDING_AO_APPROVAL').length;
+      const pending = reqList.filter((r) => r.status === 'PENDING' || r.status === 'AO_APPROVED').length;
       const approved = reqList.filter((r) => r.status === 'APPROVED' || r.status === 'BOOKED').length;
-      const rejected = reqList.filter((r) => r.status === 'REJECTED').length;
+      const rejected = reqList.filter((r) => r.status === 'REJECTED' || r.status === 'AO_REJECTED').length;
       const cancellationRequested = reqList.filter((r) => r.status === 'CANCELLATION_REQUESTED').length;
       const rescheduleRequested = reqList.filter((r) => r.status === 'RESCHEDULE_REQUESTED').length;
 
       setStats({
         total,
+        pendingAo,
         pending,
         approved,
         rejected,
@@ -123,12 +129,27 @@ export default function AccommodationAdmin() {
     fetchData();
   }, []);
 
-  // Approve Request (fresh conflict recheck performed on backend)
+  // Level 1: AO Admin Approval
+  const handleAoApprove = async (id) => {
+    try {
+      setActionLoading(true);
+      await accommodationApi.aoApprove(id);
+      addToast('Accommodation request approved by AO Admin and routed to respective hostel admin!', 'success');
+      setSelectedRequest(null);
+      await fetchData();
+    } catch (err) {
+      addToast(err.message || 'Error approving request at AO level', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Level 2: Respective Hostel Admin Approval (fresh conflict recheck performed on backend)
   const handleApprove = async (id) => {
     try {
       setActionLoading(true);
       await accommodationApi.approve(id);
-      addToast('Accommodation request approved successfully!', 'success');
+      addToast('Accommodation request approved successfully by Hostel Admin!', 'success');
       setSelectedRequest(null);
       await fetchData();
     } catch (err) {
@@ -563,7 +584,10 @@ export default function AccommodationAdmin() {
               className="admin-filter-input"
             >
               <option value="ALL">All Status</option>
-              <option value="PENDING">Pending</option>
+              <option value="PENDING_AO_APPROVAL">Pending AO Approval</option>
+              <option value="AO_APPROVED">AO Approved (Waiting Hostel Admin)</option>
+              <option value="AO_REJECTED">AO Rejected</option>
+              <option value="PENDING">Pending (Legacy)</option>
               <option value="APPROVED">Approved</option>
               <option value="CANCELLATION_REQUESTED">Cancel Requested</option>
               <option value="RESCHEDULE_REQUESTED">Reschedule Requested</option>
@@ -600,7 +624,12 @@ export default function AccommodationAdmin() {
                 filteredRequests.map((req) => (
                   <tr key={req.id} className="hover:bg-slate-800/40 transition">
                     <td className="py-3 px-4 font-mono font-medium text-slate-300">
-                      {req.requestId}
+                      <div>{req.requestId}</div>
+                      {req.parentRequestId && (
+                        <span className="text-[10px] text-blue-400 font-normal block">
+                          Parent: {req.parentRequestId}
+                        </span>
+                      )}
                     </td>
                     <td className="py-3 px-4 font-semibold text-white">
                       {req.department}
@@ -640,14 +669,38 @@ export default function AccommodationAdmin() {
                           <Eye className="w-3.5 h-3.5" />
                         </button>
 
-                        {/* PENDING Actions: Approve / Reject */}
-                        {req.status === 'PENDING' && (
+                        {/* Level 1 AO Approval Actions: Allow / Reject */}
+                        {req.status === 'PENDING_AO_APPROVAL' && isAoAdmin && (
+                          <>
+                            <button
+                              onClick={() => handleAoApprove(req.id)}
+                              disabled={actionLoading}
+                              className="btn btn-success btn-sm flex items-center gap-1"
+                              title="Allow (AO Level Approval)"
+                            >
+                              <Check className="w-3 h-3" />
+                              <span>Allow</span>
+                            </button>
+                            <button
+                              onClick={() => handleOpenReject(req.id)}
+                              disabled={actionLoading}
+                              className="btn btn-danger btn-sm flex items-center gap-1"
+                              title="Reject (AO Level)"
+                            >
+                              <X className="w-3 h-3" />
+                              <span>Reject</span>
+                            </button>
+                          </>
+                        )}
+
+                        {/* Level 2 Hostel Admin Approval Actions: Approve / Reject */}
+                        {(req.status === 'AO_APPROVED' || req.status === 'PENDING') && (
                           <>
                             <button
                               onClick={() => handleApprove(req.id)}
                               disabled={actionLoading}
                               className="btn btn-success btn-sm flex items-center gap-1"
-                              title="Approve Booking"
+                              title="Approve Booking (Hostel Admin)"
                             >
                               <Check className="w-3 h-3" />
                               <span>Approve</span>
@@ -656,7 +709,7 @@ export default function AccommodationAdmin() {
                               onClick={() => handleOpenReject(req.id)}
                               disabled={actionLoading}
                               className="btn btn-danger btn-sm flex items-center gap-1"
-                              title="Reject Booking"
+                              title="Reject Booking (Hostel Admin)"
                             >
                               <X className="w-3 h-3" />
                               <span>Reject</span>

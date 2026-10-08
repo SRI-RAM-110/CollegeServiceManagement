@@ -144,8 +144,11 @@ export const accommodationApi = {
   getRoomAvailability: (roomId, params) => api.get(`/accommodation/rooms/${roomId}/availability`, { params }),
   checkBulkAvailability: (data) => api.post('/accommodation/check-bulk-availability', data),
   createRequest: (data) => api.post('/accommodation/requests', data),
+  createDualRequest: (data) => api.post('/accommodation/requests/dual', data),
   getRequests: (params = {}) => api.get('/accommodation/requests', { params }),
   getRequestById: (id) => api.get(`/accommodation/requests/${id}`),
+  aoApprove: (id, remarks) => api.put(`/accommodation/requests/${id}/ao-approve`, { remarks }),
+  aoReject: (id, reason) => api.put(`/accommodation/requests/${id}/ao-reject`, { reason }),
   approve: (id) => api.put(`/accommodation/requests/${id}/approve`),
   reject: (id, reason) => api.put(`/accommodation/requests/${id}/reject`, { reason }),
   cancelRequest: (id, dataOrReason) => {

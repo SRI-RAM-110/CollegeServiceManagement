@@ -50,4 +50,8 @@ public class AccommodationRequestDTO {
 
     @Builder.Default
     private String recurrencePattern = "WEEKLY";
+
+    private String selectionMode; // "BOYS", "GIRLS", "BOTH"
+    private AccommodationRequestDTO boysRequest;
+    private AccommodationRequestDTO girlsRequest;
 }

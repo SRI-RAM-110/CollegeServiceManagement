@@ -98,6 +98,8 @@ public class AccommodationService {
         if (status == null) return false;
         String s = status.toUpperCase().trim();
         return s.equals("PENDING") ||
+               s.equals("PENDING_AO_APPROVAL") ||
+               s.equals("AO_APPROVED") ||
                s.equals("APPROVED") ||
                s.equals("BOOKED") ||
                s.equals("CANCELLATION_REQUESTED") ||
@@ -111,7 +113,11 @@ public class AccommodationService {
 
     public boolean isAccommodationAdmin(User user) {
         if (user == null) return false;
-        return user.hasRole("ACCOMMODATION_ADMIN") || isSuperAdmin(user);
+        return user.hasRole("ACCOMMODATION_ADMIN") ||
+               user.hasRole("BOYS_HOSTEL_ADMIN") ||
+               user.hasRole("GIRLS_HOSTEL_ADMIN") ||
+               user.hasServicePermission("ACCOMMODATION_ADMIN") ||
+               isSuperAdmin(user);
     }
 
     /**
@@ -248,11 +254,61 @@ public class AccommodationService {
     /**
      * Submit Accommodation Request (supports single stay and multiple dates).
      */
+    public String generateParentRequestId() {
+        int year = LocalDate.now().getYear();
+        long seq = ID_COUNTER.incrementAndGet() % 100000;
+        return String.format("ACC-PARENT-%d-%05d", year, seq);
+    }
+
+    /**
+     * Submit Accommodation Request (supports single stay and multiple dates).
+     */
     public AccommodationRequest createRequest(AccommodationRequestDTO dto, User user) {
         if (user == null) {
             throw new AccessDeniedException("Authentication required.");
         }
+        if (("BOTH".equalsIgnoreCase(dto.getSelectionMode()) || "Both".equalsIgnoreCase(dto.getHostel())) &&
+                dto.getBoysRequest() != null && dto.getGirlsRequest() != null) {
+            Map<String, Object> dual = createDualRequest(
+                    com.nec.collegeservices.dto.AccommodationDualRequestDTO.builder()
+                            .boysRequest(dto.getBoysRequest())
+                            .girlsRequest(dto.getGirlsRequest())
+                            .selectionMode("BOTH")
+                            .build(),
+                    user
+            );
+            return (AccommodationRequest) dual.get("boysRequest");
+        }
+        return doCreateSingleRequest(dto, user, null);
+    }
 
+    public Map<String, Object> createDualRequest(com.nec.collegeservices.dto.AccommodationDualRequestDTO dualDto, User user) {
+        if (user == null) {
+            throw new AccessDeniedException("Authentication required.");
+        }
+        if (dualDto.getBoysRequest() == null || dualDto.getGirlsRequest() == null) {
+            throw new BadRequestException("Both Boys Hostel and Girls Hostel requests are required for dual accommodation request.");
+        }
+        dualDto.getBoysRequest().setHostel("Boys Hostel");
+        dualDto.getGirlsRequest().setHostel("Girls Hostel");
+
+        String parentRequestId = generateParentRequestId();
+
+        AccommodationRequest boysReq = doCreateSingleRequest(dualDto.getBoysRequest(), user, parentRequestId);
+        AccommodationRequest girlsReq = doCreateSingleRequest(dualDto.getGirlsRequest(), user, parentRequestId);
+
+        String notifyMsg = user.getDepartment() + " submitted dual accommodation request (Boys & Girls Hostel: " +
+                parentRequestId + ") requiring AO approval.";
+        notificationService.sendNotification("AO_ADMIN", "ADMIN", null, "New Dual Accommodation Request", notifyMsg, "Accommodation", "INFO", parentRequestId);
+
+        Map<String, Object> res = new HashMap<>();
+        res.put("parentRequestId", parentRequestId);
+        res.put("boysRequest", boysReq);
+        res.put("girlsRequest", girlsReq);
+        return res;
+    }
+
+    public AccommodationRequest doCreateSingleRequest(AccommodationRequestDTO dto, User user, String parentRequestId) {
         LocalDate today = LocalDate.now();
         String bookingType = dto.getBookingType() != null && !dto.getBookingType().isBlank()
                 ? dto.getBookingType().toUpperCase().trim()
@@ -425,10 +481,10 @@ public class AccommodationService {
                 String requestId = generateRequestId(occurrenceIndex);
 
                 AccommodationRequest.StatusHistoryEntry initialHistory = AccommodationRequest.StatusHistoryEntry.builder()
-                        .status("PENDING")
+                        .status("PENDING_AO_APPROVAL")
                         .actor(requesterName)
                         .timestamp(LocalDateTime.now())
-                        .comment("Accommodation request submitted by " + user.getDepartment() + " Department")
+                        .comment("Accommodation request submitted by " + user.getDepartment() + " Department. Pending AO Admin approval.")
                         .build();
 
                 AccommodationRequest request = AccommodationRequest.builder()
@@ -450,11 +506,13 @@ public class AccommodationService {
                         .bookingType(bookingType)
                         .isRecurring("RECURRING".equals(bookingType))
                         .seriesId(seriesId)
+                        .parentRequestId(parentRequestId)
                         .recurrencePattern("RECURRING".equals(bookingType) ? dto.getRecurrencePattern() : null)
                         .recurrenceDays("RECURRING".equals(bookingType) ? dto.getRecurrenceDays() : null)
                         .occurrenceIndex(occurrenceIndex)
                         .totalOccurrences(totalOccurrences)
-                        .status("PENDING")
+                        .status("PENDING_AO_APPROVAL")
+                        .aoApprovalStatus("PENDING")
                         .requestedBy(requesterName)
                         .requesterUserId(user.getUserId())
                         .statusHistory(new ArrayList<>(List.of(initialHistory)))
@@ -467,9 +525,11 @@ public class AccommodationService {
             }
 
             AccommodationRequest primary = createdList.get(0);
-            String notifyMsg = user.getDepartment() + " requested " + totalOccurrences + " stay occurrences for room " + room.getRoomId() + " (" + room.getHostel() + ").";
-            notificationService.sendNotification("ACCOMMODATION_ADMIN", "ADMIN", null, "New Accommodation Request", notifyMsg, "Accommodation", "INFO", primary.getRequestId());
-            notificationService.sendNotification("AO_ADMIN", "ADMIN", null, "New Accommodation Request", notifyMsg, "Accommodation", "INFO", primary.getRequestId());
+            if (parentRequestId == null) {
+                String notifyMsg = user.getDepartment() + " requested " + totalOccurrences + " stay occurrences for room " +
+                        room.getRoomId() + " (" + room.getHostel() + "). Pending AO approval.";
+                notificationService.sendNotification("AO_ADMIN", "ADMIN", null, "New Accommodation Request", notifyMsg, "Accommodation", "INFO", primary.getRequestId());
+            }
             return primary;
         }
 
@@ -488,10 +548,10 @@ public class AccommodationService {
         String effBookingType = (checkIn != null && checkIn.plusDays(1).equals(checkOut)) ? "ONE_TIME" : bookingType;
 
         AccommodationRequest.StatusHistoryEntry initialHistory = AccommodationRequest.StatusHistoryEntry.builder()
-                .status("PENDING")
+                .status("PENDING_AO_APPROVAL")
                 .actor(requesterName)
                 .timestamp(LocalDateTime.now())
-                .comment("Accommodation request submitted by " + user.getDepartment() + " Department")
+                .comment("Accommodation request submitted by " + user.getDepartment() + " Department. Pending AO Admin approval.")
                 .build();
 
         AccommodationRequest request = AccommodationRequest.builder()
@@ -510,7 +570,9 @@ public class AccommodationService {
                 .purpose(dto.getPurpose())
                 .additionalNotes(dto.getAdditionalNotes())
                 .bookingType(effBookingType)
-                .status("PENDING")
+                .parentRequestId(parentRequestId)
+                .status("PENDING_AO_APPROVAL")
+                .aoApprovalStatus("PENDING")
                 .requestedBy(requesterName)
                 .requesterUserId(user.getUserId())
                 .statusHistory(new ArrayList<>(List.of(initialHistory)))
@@ -520,12 +582,12 @@ public class AccommodationService {
 
         AccommodationRequest saved = requestRepository.save(request);
 
-        // Notify Admins
-        String notifyMsg = user.getDepartment() + " requested " + room.getRoomId() + " (" + room.getHostel() + ") from " +
-                finalCheckIn + " to " + finalCheckOut + " for " + dto.getGuestsCount() + " guest(s).";
-
-        notificationService.sendNotification("ACCOMMODATION_ADMIN", "ADMIN", null, "New Accommodation Request", notifyMsg, "Accommodation", "INFO", saved.getRequestId());
-        notificationService.sendNotification("AO_ADMIN", "ADMIN", null, "New Accommodation Request", notifyMsg, "Accommodation", "INFO", saved.getRequestId());
+        // Notify AO Admin
+        if (parentRequestId == null) {
+            String notifyMsg = user.getDepartment() + " requested " + room.getRoomId() + " (" + room.getHostel() + ") from " +
+                    finalCheckIn + " to " + finalCheckOut + " for " + dto.getGuestsCount() + " guest(s). Pending AO approval.";
+            notificationService.sendNotification("AO_ADMIN", "ADMIN", null, "New Accommodation Request", notifyMsg, "Accommodation", "INFO", saved.getRequestId());
+        }
 
         return saved;
     }
@@ -557,12 +619,23 @@ public class AccommodationService {
         }
 
         List<AccommodationRequest> all = requestRepository.findAll();
-        boolean isStaffOrAdmin = user != null && (isSuperAdmin(user) || user.hasRole("ACCOMMODATION_ADMIN") || user.hasServicePermission("ACCOMMODATION_ADMIN"));
+        boolean isSuper = isSuperAdmin(user);
+        boolean isStaffOrAdmin = user != null && (isSuper || isAccommodationAdmin(user));
 
         return all.stream()
                 .filter(r -> {
                     if (!isStaffOrAdmin && user != null) {
                         return UnifiedRequestService.isRequestedByUser(r.getRequestedBy(), user);
+                    }
+                    if (!isSuper && isAccommodationAdmin(user) && user != null) {
+                        // Hostel Admin only receives requests for their assigned hostel
+                        if (!user.isAssignedToHostel(r.getHostel())) {
+                            return false;
+                        }
+                        // Hostel Admin only receives requests after AO approval (stops if AO rejected or pending)
+                        if ("PENDING_AO_APPROVAL".equalsIgnoreCase(r.getStatus()) || "AO_REJECTED".equalsIgnoreCase(r.getStatus())) {
+                            return false;
+                        }
                     }
                     return department == null || department.isBlank() || department.equalsIgnoreCase("ALL") || r.getDepartment().equalsIgnoreCase(department);
                 })
@@ -600,7 +673,14 @@ public class AccommodationService {
             throw new AccessDeniedException("Authentication required.");
         }
 
-        if (isSuperAdmin(user) || user.hasRole("ACCOMMODATION_ADMIN")) {
+        if (isSuperAdmin(user)) {
+            return req;
+        }
+
+        if (isAccommodationAdmin(user)) {
+            if (!user.isAssignedToHostel(req.getHostel())) {
+                throw new AccessDeniedException("You are not authorized to view accommodation requests for " + req.getHostel());
+            }
             return req;
         }
 
@@ -612,7 +692,119 @@ public class AccommodationService {
     }
 
     /**
-     * Approve Accommodation Request with Fresh Conflict Check (Step 9).
+     * Level 1: AO Admin Approval
+     */
+    public AccommodationRequest aoApproveRequest(String id, String remarks, User user) {
+        AccommodationRequest req = requestRepository.findById(id)
+                .or(() -> requestRepository.findByRequestId(id))
+                .orElseThrow(() -> new ResourceNotFoundException("Accommodation request not found: " + id));
+
+        if (user == null) {
+            try { user = authService.getCurrentUser(); } catch (Exception ignored) {}
+        }
+        if (!isSuperAdmin(user)) {
+            throw new AccessDeniedException("Only AO Admin / Super Admin can perform Level 1 AO Approval.");
+        }
+
+        String currentStatus = req.getStatus() != null ? req.getStatus().toUpperCase().trim() : "";
+        if (!currentStatus.equals("PENDING_AO_APPROVAL") && !currentStatus.equals("PENDING")) {
+            throw new BadRequestException("Request is not awaiting AO approval. Current status: " + currentStatus);
+        }
+
+        String actor = user != null ? (user.getName() != null ? user.getName() : user.getUserId()) : "AO Admin";
+        String comment = (remarks != null && !remarks.isBlank()) ? remarks.trim() : "Approved by AO Admin. Forwarded to " + req.getHostel() + " Admin.";
+
+        req.setStatus("AO_APPROVED");
+        req.setAoApprovalStatus("APPROVED");
+        req.setAoApprovedBy(actor);
+        req.setAoApprovedAt(LocalDateTime.now());
+        req.setAoRemarks(comment);
+        req.setUpdatedAt(LocalDateTime.now());
+
+        if (req.getStatusHistory() == null) req.setStatusHistory(new ArrayList<>());
+        req.getStatusHistory().add(AccommodationRequest.StatusHistoryEntry.builder()
+                .status("AO_APPROVED")
+                .actor(actor)
+                .timestamp(LocalDateTime.now())
+                .comment(comment)
+                .build());
+
+        AccommodationRequest saved = requestRepository.save(req);
+
+        // Notify Respective Hostel Admin (Level 2)
+        String notifyMsg = "Accommodation request " + req.getRequestId() + " (" + req.getHostel() + ") from " +
+                req.getDepartment() + " has been approved by AO Admin and is awaiting your review.";
+        notificationService.sendNotification("ACCOMMODATION_ADMIN", "ADMIN", null, "New Accommodation Request (AO Approved)", notifyMsg, "Accommodation", "INFO", saved.getRequestId());
+
+        return saved;
+    }
+
+    public AccommodationRequest aoApproveRequest(String id) {
+        return aoApproveRequest(id, null, null);
+    }
+
+    /**
+     * Level 1: AO Admin Rejection
+     */
+    public AccommodationRequest aoRejectRequest(String id, String reason, User user) {
+        AccommodationRequest req = requestRepository.findById(id)
+                .or(() -> requestRepository.findByRequestId(id))
+                .orElseThrow(() -> new ResourceNotFoundException("Accommodation request not found: " + id));
+
+        if (user == null) {
+            try { user = authService.getCurrentUser(); } catch (Exception ignored) {}
+        }
+        if (!isSuperAdmin(user)) {
+            throw new AccessDeniedException("Only AO Admin / Super Admin can perform Level 1 AO Rejection.");
+        }
+
+        String currentStatus = req.getStatus() != null ? req.getStatus().toUpperCase().trim() : "";
+        if (!currentStatus.equals("PENDING_AO_APPROVAL") && !currentStatus.equals("PENDING")) {
+            throw new BadRequestException("Request is not awaiting AO approval. Current status: " + currentStatus);
+        }
+
+        String actor = user != null ? (user.getName() != null ? user.getName() : user.getUserId()) : "AO Admin";
+        String comment = (reason != null && !reason.isBlank()) ? reason.trim() : "Declined by AO Administrator";
+
+        req.setStatus("AO_REJECTED");
+        req.setAoApprovalStatus("REJECTED");
+        req.setRejectionReason(comment);
+        req.setAoApprovedBy(actor);
+        req.setAoApprovedAt(LocalDateTime.now());
+        req.setUpdatedAt(LocalDateTime.now());
+
+        if (req.getStatusHistory() == null) req.setStatusHistory(new ArrayList<>());
+        req.getStatusHistory().add(AccommodationRequest.StatusHistoryEntry.builder()
+                .status("AO_REJECTED")
+                .actor(actor)
+                .timestamp(LocalDateTime.now())
+                .comment(comment)
+                .build());
+
+        AccommodationRequest saved = requestRepository.save(req);
+
+        // Notify Department User that request was rejected by AO
+        String requesterId = requesterResolver.resolveRequesterUserId(req.getRequesterUserId(), req.getRequestedBy(), req.getDepartment());
+        notificationService.sendNotification(
+                "DEPARTMENT_USER",
+                req.getDepartment(),
+                requesterId,
+                "Accommodation Request Rejected by AO",
+                "Your " + req.getHostel() + " accommodation request (" + req.getRequestId() + ") was rejected by AO Admin. Reason: " + comment,
+                "Accommodation",
+                "DANGER",
+                saved.getRequestId()
+        );
+
+        return saved;
+    }
+
+    public AccommodationRequest aoRejectRequest(String id, String reason) {
+        return aoRejectRequest(id, reason, null);
+    }
+
+    /**
+     * Approve Accommodation Request with Fresh Conflict Check (Level 2 Hostel Admin or Super Admin).
      */
     public AccommodationRequest approveRequest(String id, User user) {
         AccommodationRequest req = requestRepository.findById(id)
@@ -623,16 +815,31 @@ public class AccommodationService {
             try { user = authService.getCurrentUser(); } catch (Exception ignored) {}
         }
 
-        // State validation guards
         String currentStatus = req.getStatus() != null ? req.getStatus().toUpperCase().trim() : "";
+
+        // If in PENDING_AO_APPROVAL:
+        if (currentStatus.equals("PENDING_AO_APPROVAL")) {
+            if (isSuperAdmin(user)) {
+                return aoApproveRequest(id, "Approved by AO Admin", user);
+            } else {
+                throw new BadRequestException("This accommodation request must first be approved by AO Admin before Hostel Admin review.");
+            }
+        }
+
+        // State validation guards
         if (currentStatus.equals("APPROVED") || currentStatus.equals("BOOKED")) {
             throw new BadRequestException("Cannot approve request: request is already approved.");
         }
-        if (currentStatus.equals("REJECTED")) {
+        if (currentStatus.equals("REJECTED") || currentStatus.equals("AO_REJECTED")) {
             throw new BadRequestException("Cannot approve request: request has already been rejected.");
         }
         if (currentStatus.equals("CANCELLED")) {
             throw new BadRequestException("Cannot approve request: request has already been cancelled.");
+        }
+
+        // Respective admin routing guard:
+        if (!isSuperAdmin(user) && !user.isAssignedToHostel(req.getHostel())) {
+            throw new AccessDeniedException("You are not authorized to approve requests for " + req.getHostel());
         }
 
         // Fresh Conflict Recheck on Approval against already APPROVED / BOOKED reservations
@@ -682,7 +889,7 @@ public class AccommodationService {
                 req.getDepartment(),
                 requesterId,
                 "Accommodation Request Approved",
-                "Your accommodation request for " + req.getRoomId() + " (" + req.getCheckInDate() + " to " + req.getCheckOutDate() + ") has been approved!",
+                "Your accommodation request for " + req.getRoomId() + " (" + req.getHostel() + ", " + req.getCheckInDate() + " to " + req.getCheckOutDate() + ") has been approved!",
                 "Accommodation",
                 "SUCCESS",
                 saved.getRequestId()
@@ -696,7 +903,7 @@ public class AccommodationService {
     }
 
     /**
-     * Reject Accommodation Request (Step 10).
+     * Reject Accommodation Request (Level 2 Hostel Admin or Super Admin).
      */
     public AccommodationRequest rejectRequest(String id, String reason, User user) {
         AccommodationRequest req = requestRepository.findById(id)
@@ -707,16 +914,31 @@ public class AccommodationService {
             try { user = authService.getCurrentUser(); } catch (Exception ignored) {}
         }
 
-        // State validation guards
         String currentStatus = req.getStatus() != null ? req.getStatus().toUpperCase().trim() : "";
+
+        // If in PENDING_AO_APPROVAL:
+        if (currentStatus.equals("PENDING_AO_APPROVAL")) {
+            if (isSuperAdmin(user)) {
+                return aoRejectRequest(id, reason, user);
+            } else {
+                throw new BadRequestException("This accommodation request requires AO Admin review.");
+            }
+        }
+
+        // State validation guards
         if (currentStatus.equals("APPROVED") || currentStatus.equals("BOOKED")) {
             throw new BadRequestException("Cannot reject approved request. Use cancellation workflow instead.");
         }
-        if (currentStatus.equals("REJECTED")) {
+        if (currentStatus.equals("REJECTED") || currentStatus.equals("AO_REJECTED")) {
             throw new BadRequestException("Cannot reject request: request is already rejected.");
         }
         if (currentStatus.equals("CANCELLED")) {
             throw new BadRequestException("Cannot reject request: request has already been cancelled.");
+        }
+
+        // Respective admin routing guard:
+        if (!isSuperAdmin(user) && !user.isAssignedToHostel(req.getHostel())) {
+            throw new AccessDeniedException("You are not authorized to reject requests for " + req.getHostel());
         }
 
         String comment = (reason != null && !reason.isBlank()) ? reason.trim() : "Declined by Accommodation Administrator";
@@ -745,7 +967,7 @@ public class AccommodationService {
                 req.getDepartment(),
                 requesterId,
                 "Accommodation Request Rejected",
-                "Your accommodation request for " + req.getRoomId() + " was rejected. Reason: " + comment,
+                "Your accommodation request for " + req.getRoomId() + " (" + req.getHostel() + ") was rejected. Reason: " + comment,
                 "Accommodation",
                 "DANGER",
                 saved.getRequestId()

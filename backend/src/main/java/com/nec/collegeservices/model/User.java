@@ -93,6 +93,9 @@ public class User {
         return hasRole(p);
     }
 
+    @Builder.Default
+    private java.util.List<String> assignedHostels = new java.util.ArrayList<>(); // e.g. ["Boys Hostel"], ["Girls Hostel"]
+
     public boolean isAssignedToHall(String hallId) {
         if (hallId == null) return false;
         if (hasRole("CREATOR") || hasRole("AO_ADMIN") || hasRole("SEMINAR_ADMIN")) return true;
@@ -104,6 +107,29 @@ public class User {
                 (hallId.equalsIgnoreCase("SH-5") || hallId.equalsIgnoreCase("TECH-HUB") || hallId.equalsIgnoreCase("Tech Hub"))) {
                 return true;
             }
+        }
+        return false;
+    }
+
+    public boolean isAssignedToHostel(String hostel) {
+        if (hostel == null) return false;
+        if (hasRole("CREATOR") || hasRole("AO_ADMIN")) return true;
+        if (hasRole("BOYS_HOSTEL_ADMIN") && hostel.equalsIgnoreCase("Boys Hostel")) return true;
+        if (hasRole("GIRLS_HOSTEL_ADMIN") && hostel.equalsIgnoreCase("Girls Hostel")) return true;
+        if (hasRole("BOYS_HOSTEL_ADMIN") && !hostel.equalsIgnoreCase("Boys Hostel")) return false;
+        if (hasRole("GIRLS_HOSTEL_ADMIN") && !hostel.equalsIgnoreCase("Girls Hostel")) return false;
+
+        if (assignedHostels != null && !assignedHostels.isEmpty()) {
+            return assignedHostels.stream().anyMatch(h -> h != null && (h.equalsIgnoreCase(hostel) || h.equalsIgnoreCase("ALL")));
+        }
+        return hasRole("ACCOMMODATION_ADMIN") || hasServicePermission("ACCOMMODATION_ADMIN");
+    }
+
+    public boolean isSpecificHostelAdmin() {
+        if (hasRole("CREATOR") || hasRole("AO_ADMIN")) return false;
+        if (hasRole("BOYS_HOSTEL_ADMIN") || hasRole("GIRLS_HOSTEL_ADMIN")) return true;
+        if (assignedHostels != null && !assignedHostels.isEmpty()) {
+            return assignedHostels.stream().noneMatch(h -> h != null && h.equalsIgnoreCase("ALL"));
         }
         return false;
     }
