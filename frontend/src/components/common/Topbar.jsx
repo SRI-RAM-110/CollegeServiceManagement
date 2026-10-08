@@ -243,19 +243,6 @@ export const Topbar = ({ onToggleSidebar, searchPlaceholder = 'Search anything..
           </div>
         </div>
 
-        <form onSubmit={handleSearch} className="topbar-search-form">
-          <Search
-            size={18}
-            className="topbar-search-icon"
-          />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={searchPlaceholder}
-            className="topbar-search-input"
-          />
-        </form>
       </div>
 
       {/* Right: Notifications, User Profile & Sign Out */}
@@ -364,8 +351,8 @@ export const Topbar = ({ onToggleSidebar, searchPlaceholder = 'Search anything..
                       {pushPermission === 'denied'
                         ? 'Push blocked in browser'
                         : isPushSubscribed
-                        ? 'Browser Alerts: ON'
-                        : 'Browser Alerts: OFF'}
+                          ? 'Browser Alerts: ON'
+                          : 'Browser Alerts: OFF'}
                     </span>
                   </div>
                   <div style={{ display: 'flex', gap: '6px' }}>
