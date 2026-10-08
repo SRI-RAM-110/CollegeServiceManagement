@@ -1026,6 +1026,21 @@
   color: #0f172a !important;
 }
 
+/* Coordinator Assigned Hall Card */
+[data-theme="light"] .coordinator-hall-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: var(--radius-sm);
+  color: #0f172a !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05) !important;
+}
+
+[data-theme="light"] .coordinator-hall-card:hover {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08) !important;
+}
+
 /* Compact Seminar Requests Filter Bar & Tables */
 [data-theme="light"] .my-requests-compact-wrapper .my-requests-filter-bar {
   background: #ffffff !important;
