@@ -1350,7 +1350,7 @@
   border-color: #e2e8f0 !important;
 }
 
-[data-theme="light"] .divide-slate-800\/60 > * + * {
+[data-theme="light"] .divide-slate-800\/60>*+* {
   border-top-color: #e2e8f0 !important;
 }
 
@@ -1606,8 +1606,19 @@
 }
 
 /* Soft Light Shadows */
-[data-theme="light"] .shadow-sm { box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.05) !important; }
-[data-theme="light"] .shadow { box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.08), 0 1px 2px -1px rgba(15, 23, 42, 0.05) !important; }
-[data-theme="light"] .shadow-md { box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.05) !important; }
+[data-theme="light"] .shadow-sm {
+  box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.05) !important;
+}
+
+[data-theme="light"] .shadow {
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.08), 0 1px 2px -1px rgba(15, 23, 42, 0.05) !important;
+}
+
+[data-theme="light"] .shadow-md {
+  box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.05) !important;
+}
+
 [data-theme="light"] .shadow-lg,
-[data-theme="light"] .shadow-2xl { box-shadow: 0 10px 25px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04) !important; }
+[data-theme="light"] .shadow-2xl {
+  box-shadow: 0 10px 25px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04) !important;
+}

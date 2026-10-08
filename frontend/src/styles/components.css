@@ -844,7 +844,7 @@
 }
 
 .coordinator-hall-card {
-  background: rgba(15, 23, 42, 0.75);
+  background: rgba(98, 129, 200, 0.75);
   border: 1px solid rgba(51, 65, 85, 0.65);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
@@ -2248,10 +2248,13 @@
 }
 
 @keyframes logoPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(0.97);
     opacity: 0.80;
   }
+
   50% {
     transform: scale(1.03);
     opacity: 1;
@@ -2671,8 +2674,9 @@
   box-sizing: border-box;
 }
 
-.seminar-hall-selection-panel + .two-column-layout {
-  margin-top: -8px; /* Tighten gap between Select Seminar Hall and Slot Availability */
+.seminar-hall-selection-panel+.two-column-layout {
+  margin-top: -8px;
+  /* Tighten gap between Select Seminar Hall and Slot Availability */
 }
 
 .seminar-hall-title {
@@ -2806,7 +2810,7 @@
     padding: 9px 12px !important;
   }
 
-  .seminar-hall-selection-panel + .two-column-layout {
+  .seminar-hall-selection-panel+.two-column-layout {
     margin-top: 0 !important;
   }
 }
@@ -2821,6 +2825,7 @@
 }
 
 @media (max-width: 1024px) {
+
   .two-column-layout.balanced,
   .two-column-layout.equal-split {
     grid-template-columns: 1fr !important;
