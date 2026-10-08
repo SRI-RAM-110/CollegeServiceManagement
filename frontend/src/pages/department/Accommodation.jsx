@@ -1187,16 +1187,16 @@ export const Accommodation = () => {
 
             {/* HOSTEL SELECTION CONTROLS */}
             <div className="mb-5 p-3 rounded-xl bg-slate-900/90 border border-slate-800">
-              <label className="text-xs font-semibold text-slate-200 block mb-2">
+              <label className="text-xs font-semibold text-slate-200 block mb-2" style={{ color: 'var(--text-primary)' }}>
                 Hostel Selection * (Select one or both)
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <button
                   type="button"
                   onClick={() => setHostelSelectionMode('BOYS')}
-                  className={`p-3 rounded-lg border text-left flex items-start gap-2.5 transition ${
+                  className={`hostel-select-btn p-3 rounded-lg border text-left flex items-start gap-2.5 transition ${
                     hostelSelectionMode === 'BOYS'
-                      ? 'bg-blue-600/15 border-blue-500 text-white shadow-sm'
+                      ? 'active-boys bg-blue-600/15 border-blue-500 shadow-sm'
                       : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
                   }`}
                 >
@@ -1206,9 +1206,10 @@ export const Accommodation = () => {
                     checked={hostelSelectionMode === 'BOYS'}
                     onChange={() => setHostelSelectionMode('BOYS')}
                     className="mt-0.5 text-blue-500 cursor-pointer"
+                    style={{ accentColor: '#3b82f6', width: '16px', height: '16px' }}
                   />
                   <div>
-                    <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <div className="hostel-card-title text-xs font-bold text-white flex items-center gap-1.5">
                       <Home size={14} className="text-blue-400" /> Boys Hostel
                     </div>
                     <div className="text-[11px] text-slate-400 mt-0.5">
@@ -1220,9 +1221,9 @@ export const Accommodation = () => {
                 <button
                   type="button"
                   onClick={() => setHostelSelectionMode('GIRLS')}
-                  className={`p-3 rounded-lg border text-left flex items-start gap-2.5 transition ${
+                  className={`hostel-select-btn p-3 rounded-lg border text-left flex items-start gap-2.5 transition ${
                     hostelSelectionMode === 'GIRLS'
-                      ? 'bg-purple-600/15 border-purple-500 text-white shadow-sm'
+                      ? 'active-girls bg-purple-600/15 border-purple-500 shadow-sm'
                       : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
                   }`}
                 >
@@ -1232,9 +1233,10 @@ export const Accommodation = () => {
                     checked={hostelSelectionMode === 'GIRLS'}
                     onChange={() => setHostelSelectionMode('GIRLS')}
                     className="mt-0.5 text-purple-500 cursor-pointer"
+                    style={{ accentColor: '#a855f7', width: '16px', height: '16px' }}
                   />
                   <div>
-                    <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <div className="hostel-card-title text-xs font-bold text-white flex items-center gap-1.5">
                       <Home size={14} className="text-purple-400" /> Girls Hostel
                     </div>
                     <div className="text-[11px] text-slate-400 mt-0.5">
@@ -1246,9 +1248,9 @@ export const Accommodation = () => {
                 <button
                   type="button"
                   onClick={() => setHostelSelectionMode('BOTH')}
-                  className={`p-3 rounded-lg border text-left flex items-start gap-2.5 transition ${
+                  className={`hostel-select-btn p-3 rounded-lg border text-left flex items-start gap-2.5 transition ${
                     hostelSelectionMode === 'BOTH'
-                      ? 'bg-emerald-600/15 border-emerald-500 text-white shadow-sm'
+                      ? 'active-both bg-emerald-600/15 border-emerald-500 shadow-sm'
                       : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
                   }`}
                 >
@@ -1258,9 +1260,10 @@ export const Accommodation = () => {
                     checked={hostelSelectionMode === 'BOTH'}
                     onChange={() => setHostelSelectionMode('BOTH')}
                     className="mt-0.5 text-emerald-500 cursor-pointer"
+                    style={{ accentColor: '#10b981', width: '16px', height: '16px' }}
                   />
                   <div>
-                    <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <div className="hostel-card-title text-xs font-bold text-white flex items-center gap-1.5">
                       <Users size={14} className="text-emerald-400" /> Both Boys & Girls Hostel
                     </div>
                     <div className="text-[11px] text-slate-400 mt-0.5">
