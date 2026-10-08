@@ -463,4 +463,149 @@ public class CollegeServicesApplicationTests {
 
         mealRequestRepository.delete(req);
     }
+
+    @Test
+    void testMealsSingleDateSubmitWorks() {
+        User cseUser = userRepository.findByUserId("CSE001").orElseThrow();
+        String futureDate = java.time.LocalDate.now().plusDays(5).toString();
+
+        com.nec.collegeservices.dto.MealRequestDTO dto = com.nec.collegeservices.dto.MealRequestDTO.builder()
+                .eventTitle("Single Date HOD Meeting")
+                .date(futureDate)
+                .bookingType("ONE_TIME")
+                .venue("CSE Conference Room")
+                .mealTypes(List.of("Lunch"))
+                .totalGuests(15)
+                .mealItems(List.of(
+                        com.nec.collegeservices.dto.MealRequestDTO.MealItemDetailDTO.builder()
+                                .mealType("Lunch")
+                                .guestCount(15)
+                                .preferredTime("01:00 PM")
+                                .description("Executive Lunch")
+                                .build()
+                ))
+                .build();
+
+        com.nec.collegeservices.model.MealRequest created = mealService.createRequest(dto, cseUser);
+        assertNotNull(created);
+        assertNotNull(created.getRequestId());
+        assertEquals(futureDate, created.getDate());
+        assertEquals("PENDING", created.getStatus());
+        assertEquals("ONE_TIME", created.getBookingType());
+        assertNull(created.getSeriesId());
+
+        mealRequestRepository.delete(created);
+    }
+
+    @Test
+    void testMealsMultipleDatesSubmitSavesAllDates() {
+        User cseUser = userRepository.findByUserId("CSE001").orElseThrow();
+        String day1 = java.time.LocalDate.now().plusDays(10).toString();
+        String day2 = java.time.LocalDate.now().plusDays(11).toString();
+        String day3 = java.time.LocalDate.now().plusDays(12).toString();
+        List<String> dates = List.of(day1, day2, day3);
+
+        com.nec.collegeservices.dto.MealRequestDTO dto = com.nec.collegeservices.dto.MealRequestDTO.builder()
+                .eventTitle("3-Day International Tech Symposium")
+                .date(day1)
+                .startDate(day1)
+                .endDate(day3)
+                .bookingType("MULTI_DAY")
+                .dates(dates)
+                .venue("Main Auditorium Lawn")
+                .mealTypes(List.of("Breakfast", "Lunch"))
+                .totalGuests(50)
+                .mealItems(List.of(
+                        com.nec.collegeservices.dto.MealRequestDTO.MealItemDetailDTO.builder()
+                                .mealType("Breakfast")
+                                .guestCount(50)
+                                .preferredTime("08:30 AM")
+                                .description("Buffet")
+                                .build(),
+                        com.nec.collegeservices.dto.MealRequestDTO.MealItemDetailDTO.builder()
+                                .mealType("Lunch")
+                                .guestCount(50)
+                                .preferredTime("01:00 PM")
+                                .description("Full Course")
+                                .build()
+                ))
+                .build();
+
+        com.nec.collegeservices.model.MealRequest primary = mealService.createRequest(dto, cseUser);
+        assertNotNull(primary);
+        assertNotNull(primary.getSeriesId());
+        assertTrue(primary.getSeriesId().startsWith("SM-SERIES-"));
+        assertEquals(1, primary.getOccurrenceIndex());
+        assertEquals(3, primary.getTotalOccurrences());
+        assertEquals(dates, primary.getDates());
+        assertEquals(day1, primary.getDate());
+
+        // Verify that all 3 occurrences were saved in the repository
+        List<com.nec.collegeservices.model.MealRequest> seriesRequests = mealRequestRepository.findBySeriesId(primary.getSeriesId());
+        assertEquals(3, seriesRequests.size());
+        assertEquals(day1, seriesRequests.get(0).getDate());
+        assertEquals(day2, seriesRequests.get(1).getDate());
+        assertEquals(day3, seriesRequests.get(2).getDate());
+
+        // Cleanup
+        mealRequestRepository.deleteAll(seriesRequests);
+    }
+
+    @Test
+    void testMealsBulkAvailabilityCheck() {
+        String day1 = java.time.LocalDate.now().plusDays(14).toString();
+        String day2 = java.time.LocalDate.now().plusDays(15).toString();
+
+        com.nec.collegeservices.dto.MealBulkAvailabilityRequestDTO bulkDto = com.nec.collegeservices.dto.MealBulkAvailabilityRequestDTO.builder()
+                .dates(List.of(day1, day2))
+                .bookingType("MULTI_DAY")
+                .venue("Dining Hall")
+                .mealTypes(List.of("Dinner"))
+                .build();
+
+        java.util.Map<String, Object> result = mealService.checkBulkAvailability(bulkDto);
+        assertNotNull(result);
+        assertEquals(2, result.get("totalDates"));
+        assertEquals(2, result.get("availableCount"));
+        assertEquals(0, result.get("conflictCount"));
+        List<?> occurrences = (List<?>) result.get("occurrences");
+        assertEquals(2, occurrences.size());
+    }
+
+
+    @Test
+    void testMealsRefreshmentsServiceTimePreserved() {
+        User cseUser = userRepository.findByUserId("CSE001").orElseThrow();
+        String futureDate = java.time.LocalDate.now().plusDays(18).toString();
+
+        // 1. Missing serviceTime should fail validation
+        com.nec.collegeservices.dto.MealRequestDTO invalidDto = com.nec.collegeservices.dto.MealRequestDTO.builder()
+                .eventTitle("Faculty Evening Tea")
+                .date(futureDate)
+                .venue("Staff Lounge")
+                .mealTypes(List.of("Tea / Coffee", "Snacks"))
+                .totalGuests(20)
+                .serviceTime(null)
+                .build();
+
+        assertThrows(com.nec.collegeservices.exception.BadRequestException.class,
+                () -> mealService.createRequest(invalidDto, cseUser),
+                "Missing serviceTime for refreshments must throw BadRequestException");
+
+        // 2. Valid FORENOON serviceTime should succeed
+        com.nec.collegeservices.dto.MealRequestDTO validDto = com.nec.collegeservices.dto.MealRequestDTO.builder()
+                .eventTitle("Faculty Morning Refreshments")
+                .date(futureDate)
+                .venue("Staff Lounge")
+                .mealTypes(List.of("Tea / Coffee", "Snacks"))
+                .totalGuests(20)
+                .serviceTime("FORENOON")
+                .build();
+
+        com.nec.collegeservices.model.MealRequest created = mealService.createRequest(validDto, cseUser);
+        assertNotNull(created);
+        assertEquals("FORENOON", created.getServiceTime());
+
+        mealRequestRepository.delete(created);
+    }
 }

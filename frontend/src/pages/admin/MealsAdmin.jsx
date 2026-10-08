@@ -657,7 +657,16 @@ export default function MealsAdmin() {
                       {req.venue}
                     </td>
                     <td className="py-3 px-4 text-slate-300">
-                      {req.eventDate || req.date}
+                      {req.dates && req.dates.length > 1 ? (
+                        <div>
+                          <div className="font-medium text-white">{req.startDate || req.dates[0]} → {req.endDate || req.dates[req.dates.length - 1]}</div>
+                          <div className="text-[10px] text-blue-400 font-mono">
+                            {req.occurrenceIndex ? `(#${req.occurrenceIndex}/${req.totalOccurrences || req.dates.length}) ` : ''}{req.dates.length} Dates
+                          </div>
+                        </div>
+                      ) : (
+                        <span>{req.eventDate || req.date}</span>
+                      )}
                     </td>
                     <td className="py-3 px-4 max-w-[220px]">
                       <div className="text-[11px] font-bold text-amber-400 font-mono mb-1">

@@ -1,5 +1,6 @@
 package com.nec.collegeservices.service;
 
+import com.nec.collegeservices.dto.MealBulkAvailabilityRequestDTO;
 import com.nec.collegeservices.dto.MealRequestDTO;
 import com.nec.collegeservices.exception.BadRequestException;
 import com.nec.collegeservices.exception.ResourceNotFoundException;
@@ -9,14 +10,17 @@ import com.nec.collegeservices.repository.MealRequestRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 public class MealService {
+
+    private static final AtomicLong ID_COUNTER = new AtomicLong(System.currentTimeMillis() % 10000);
 
     @Autowired
     private MealRequestRepository mealRequestRepository;
@@ -33,6 +37,45 @@ public class MealService {
     @Autowired
     private com.nec.collegeservices.repository.UserRepository userRepository;
 
+    /**
+     * Check availability across multiple dates for recurring or multi-day meal requests.
+     */
+    public Map<String, Object> checkBulkAvailability(MealBulkAvailabilityRequestDTO dto) {
+        List<String> dates = dto.getDates() != null ? dto.getDates() : Collections.emptyList();
+        String bookingType = dto.getBookingType() != null && !dto.getBookingType().isBlank()
+                ? dto.getBookingType().toUpperCase()
+                : (dates.size() > 1 ? "MULTI_DAY" : "ONE_TIME");
+
+        List<Map<String, Object>> conflicts = new ArrayList<>();
+        List<Map<String, Object>> occurrences = new ArrayList<>();
+        int availableCount = 0;
+
+        for (String dateStr : dates) {
+            String dayOfWeek = "";
+            try {
+                LocalDate ld = LocalDate.parse(dateStr);
+                dayOfWeek = ld.getDayOfWeek().getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH);
+            } catch (Exception ignored) {}
+
+            Map<String, Object> occ = new HashMap<>();
+            occ.put("date", dateStr);
+            occ.put("day", dayOfWeek);
+            occ.put("venue", dto.getVenue());
+            occ.put("bookingType", bookingType);
+            occ.put("status", "AVAILABLE");
+            occurrences.add(occ);
+            availableCount++;
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("totalDates", dates.size());
+        result.put("availableCount", availableCount);
+        result.put("conflictCount", conflicts.size());
+        result.put("occurrences", occurrences);
+        result.put("conflicts", conflicts);
+        return result;
+    }
+
     public MealRequest createRequest(MealRequestDTO dto, User user) {
         if (user == null) {
             throw new AccessDeniedException("Authentication required.");
@@ -46,18 +89,89 @@ public class MealService {
             throw new BadRequestException("Venue is required.");
         }
 
-        // 2. Date validation
-        if (dto.getDate() == null || dto.getDate().isBlank()) {
-            throw new BadRequestException("Event date is required.");
+        LocalDate today = LocalDate.now();
+        String bookingType = dto.getBookingType() != null && !dto.getBookingType().isBlank()
+                ? dto.getBookingType().toUpperCase().trim()
+                : "ONE_TIME";
+
+        // 2. Date determination & validation (supports multiple dates like Seminar Hall)
+        List<LocalDate> targetDates = new ArrayList<>();
+        if (dto.getDates() != null && !dto.getDates().isEmpty()) {
+            for (String dStr : dto.getDates()) {
+                try {
+                    LocalDate d = LocalDate.parse(dStr.trim());
+                    if (d.isBefore(today)) {
+                        throw new BadRequestException("Event date cannot be in the past (" + dStr + ").");
+                    }
+                    if (!targetDates.contains(d)) {
+                        targetDates.add(d);
+                    }
+                } catch (DateTimeParseException e) {
+                    throw new BadRequestException("Invalid date format: " + dStr);
+                }
+            }
+            Collections.sort(targetDates);
+        } else if ("RECURRING".equals(bookingType)) {
+            String startDateStr = dto.getStartDate() != null ? dto.getStartDate() : dto.getDate();
+            String endDateStr = dto.getEndDate() != null ? dto.getEndDate() : startDateStr;
+            if (startDateStr == null || endDateStr == null || startDateStr.isBlank() || endDateStr.isBlank()) {
+                throw new BadRequestException("Both start date and end date are required for recurring meal requests.");
+            }
+            LocalDate start = LocalDate.parse(startDateStr);
+            LocalDate end = LocalDate.parse(endDateStr);
+            if (end.isBefore(start)) {
+                throw new BadRequestException("End date (" + endDateStr + ") cannot be earlier than start date (" + startDateStr + ").");
+            }
+            if (start.isBefore(today)) {
+                throw new BadRequestException("Start date cannot be in the past (" + startDateStr + ").");
+            }
+            List<String> repeatDays = dto.getRecurrenceDays();
+            if (repeatDays == null || repeatDays.isEmpty()) {
+                throw new BadRequestException("Select at least one weekday for recurring meal requests.");
+            }
+            Set<DayOfWeek> targetDays = new HashSet<>();
+            for (String day : repeatDays) {
+                targetDays.add(DayOfWeek.valueOf(day.toUpperCase().trim()));
+            }
+            LocalDate curr = start;
+            while (!curr.isAfter(end)) {
+                if (targetDays.contains(curr.getDayOfWeek())) {
+                    targetDates.add(curr);
+                }
+                curr = curr.plusDays(1);
+            }
+        } else if ("MULTI_DAY".equals(bookingType) && dto.getStartDate() != null && !dto.getStartDate().isBlank()) {
+            String startDateStr = dto.getStartDate();
+            String endDateStr = dto.getEndDate() != null ? dto.getEndDate() : startDateStr;
+            LocalDate start = LocalDate.parse(startDateStr);
+            LocalDate end = LocalDate.parse(endDateStr);
+            if (end.isBefore(start)) {
+                throw new BadRequestException("End date (" + endDateStr + ") cannot be earlier than start date (" + startDateStr + ").");
+            }
+            if (start.isBefore(today)) {
+                throw new BadRequestException("Start date cannot be in the past (" + startDateStr + ").");
+            }
+            LocalDate curr = start;
+            while (!curr.isAfter(end)) {
+                targetDates.add(curr);
+                curr = curr.plusDays(1);
+            }
         }
-        LocalDate mealDate;
-        try {
-            mealDate = LocalDate.parse(dto.getDate().trim());
-        } catch (DateTimeParseException e) {
-            throw new BadRequestException("Invalid date format. Expected YYYY-MM-DD.");
-        }
-        if (mealDate.isBefore(LocalDate.now())) {
-            throw new BadRequestException("Event date cannot be in the past (" + dto.getDate() + ").");
+
+        if (targetDates.isEmpty()) {
+            if (dto.getDate() == null || dto.getDate().isBlank()) {
+                throw new BadRequestException("Event date is required.");
+            }
+            LocalDate mealDate;
+            try {
+                mealDate = LocalDate.parse(dto.getDate().trim());
+            } catch (DateTimeParseException e) {
+                throw new BadRequestException("Invalid date format. Expected YYYY-MM-DD.");
+            }
+            if (mealDate.isBefore(today)) {
+                throw new BadRequestException("Event date cannot be in the past (" + dto.getDate() + ").");
+            }
+            targetDates.add(mealDate);
         }
 
         // 3. Meal types validation
@@ -119,40 +233,72 @@ public class MealService {
             totalGuestCount = 1;
         }
 
-        String requestId = "SM-" + String.format("%03d", System.currentTimeMillis() % 10000);
+        int totalOccurrences = targetDates.size();
+        boolean isSeries = totalOccurrences > 1;
+        String seriesId = isSeries ? generateSeriesId() : null;
+        List<MealRequest> createdList = new ArrayList<>();
+        int occurrenceIndex = 1;
 
-        MealRequest request = MealRequest.builder()
-                .requestId(requestId)
-                .department(user.getDepartment())
-                .eventTitle(dto.getEventTitle().trim())
-                .date(dto.getDate().trim())
-                .venue(dto.getVenue().trim())
-                .mealTypes(dto.getMealTypes())
-                .serviceTime(validatedServiceTime)
-                .mealItems(items)
-                .totalGuests(totalGuestCount)
-                .specialRequirements(dto.getSpecialRequirements())
-                .additionalNotes(dto.getAdditionalNotes())
-                .status("PENDING")
-                .requestedBy(user.getName() != null && !user.getName().isBlank() ? user.getName() : user.getUserId())
-                .requesterUserId(user.getUserId())
-                .requesterEmail(user.getEmail() != null && !user.getEmail().isBlank() ? user.getEmail() : resolveUserEmail(user.getUserId(), user.getName(), user.getDepartment()))
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
+        String startDateStr = targetDates.get(0).toString();
+        String endDateStr = targetDates.get(targetDates.size() - 1).toString();
+        List<String> dateStrings = targetDates.stream().map(LocalDate::toString).toList();
 
-        MealRequest saved = mealRequestRepository.save(request);
+        for (LocalDate d : targetDates) {
+            String dateIso = d.toString();
+            String reqId = isSeries
+                    ? generateRequestId(occurrenceIndex)
+                    : generateRequestId(0);
+
+            MealRequest request = MealRequest.builder()
+                    .requestId(reqId)
+                    .department(user.getDepartment())
+                    .eventTitle(dto.getEventTitle().trim())
+                    .date(dateIso)
+                    .startDate(startDateStr)
+                    .endDate(endDateStr)
+                    .dates(dateStrings)
+                    .bookingType(bookingType)
+                    .isRecurring("RECURRING".equals(bookingType))
+                    .seriesId(seriesId)
+                    .recurrencePattern("RECURRING".equals(bookingType) ? dto.getRecurrencePattern() : null)
+                    .recurrenceDays("RECURRING".equals(bookingType) ? dto.getRecurrenceDays() : null)
+                    .occurrenceIndex(isSeries ? occurrenceIndex : null)
+                    .totalOccurrences(isSeries ? totalOccurrences : null)
+                    .venue(dto.getVenue().trim())
+                    .mealTypes(dto.getMealTypes())
+                    .serviceTime(validatedServiceTime)
+                    .mealItems(items)
+                    .totalGuests(totalGuestCount)
+                    .specialRequirements(dto.getSpecialRequirements())
+                    .additionalNotes(dto.getAdditionalNotes())
+                    .status("PENDING")
+                    .requestedBy(user.getName() != null && !user.getName().isBlank() ? user.getName() : user.getUserId())
+                    .requesterUserId(user.getUserId())
+                    .requesterEmail(user.getEmail() != null && !user.getEmail().isBlank() ? user.getEmail() : resolveUserEmail(user.getUserId(), user.getName(), user.getDepartment()))
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+
+            createdList.add(mealRequestRepository.save(request));
+            occurrenceIndex++;
+        }
+
+        MealRequest primary = createdList.get(0);
 
         // Notify Admins
+        String notifyMsg = isSeries
+                ? user.getDepartment() + " requested " + totalOccurrences + " meal arrangement occurrences (" + String.join(", ", dto.getMealTypes()) + " from " + startDateStr + " to " + endDateStr + ")."
+                : user.getDepartment() + " requested food arrangement for " + startDateStr + " (" + String.join(", ", dto.getMealTypes()) + ")";
+
         notificationService.sendNotification(
                 "MEALS_ADMIN",
                 "ADMIN",
                 null,
                 "New Meal Arrangement Request",
-                user.getDepartment() + " requested food arrangement for " + dto.getDate() + " (" + String.join(", ", dto.getMealTypes()) + ")",
+                notifyMsg,
                 "Snacks & Meals",
                 "INFO",
-                saved.getRequestId()
+                primary.getRequestId()
         );
 
         notificationService.sendNotification(
@@ -160,13 +306,26 @@ public class MealService {
                 "ADMIN",
                 null,
                 "New Meal Arrangement Request",
-                user.getDepartment() + " requested food arrangement for " + dto.getDate() + " (" + String.join(", ", dto.getMealTypes()) + ")",
+                notifyMsg,
                 "Snacks & Meals",
                 "INFO",
-                saved.getRequestId()
+                primary.getRequestId()
         );
 
-        return saved;
+        return primary;
+    }
+
+    private String generateRequestId(int index) {
+        long seq = ID_COUNTER.incrementAndGet() % 10000;
+        if (index > 0) {
+            return String.format("SM-%04d-%d", seq, index);
+        }
+        return String.format("SM-%04d", seq);
+    }
+
+    private String generateSeriesId() {
+        long seq = ID_COUNTER.incrementAndGet() % 10000;
+        return String.format("SM-SERIES-%04d", seq);
     }
 
     public List<MealRequest> getAllRequests(String status, String mealType, String date, String department) {

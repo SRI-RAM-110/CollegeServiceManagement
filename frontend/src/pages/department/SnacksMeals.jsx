@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Coffee,
   Utensils,
@@ -13,6 +13,13 @@ import {
   CheckCircle,
   XCircle,
   Eye,
+  CalendarDays,
+  CalendarRange,
+  Repeat,
+  AlertTriangle,
+  CheckCircle2,
+  RefreshCw,
+  X,
 } from 'lucide-react';
 import { mealsApi } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
@@ -25,6 +32,45 @@ import { RequestDetailsModal } from '../../components/common/RequestDetailsModal
 import { ServiceDateRangeViewer } from '../../components/common/ServiceDateRangeViewer';
 import confetti from 'canvas-confetti';
 import { getTodayStr } from '../../utils/dateUtils';
+
+const WEEKDAYS = [
+  { key: 'MONDAY', label: 'Mon', fullLabel: 'Monday', dayIndex: 1 },
+  { key: 'TUESDAY', label: 'Tue', fullLabel: 'Tuesday', dayIndex: 2 },
+  { key: 'WEDNESDAY', label: 'Wed', fullLabel: 'Wednesday', dayIndex: 3 },
+  { key: 'THURSDAY', label: 'Thu', fullLabel: 'Thursday', dayIndex: 4 },
+  { key: 'FRIDAY', label: 'Fri', fullLabel: 'Friday', dayIndex: 5 },
+  { key: 'SATURDAY', label: 'Sat', fullLabel: 'Saturday', dayIndex: 6 },
+  { key: 'SUNDAY', label: 'Sun', fullLabel: 'Sunday', dayIndex: 0 },
+];
+
+const parseLocalDate = (dateStr) => {
+  if (!dateStr) return new Date();
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
+
+const formatLocalDate = (dateObj) => {
+  const y = dateObj.getFullYear();
+  const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const d = String(dateObj.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+const getOccurrenceDateDisplay = (dateStr) => {
+  if (!dateStr) return { dateFormatted: '-', dayOfWeek: '' };
+  try {
+    const d = parseLocalDate(dateStr);
+    const dateFormatted = d.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+    const dayOfWeek = d.toLocaleDateString('en-US', { weekday: 'long' });
+    return { dateFormatted, dayOfWeek };
+  } catch {
+    return { dateFormatted: dateStr, dayOfWeek: '' };
+  }
+};
 
 const formatDateDisplay = (dateVal) => {
   if (!dateVal) return '-';
@@ -84,6 +130,13 @@ export const SnacksMeals = () => {
   // Form states - clean defaults, department-aware venue
   const [eventTitle, setEventTitle] = useState('');
   const [date, setDate] = useState(getTodayStr());
+  const [endDate, setEndDate] = useState(getTodayStr());
+  const [bookingType, setBookingType] = useState('ONE_TIME'); // ONE_TIME, MULTI_DAY, RECURRING
+  const [recurrenceDays, setRecurrenceDays] = useState(['MONDAY', 'WEDNESDAY', 'FRIDAY']);
+  const [excludedDates, setExcludedDates] = useState([]);
+  const [bulkConflictInfo, setBulkConflictInfo] = useState(null);
+  const [checkingBulk, setCheckingBulk] = useState(false);
+
   const [venue, setVenue] = useState(user?.department ? `${user.department} Conference Hall` : '');
   const [specialRequirements, setSpecialRequirements] = useState('');
   const [additionalNotes, setAdditionalNotes] = useState('');
@@ -107,6 +160,94 @@ export const SnacksMeals = () => {
       showToast('Failed to load meal requests', 'error');
     }
   };
+
+  const toggleRecurrenceDay = (dayKey) => {
+    setRecurrenceDays((prev) => {
+      if (prev.includes(dayKey)) {
+        if (prev.length === 1) return prev;
+        return prev.filter((d) => d !== dayKey);
+      } else {
+        return [...prev, dayKey];
+      }
+    });
+  };
+
+  // Compute all target dates based on booking type
+  const targetDates = useMemo(() => {
+    let list = [];
+    if (bookingType === 'ONE_TIME') {
+      if (date) list = [date];
+    } else if (bookingType === 'MULTI_DAY') {
+      if (date) {
+        if (!endDate || endDate === date) {
+          list = [date];
+        } else if (endDate > date) {
+          let cur = parseLocalDate(date);
+          const end = parseLocalDate(endDate);
+          while (cur <= end) {
+            list.push(formatLocalDate(cur));
+            cur.setDate(cur.getDate() + 1);
+          }
+        }
+      }
+    } else {
+      // RECURRING
+      if (date && endDate && endDate >= date && recurrenceDays.length > 0) {
+        const targetDayIndices = recurrenceDays.map((k) => {
+          const found = WEEKDAYS.find((w) => w.key === k);
+          return found ? found.dayIndex : -1;
+        });
+        let cur = parseLocalDate(date);
+        const end = parseLocalDate(endDate);
+        while (cur <= end) {
+          if (targetDayIndices.includes(cur.getDay())) {
+            list.push(formatLocalDate(cur));
+          }
+          cur.setDate(cur.getDate() + 1);
+        }
+      }
+    }
+    return list.filter((d) => !excludedDates.includes(d));
+  }, [bookingType, date, endDate, recurrenceDays, excludedDates]);
+
+  const handleRemoveDate = (dateToRemove) => {
+    setExcludedDates((prev) => [...prev, dateToRemove]);
+  };
+
+  // Live availability check on target dates
+  useEffect(() => {
+    let isCancelled = false;
+    if (targetDates.length === 0) {
+      setBulkConflictInfo(null);
+      return;
+    }
+
+    const runBulkCheck = async () => {
+      setCheckingBulk(true);
+      try {
+        const res = await mealsApi.checkBulkAvailability({
+          dates: targetDates,
+          bookingType,
+          venue,
+          mealTypes: Object.keys(selectedMeals),
+        });
+        if (!isCancelled && res.data) {
+          setBulkConflictInfo(res.data);
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          console.warn('Could not check meals bulk availability:', err);
+        }
+      } finally {
+        if (!isCancelled) setCheckingBulk(false);
+      }
+    };
+
+    runBulkCheck();
+    return () => {
+      isCancelled = true;
+    };
+  }, [targetDates, bookingType, venue]);
 
   const handleToggleMeal = (cat) => {
     setSelectedMeals((prev) => {
@@ -178,6 +319,11 @@ export const SnacksMeals = () => {
     setEventTitle('');
     setVenue(user?.department ? `${user.department} Conference Hall` : '');
     setDate(getTodayStr());
+    setEndDate(getTodayStr());
+    setBookingType('ONE_TIME');
+    setRecurrenceDays(['MONDAY', 'WEDNESDAY', 'FRIDAY']);
+    setExcludedDates([]);
+    setBulkConflictInfo(null);
     setCalendarDate(getTodayStr());
     setTotalGuests(25);
     setSpecialRequirements('');
@@ -193,6 +339,11 @@ export const SnacksMeals = () => {
     const today = getTodayStr();
     if (date < today) {
       showToast('Event date cannot be in the past', 'warning');
+      return;
+    }
+
+    if (targetDates.length === 0) {
+      showToast('Please select at least one valid date for this meal request', 'warning');
       return;
     }
 
@@ -243,7 +394,13 @@ export const SnacksMeals = () => {
     try {
       const res = await mealsApi.createRequest({
         eventTitle,
-        date,
+        date: targetDates[0] || date,
+        startDate: targetDates[0] || date,
+        endDate: targetDates[targetDates.length - 1] || endDate || date,
+        dates: targetDates,
+        bookingType,
+        recurrenceDays: bookingType === 'RECURRING' ? recurrenceDays : null,
+        recurrencePattern: bookingType === 'RECURRING' ? 'WEEKLY' : null,
         venue,
         totalGuests: guestsNum,
         mealTypes: mealTypesList,
@@ -333,7 +490,18 @@ export const SnacksMeals = () => {
 
                 return (
                   <tr key={m.id || m.requestId || idx}>
-                    <td className="table-cell-date">{formatDateDisplay(m.date)}</td>
+                    <td className="table-cell-date">
+                      {m.dates && m.dates.length > 1 ? (
+                        <div>
+                          <div>{formatDateDisplay(m.startDate || m.dates[0])} → {formatDateDisplay(m.endDate || m.dates[m.dates.length - 1])}</div>
+                          <div style={{ fontSize: '10px', color: 'var(--arctic-blue)', fontFamily: 'monospace' }}>
+                            {m.occurrenceIndex ? `(#${m.occurrenceIndex}/${m.totalOccurrences || m.dates.length}) ` : ''}{m.dates.length} Dates
+                          </div>
+                        </div>
+                      ) : (
+                        formatDateDisplay(m.date)
+                      )}
+                    </td>
                     <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{m.requestId}</td>
                     <td>{m.department}</td>
                     <td>
@@ -577,18 +745,207 @@ export const SnacksMeals = () => {
                   />
                 </div>
 
+              </div>
+
+              {/* Booking Type Toggle Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-slate-800">
+                <span className="text-xs font-semibold text-slate-300">Booking Type</span>
+                <div className="flex flex-wrap items-center gap-1.5 bg-slate-900/90 p-1 rounded-lg border border-slate-700/60">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBookingType('ONE_TIME');
+                      setExcludedDates([]);
+                    }}
+                    className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition ${bookingType === 'ONE_TIME'
+                      ? 'bg-blue-600 text-white shadow'
+                      : 'text-slate-400 hover:text-white'
+                      }`}
+                  >
+                    <CalendarDays size={13} /> One-Time
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBookingType('MULTI_DAY');
+                      setExcludedDates([]);
+                      if (!endDate || endDate < date) setEndDate(date);
+                    }}
+                    className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition ${bookingType === 'MULTI_DAY'
+                      ? 'bg-blue-600 text-white shadow'
+                      : 'text-slate-400 hover:text-white'
+                      }`}
+                  >
+                    <CalendarRange size={13} /> Multi-Day
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBookingType('RECURRING');
+                      setExcludedDates([]);
+                      if (!endDate || endDate < date) setEndDate(date);
+                    }}
+                    className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition ${bookingType === 'RECURRING'
+                      ? 'bg-blue-600 text-white shadow'
+                      : 'text-slate-400 hover:text-white'
+                      }`}
+                  >
+                    <Repeat size={13} /> Recurring
+                  </button>
+                </div>
+              </div>
+
+              {/* Date Pickers based on Booking Type */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div className="form-group">
-                  <label className="form-label text-xs">Date *</label>
+                  <label className="form-label text-xs">
+                    {bookingType === 'ONE_TIME' ? 'Date *' : 'Series Start Date *'}
+                  </label>
                   <input
                     type="date"
                     min={getTodayStr()}
                     value={date}
-                    onChange={(e) => setDate(e.target.value)}
+                    onChange={(e) => {
+                      setDate(e.target.value);
+                      if (bookingType === 'ONE_TIME') setEndDate(e.target.value);
+                    }}
                     required
                     className="w-full text-xs"
                   />
                 </div>
+
+                {bookingType !== 'ONE_TIME' && (
+                  <div className="form-group">
+                    <label className="form-label text-xs">
+                      {bookingType === 'MULTI_DAY' ? 'Series End Date (Inclusive) *' : 'Series End Date *'}
+                    </label>
+                    <input
+                      type="date"
+                      value={endDate}
+                      min={date || getTodayStr()}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      required
+                      className="w-full text-xs"
+                    />
+                  </div>
+                )}
+
+                {bookingType === 'RECURRING' && (
+                  <div className="form-group sm:col-span-2">
+                    <label className="form-label text-xs mb-1.5">Repeat On Weekdays *</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {WEEKDAYS.map((w) => {
+                        const isSel = recurrenceDays.includes(w.key);
+                        return (
+                          <button
+                            key={w.key}
+                            type="button"
+                            onClick={() => toggleRecurrenceDay(w.key)}
+                            className={`px-2.5 py-1 text-xs rounded-md border font-medium transition ${isSel
+                              ? 'bg-blue-600 border-blue-500 text-white shadow'
+                              : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-white'
+                              }`}
+                          >
+                            {w.fullLabel}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* Selected Dates List with Removal Capability */}
+              {targetDates.length > 0 && (
+                <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 text-xs space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-slate-300 font-medium">
+                      Selected Dates: <strong className="text-white">{targetDates.length} date(s)</strong>
+                    </span>
+                    {excludedDates.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setExcludedDates([])}
+                        className="text-[11px] text-blue-400 hover:underline"
+                      >
+                        Reset removed ({excludedDates.length})
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 max-h-[85px] overflow-y-auto p-1 bg-slate-950/40 rounded border border-slate-800/60">
+                    {targetDates.map((d) => (
+                      <span
+                        key={d}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800 text-slate-200 text-[11px] border border-slate-700"
+                      >
+                        {d}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDate(d)}
+                          className="text-slate-400 hover:text-rose-400 transition"
+                          title={`Remove ${d}`}
+                        >
+                          <X size={11} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Occurrences Preview */}
+              {targetDates.length > 0 && bookingType !== 'ONE_TIME' && (
+                <div className="space-y-1.5">
+                  <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <span className="text-slate-300">
+                      Occurrences Preview: <strong className="text-white">{targetDates.length} date(s)</strong>
+                    </span>
+                    {checkingBulk ? (
+                      <span className="text-blue-400 flex items-center gap-1">
+                        <RefreshCw size={12} className="animate-spin" /> Checking dates...
+                      </span>
+                    ) : (
+                      <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                        <CheckCircle2 size={13} /> ✓ Ready for Submission
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="occurrence-list-container max-h-[160px] overflow-y-auto space-y-1.5">
+                    {targetDates.map((d, idx) => {
+                      const { dateFormatted, dayOfWeek } = getOccurrenceDateDisplay(d);
+                      return (
+                        <div
+                          key={`${d}-${idx}`}
+                          className="occurrence-card occurrence-card-available"
+                        >
+                          <div className="occurrence-card-header">
+                            <div className="occurrence-title-group">
+                              <span className="occurrence-index-badge">Day {idx + 1}</span>
+                              <span className="occurrence-date-title">{dateFormatted || d}</span>
+                              <span className="occurrence-day-sub">({dayOfWeek})</span>
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              <span className="occurrence-status-badge occurrence-badge-available">
+                                Selected
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveDate(d)}
+                                className="text-slate-400 hover:text-rose-400 p-0.5 rounded transition"
+                                title={`Remove ${d}`}
+                              >
+                                <X size={13} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div className="form-group">
@@ -720,7 +1077,18 @@ export const SnacksMeals = () => {
               ) : (
                 requests.map((r) => (
                   <tr key={r.id || r.requestId}>
-                    <td className="table-cell-date">{formatDateDisplay(r.date || r.createdAt)}</td>
+                    <td className="table-cell-date">
+                      {r.dates && r.dates.length > 1 ? (
+                        <div>
+                          <div>{formatDateDisplay(r.startDate || r.dates[0])} → {formatDateDisplay(r.endDate || r.dates[r.dates.length - 1])}</div>
+                          <div style={{ fontSize: '10px', color: 'var(--arctic-blue)', fontFamily: 'monospace' }}>
+                            {r.occurrenceIndex ? `(#${r.occurrenceIndex}/${r.totalOccurrences || r.dates.length}) ` : ''}{r.dates.length} Dates
+                          </div>
+                        </div>
+                      ) : (
+                        formatDateDisplay(r.date || r.createdAt)
+                      )}
+                    </td>
                     <td className="font-mono text-arctic-blue">{r.requestId}</td>
                     <td className="table-cell-title font-semibold">{r.eventTitle}</td>
                     <td>{r.venue}</td>

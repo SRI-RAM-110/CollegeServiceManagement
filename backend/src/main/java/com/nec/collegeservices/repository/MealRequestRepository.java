@@ -16,4 +16,6 @@ public interface MealRequestRepository extends MongoRepository<MealRequest, Stri
     List<MealRequest> findByStatus(String status);
 
     List<MealRequest> findByDate(String date);
+
+    List<MealRequest> findBySeriesId(String seriesId);
 }

@@ -185,6 +185,7 @@ export const stationeryApi = {
 
 export const mealsApi = {
   getOptions: () => api.get('/meals/options'),
+  checkBulkAvailability: (data) => api.post('/meals/check-bulk-availability', data),
   createRequest: (data) => api.post('/meals/requests', data),
   getRequests: (params = {}) => api.get('/meals/requests', { params }),
   getRequestById: (id) => api.get(`/meals/requests/${id}`),

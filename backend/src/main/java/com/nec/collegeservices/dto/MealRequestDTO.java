@@ -35,6 +35,18 @@ public class MealRequestDTO {
     private String specialRequirements;
     private String additionalNotes;
 
+    // Booking Type: ONE_TIME, MULTI_DAY, RECURRING
+    @Builder.Default
+    private String bookingType = "ONE_TIME";
+
+    private String startDate;
+    private String endDate;
+    private List<String> dates;
+    private List<String> recurrenceDays;
+
+    @Builder.Default
+    private String recurrencePattern = "WEEKLY";
+
     public String getEventDate() {
         return date;
     }

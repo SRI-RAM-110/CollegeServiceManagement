@@ -461,7 +461,11 @@ export const RequestDetailsModal = ({
                     </div>
                     <div className="doc-view-cell">
                       <span className="doc-view-label">Event Date</span>
-                      <span className="doc-view-value">{formatDate(raw.date || details.date)}</span>
+                      <span className="doc-view-value">
+                        {raw.dates && raw.dates.length > 1
+                          ? `${formatDate(raw.startDate || raw.dates[0])} to ${formatDate(raw.endDate || raw.dates[raw.dates.length - 1])} (${raw.dates.length} days)`
+                          : formatDate(raw.date || details.date)}
+                      </span>
                     </div>
                     <div className="doc-view-cell">
                       <span className="doc-view-label">Total Guest Count</span>

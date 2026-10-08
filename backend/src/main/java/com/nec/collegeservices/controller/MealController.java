@@ -1,6 +1,7 @@
 package com.nec.collegeservices.controller;
 
 import com.nec.collegeservices.dto.ApiResponse;
+import com.nec.collegeservices.dto.MealBulkAvailabilityRequestDTO;
 import com.nec.collegeservices.dto.MealRequestDTO;
 import com.nec.collegeservices.dto.RejectRequestDTO;
 import com.nec.collegeservices.model.MealRequest;
@@ -26,6 +27,12 @@ public class MealController {
 
     @Autowired
     private AuthService authService;
+
+    @PostMapping("/check-bulk-availability")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> checkBulkAvailability(@RequestBody MealBulkAvailabilityRequestDTO dto) {
+        Map<String, Object> result = mealService.checkBulkAvailability(dto);
+        return ResponseEntity.ok(ApiResponse.ok("Bulk availability checked successfully", result));
+    }
 
     @GetMapping("/options")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getMealOptions() {
