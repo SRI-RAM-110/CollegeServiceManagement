@@ -46,14 +46,15 @@ public class AccommodationController {
 
     @GetMapping("/rooms")
     public ResponseEntity<ApiResponse<List<AccommodationRoom>>> getAllRooms(
-            @RequestParam(required = false) String hostel) {
+            @RequestParam(required = false) String hostel,
+            @RequestParam(required = false, defaultValue = "false") boolean assignedOnly) {
         User user = authService.getCurrentUser();
-        if (user != null && !accommodationService.isSuperAdmin(user) && accommodationService.isAccommodationAdmin(user)) {
+        if (assignedOnly && user != null && !accommodationService.isSuperAdmin(user) && accommodationService.isAccommodationAdmin(user)) {
             if (user.getAssignedHostels() != null && !user.getAssignedHostels().isEmpty()) {
                 hostel = user.getAssignedHostels().get(0);
             }
         }
-        List<AccommodationRoom> rooms = hostel != null && !hostel.isBlank()
+        List<AccommodationRoom> rooms = hostel != null && !hostel.isBlank() && !hostel.equalsIgnoreCase("ALL")
                 ? accommodationService.getRoomsByHostel(hostel)
                 : accommodationService.getAllRooms();
         return ResponseEntity.ok(ApiResponse.ok("Accommodation rooms", rooms));

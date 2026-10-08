@@ -124,7 +124,7 @@ const HostelSectionConfig = ({
   hostelName,
   sectionTitle,
   badgeColor,
-  rooms,
+  rooms = [],
   state,
   setState,
   targetDates,
@@ -132,8 +132,12 @@ const HostelSectionConfig = ({
   checkingBulk,
   onRemoveDate,
   onToggleRecurrenceDay,
+  apiError,
 }) => {
-  const selectedRoomObj = rooms.find((r) => r.roomId === state.roomId) || rooms[0];
+  const selectedRoomObj =
+    rooms.find((r) => (r.roomId || r.id) === state.roomId) ||
+    rooms[0] ||
+    null;
   const isRoomInMaintenance =
     selectedRoomObj?.status === 'Maintenance' ||
     selectedRoomObj?.status === 'Unavailable' ||
@@ -142,9 +146,9 @@ const HostelSectionConfig = ({
   const handleSelectRoom = (room) => {
     setState((prev) => ({
       ...prev,
-      hostel: room.hostel,
-      roomType: room.roomType,
-      roomId: room.roomId,
+      hostel: room.hostel || (hostelName.toLowerCase().includes('girls') ? 'Girls Hostel' : 'Boys Hostel'),
+      roomType: room.roomType || prev.roomType,
+      roomId: room.roomId || room.id,
     }));
   };
 
@@ -172,20 +176,35 @@ const HostelSectionConfig = ({
           {/* Room Dropdown */}
           <div className="form-group">
             <label className="form-label text-xs">Select Room ({hostelName}) *</label>
-            <select
-              value={state.roomId}
-              onChange={(e) => {
-                const selected = rooms.find((r) => r.roomId === e.target.value);
-                if (selected) handleSelectRoom(selected);
-              }}
-              className="w-full text-xs"
-            >
-              {rooms.map((r) => (
-                <option key={r.roomId} value={r.roomId}>
-                  {r.roomId} — {r.roomType} (Capacity: {r.capacity || 2})
-                </option>
-              ))}
-            </select>
+            {apiError ? (
+              <div className="p-2 rounded bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-1.5">
+                <AlertTriangle size={13} />
+                <span>Error loading rooms: {apiError}</span>
+              </div>
+            ) : rooms.length === 0 ? (
+              <div className="p-2.5 rounded bg-slate-900 border border-slate-800 text-slate-400 text-xs flex items-center gap-1.5">
+                <AlertTriangle size={13} className="text-amber-400" />
+                <span>No rooms available for {hostelName}.</span>
+              </div>
+            ) : (
+              <select
+                value={state.roomId}
+                onChange={(e) => {
+                  const selected = rooms.find((r) => (r.roomId || r.id) === e.target.value);
+                  if (selected) handleSelectRoom(selected);
+                }}
+                className="w-full text-xs"
+              >
+                {rooms.map((r) => {
+                  const idVal = r.roomId || r.id;
+                  return (
+                    <option key={idVal} value={idVal}>
+                      {r.roomId || r.id} — {r.roomType || 'Standard'} (Capacity: {r.capacity || 2})
+                    </option>
+                  );
+                })}
+              </select>
+            )}
           </div>
 
           {/* Selected Room Details */}
@@ -591,43 +610,110 @@ export const Accommodation = () => {
   const [rescheduleReason, setRescheduleReason] = useState('');
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
 
+  const [roomApiError, setRoomApiError] = useState(null);
+
   useEffect(() => {
     loadData();
   }, [user?.userId]);
 
   const loadData = async () => {
+    setRoomApiError(null);
     try {
-      const [roomsRes, reqsRes] = await Promise.all([
-        accommodationApi.getRooms(),
-        accommodationApi.getRequests(),
-      ]);
-      if (roomsRes.data) {
-        setRooms(roomsRes.data);
-        const boys = roomsRes.data.filter((r) => r.hostel?.includes('Boys'));
-        const girls = roomsRes.data.filter((r) => r.hostel?.includes('Girls'));
+      // 1. Fetch accommodation rooms
+      try {
+        const roomsRes = await accommodationApi.getRooms();
+        const loadedRooms = Array.isArray(roomsRes)
+          ? roomsRes
+          : Array.isArray(roomsRes?.data)
+          ? roomsRes.data
+          : [];
+        setRooms(loadedRooms);
+
+        const boys = loadedRooms.filter((r) => {
+          const h = (r.hostel || r.hostelName || r.type || '').toLowerCase();
+          return h.includes('boy');
+        });
+        const girls = loadedRooms.filter((r) => {
+          const h = (r.hostel || r.hostelName || r.type || '').toLowerCase();
+          return h.includes('girl');
+        });
+
         if (boys.length > 0) {
           setBoysState((prev) => ({
             ...prev,
-            roomId: boys.some((r) => r.roomId === prev.roomId) ? prev.roomId : boys[0].roomId,
+            roomId: boys.some((r) => (r.roomId || r.id) === prev.roomId) ? prev.roomId : (boys[0].roomId || boys[0].id),
             roomType: boys[0].roomType || 'AC Room',
+            hostel: boys[0].hostel || 'Boys Hostel',
           }));
         }
         if (girls.length > 0) {
           setGirlsState((prev) => ({
             ...prev,
-            roomId: girls.some((r) => r.roomId === prev.roomId) ? prev.roomId : girls[0].roomId,
+            roomId: girls.some((r) => (r.roomId || r.id) === prev.roomId) ? prev.roomId : (girls[0].roomId || girls[0].id),
             roomType: girls[0].roomType || 'AC Room',
+            hostel: girls[0].hostel || 'Girls Hostel',
           }));
         }
+      } catch (err) {
+        console.error('Failed to load accommodation rooms:', err);
+        const errMsg = err.message || 'Failed to load accommodation rooms';
+        setRoomApiError(errMsg);
+        showToast(errMsg, 'error');
       }
-      if (reqsRes.data) setRequests(reqsRes.data);
+
+      // 2. Fetch requests independently so request permission issues never block rooms
+      try {
+        const reqsRes = await accommodationApi.getRequests();
+        const loadedReqs = Array.isArray(reqsRes)
+          ? reqsRes
+          : Array.isArray(reqsRes?.data)
+          ? reqsRes.data
+          : [];
+        setRequests(loadedReqs);
+      } catch (err) {
+        console.warn('Failed to load user accommodation requests:', err);
+      }
     } catch (e) {
       showToast('Failed to load accommodation data', 'error');
     }
   };
 
-  const boysRooms = useMemo(() => rooms.filter((r) => r.hostel?.includes('Boys')), [rooms]);
-  const girlsRooms = useMemo(() => rooms.filter((r) => r.hostel?.includes('Girls')), [rooms]);
+  const boysRooms = useMemo(() => {
+    return (rooms || []).filter((r) => {
+      const h = (r.hostel || r.hostelName || r.type || '').toLowerCase();
+      return h.includes('boy');
+    });
+  }, [rooms]);
+
+  const girlsRooms = useMemo(() => {
+    return (rooms || []).filter((r) => {
+      const h = (r.hostel || r.hostelName || r.type || '').toLowerCase();
+      return h.includes('girl');
+    });
+  }, [rooms]);
+
+  // Keep selected room valid if room list loads or updates
+  useEffect(() => {
+    if (girlsRooms.length > 0 && !girlsRooms.some((r) => (r.roomId || r.id) === girlsState.roomId)) {
+      setGirlsState((prev) => ({
+        ...prev,
+        roomId: girlsRooms[0].roomId || girlsRooms[0].id,
+        roomType: girlsRooms[0].roomType || prev.roomType,
+        hostel: girlsRooms[0].hostel || 'Girls Hostel',
+      }));
+    }
+  }, [girlsRooms]);
+
+  useEffect(() => {
+    if (boysRooms.length > 0 && !boysRooms.some((r) => (r.roomId || r.id) === boysState.roomId)) {
+      setBoysState((prev) => ({
+        ...prev,
+        roomId: boysRooms[0].roomId || boysRooms[0].id,
+        roomType: boysRooms[0].roomType || prev.roomType,
+        hostel: boysRooms[0].hostel || 'Boys Hostel',
+      }));
+    }
+  }, [boysRooms]);
 
   // Target dates computation
   const boysTargetDates = useMemo(
@@ -1199,6 +1285,7 @@ export const Accommodation = () => {
                 checkingBulk={boysCheckingBulk}
                 onRemoveDate={handleRemoveBoysDate}
                 onToggleRecurrenceDay={toggleBoysRecurrenceDay}
+                apiError={roomApiError}
               />
             )}
 
@@ -1215,6 +1302,7 @@ export const Accommodation = () => {
                 checkingBulk={girlsCheckingBulk}
                 onRemoveDate={handleRemoveGirlsDate}
                 onToggleRecurrenceDay={toggleGirlsRecurrenceDay}
+                apiError={roomApiError}
               />
             )}
 

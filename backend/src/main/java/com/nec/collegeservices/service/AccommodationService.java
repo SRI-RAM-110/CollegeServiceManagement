@@ -60,7 +60,21 @@ public class AccommodationService {
         if (hostel == null || hostel.isBlank() || hostel.equalsIgnoreCase("ALL")) {
             return getAllRooms();
         }
-        return roomRepository.findByHostel(hostel);
+        String clean = hostel.trim();
+        String normalized = clean;
+        String lower = clean.toLowerCase();
+        if (lower.contains("girl")) {
+            normalized = "Girls Hostel";
+        } else if (lower.contains("boy")) {
+            normalized = "Boys Hostel";
+        }
+        List<AccommodationRoom> rooms = roomRepository.findByHostel(normalized);
+        if (rooms.isEmpty()) {
+            rooms = getAllRooms().stream()
+                    .filter(r -> r.getHostel() != null && r.getHostel().toLowerCase().contains(lower.contains("girl") ? "girl" : "boy"))
+                    .toList();
+        }
+        return rooms;
     }
 
     public Optional<AccommodationRoom> getRoomById(String roomId) {
