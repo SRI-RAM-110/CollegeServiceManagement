@@ -47,8 +47,9 @@ export const getApiBaseUrl = () => {
       return `${window.location.protocol}//${backendHost}/api`;
     }
 
-    // Fallback: use relative /api (proxied via Vite server to http://localhost:8080 on PC)
-    return '/api';
+    // Fallback for deployed production environments (e.g. Vercel / remote hosting):
+    // Connect to the deployed Render backend
+    return 'https://collegeservices-backend.onrender.com/api';
   }
 
   return 'http://localhost:8080/api';

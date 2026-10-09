@@ -622,11 +622,14 @@ export const Accommodation = () => {
       // 1. Fetch accommodation rooms
       try {
         const roomsRes = await accommodationApi.getRooms();
-        const loadedRooms = Array.isArray(roomsRes)
-          ? roomsRes
-          : Array.isArray(roomsRes?.data)
-          ? roomsRes.data
-          : [];
+        let loadedRooms = [];
+        if (Array.isArray(roomsRes)) {
+          loadedRooms = roomsRes;
+        } else if (Array.isArray(roomsRes?.data)) {
+          loadedRooms = roomsRes.data;
+        } else if (typeof roomsRes === 'string') {
+          throw new Error('Received unexpected non-JSON response from server');
+        }
         setRooms(loadedRooms);
 
         const boys = loadedRooms.filter((r) => {
