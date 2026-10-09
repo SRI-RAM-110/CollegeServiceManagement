@@ -1197,6 +1197,7 @@ export const Accommodation = () => {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <label
                   htmlFor="hostel-mode-boys"
+                  onClick={() => setHostelSelectionMode('BOYS')}
                   className={`hostel-select-btn p-3 rounded-lg border text-left flex items-start gap-2.5 transition cursor-pointer ${
                     hostelSelectionMode === 'BOYS'
                       ? 'active-boys bg-blue-600/15 border-blue-500 shadow-sm'
@@ -1225,6 +1226,7 @@ export const Accommodation = () => {
 
                 <label
                   htmlFor="hostel-mode-girls"
+                  onClick={() => setHostelSelectionMode('GIRLS')}
                   className={`hostel-select-btn p-3 rounded-lg border text-left flex items-start gap-2.5 transition cursor-pointer ${
                     hostelSelectionMode === 'GIRLS'
                       ? 'active-girls bg-purple-600/15 border-purple-500 shadow-sm'
@@ -1253,6 +1255,7 @@ export const Accommodation = () => {
 
                 <label
                   htmlFor="hostel-mode-both"
+                  onClick={() => setHostelSelectionMode('BOTH')}
                   className={`hostel-select-btn p-3 rounded-lg border text-left flex items-start gap-2.5 transition cursor-pointer ${
                     hostelSelectionMode === 'BOTH'
                       ? 'active-both bg-emerald-600/15 border-emerald-500 shadow-sm'
@@ -1281,36 +1284,13 @@ export const Accommodation = () => {
               </div>
             </div>
 
-            {/* DUAL HOSTEL STATUS INDICATOR & QUICK NAVIGATION */}
+            {/* DUAL HOSTEL MODE NOTIFICATION */}
             {hostelSelectionMode === 'BOTH' && (
-              <div className="mb-4 p-2.5 px-3.5 rounded-lg bg-emerald-950/30 border border-emerald-800/40 text-emerald-300 text-xs flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Users size={15} className="text-emerald-400" />
-                  <span className="font-semibold">Dual Hostel Mode:</span>
-                  <span className="text-emerald-200/80">Both Boys Hostel & Girls Hostel forms are active below</span>
-                </div>
-                <div className="flex items-center gap-3 text-xs font-medium">
-                  <a
-                    href="#boys-hostel-section"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      document.getElementById('boys-hostel-section')?.scrollIntoView({ behavior: 'smooth' });
-                    }}
-                    className="text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1"
-                  >
-                    ↓ Boys Hostel
-                  </a>
-                  <span className="text-slate-700">•</span>
-                  <a
-                    href="#girls-hostel-section"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      document.getElementById('girls-hostel-section')?.scrollIntoView({ behavior: 'smooth' });
-                    }}
-                    className="text-purple-400 hover:text-purple-300 hover:underline flex items-center gap-1"
-                  >
-                    ↓ Girls Hostel
-                  </a>
+              <div className="mb-4 p-3 rounded-lg bg-emerald-950/30 border border-emerald-800/40 text-emerald-300 text-xs flex items-center gap-2">
+                <Users size={16} className="text-emerald-400 shrink-0" />
+                <div>
+                  <span className="font-semibold text-emerald-200">Both Hostels Selected:</span>{' '}
+                  <span>Fill in the details for Boys Hostel (Section 1) and Girls Hostel (Section 2) below. Both requests will be created simultaneously.</span>
                 </div>
               </div>
             )}
