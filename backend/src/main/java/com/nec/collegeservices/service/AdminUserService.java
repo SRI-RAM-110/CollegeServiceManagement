@@ -226,6 +226,23 @@ public class AdminUserService {
             }
         }
 
+        // Accommodation hostel assignments
+        List<String> assignedHostels = new ArrayList<>();
+        if (dto.getAssignedHostels() != null) {
+            for (String h : dto.getAssignedHostels()) {
+                if (h != null && !h.isBlank()) {
+                    String clean = h.trim();
+                    if (clean.equalsIgnoreCase("Boys") || clean.equalsIgnoreCase("Boys Hostel")) {
+                        assignedHostels.add("Boys Hostel");
+                    } else if (clean.equalsIgnoreCase("Girls") || clean.equalsIgnoreCase("Girls Hostel")) {
+                        assignedHostels.add("Girls Hostel");
+                    } else {
+                        assignedHostels.add(clean);
+                    }
+                }
+            }
+        }
+
         String primaryRole = rolesSet.iterator().next();
 
         User user = User.builder()
@@ -240,6 +257,7 @@ public class AdminUserService {
                 .roles(new ArrayList<>(rolesSet))
                 .servicePermissions(servicePermissions)
                 .assignedHallIds(assignedHalls)
+                .assignedHostels(assignedHostels)
                 .active(dto.getActive() != null ? dto.getActive() : true)
                 .mustChangePassword(dto.getMustChangePassword() != null ? dto.getMustChangePassword() : true)
                 .createdAt(LocalDateTime.now())
@@ -340,6 +358,23 @@ public class AdminUserService {
                 }
             }
             user.setAssignedHallIds(halls);
+        }
+
+        if (dto.getAssignedHostels() != null) {
+            List<String> hostels = new ArrayList<>();
+            for (String h : dto.getAssignedHostels()) {
+                if (h != null && !h.isBlank()) {
+                    String clean = h.trim();
+                    if (clean.equalsIgnoreCase("Boys") || clean.equalsIgnoreCase("Boys Hostel")) {
+                        hostels.add("Boys Hostel");
+                    } else if (clean.equalsIgnoreCase("Girls") || clean.equalsIgnoreCase("Girls Hostel")) {
+                        hostels.add("Girls Hostel");
+                    } else {
+                        hostels.add(clean);
+                    }
+                }
+            }
+            user.setAssignedHostels(hostels);
         }
 
         if (dto.getActive() != null) {
@@ -501,6 +536,7 @@ public class AdminUserService {
                 .roles(user.getEffectiveRoles())
                 .servicePermissions(user.getServicePermissions() != null ? user.getServicePermissions() : Collections.emptyList())
                 .assignedHallIds(user.getAssignedHallIds() != null ? user.getAssignedHallIds() : Collections.emptyList())
+                .assignedHostels(user.getAssignedHostels() != null ? user.getAssignedHostels() : Collections.emptyList())
                 .active(user.getActive() == null || Boolean.TRUE.equals(user.getActive()))
                 .mustChangePassword(Boolean.TRUE.equals(user.getMustChangePassword()))
                 .createdAt(user.getCreatedAt())

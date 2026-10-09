@@ -44,6 +44,9 @@ public class CreateUserRequestDTO {
     private List<String> assignedHallIds = new ArrayList<>();
 
     @Builder.Default
+    private List<String> assignedHostels = new ArrayList<>();
+
+    @Builder.Default
     private Boolean active = true;
 
     @Builder.Default

@@ -123,15 +123,12 @@ public class User {
     public boolean isAssignedToHostel(String hostel) {
         if (hostel == null) return false;
         if (hasRole("CREATOR") || hasRole("AO_ADMIN")) return true;
-        if (hasRole("BOYS_HOSTEL_ADMIN") && hostel.equalsIgnoreCase("Boys Hostel")) return true;
-        if (hasRole("GIRLS_HOSTEL_ADMIN") && hostel.equalsIgnoreCase("Girls Hostel")) return true;
-        if (hasRole("BOYS_HOSTEL_ADMIN") && !hostel.equalsIgnoreCase("Boys Hostel")) return false;
-        if (hasRole("GIRLS_HOSTEL_ADMIN") && !hostel.equalsIgnoreCase("Girls Hostel")) return false;
+        boolean canBoys = hasRole("BOYS_HOSTEL_ADMIN") || (assignedHostels != null && assignedHostels.stream().anyMatch(h -> h != null && (h.equalsIgnoreCase("Boys Hostel") || h.equalsIgnoreCase("Boys") || h.equalsIgnoreCase("ALL"))));
+        boolean canGirls = hasRole("GIRLS_HOSTEL_ADMIN") || (assignedHostels != null && assignedHostels.stream().anyMatch(h -> h != null && (h.equalsIgnoreCase("Girls Hostel") || h.equalsIgnoreCase("Girls") || h.equalsIgnoreCase("ALL"))));
 
-        if (assignedHostels != null && !assignedHostels.isEmpty()) {
-            return assignedHostels.stream().anyMatch(h -> h != null && (h.equalsIgnoreCase(hostel) || h.equalsIgnoreCase("ALL")));
-        }
-        return false;
+        if (hostel.equalsIgnoreCase("Boys Hostel")) return canBoys;
+        if (hostel.equalsIgnoreCase("Girls Hostel")) return canGirls;
+        return canBoys || canGirls;
     }
 
     public boolean isSpecificHostelAdmin() {

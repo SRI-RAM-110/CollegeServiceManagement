@@ -21,5 +21,6 @@ public class UpdateUserRequestDTO {
     private List<String> roles;
     private List<String> servicePermissions;
     private List<String> assignedHallIds;
+    private List<String> assignedHostels;
     private Boolean active;
 }

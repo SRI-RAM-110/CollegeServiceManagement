@@ -20,6 +20,9 @@ import com.nec.collegeservices.model.AccommodationRoom;
 import com.nec.collegeservices.repository.AccommodationRequestRepository;
 import com.nec.collegeservices.repository.AccommodationRoomRepository;
 import com.nec.collegeservices.service.AccommodationService;
+import com.nec.collegeservices.service.AdminUserService;
+import com.nec.collegeservices.dto.UserDTO;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -78,10 +81,59 @@ public class CollegeServicesApplicationTests {
     @Autowired
     private AccommodationRoomRepository accommodationRoomRepository;
 
+    @Autowired
+    private AdminUserService adminUserService;
+
     @Test
     void testContextLoads() {
         assertNotNull(userRepository);
         assertTrue(userRepository.count() > 0, "Users should be seeded");
+    }
+
+    @Test
+    @WithMockUser(username = "AO001", roles = {"AO_ADMIN"})
+    void testUserManagementUserListAndUserDTOConstructors() throws Exception {
+        // 1. Verify direct service call works and existing records are preserved
+        List<UserDTO> users = adminUserService.getUsers(null, null, null, null, null);
+        assertNotNull(users);
+        assertFalse(users.isEmpty(), "User repository records must be preserved and non-empty");
+
+        // 2. Verify backward-compatible 15-argument constructor
+        UserDTO legacyDto = new UserDTO(
+                "test-id", "TEST_USER", "Test Name", "test@nec.edu", "9876543210",
+                "CSE", "Assistant Professor", "DEPARTMENT_USER",
+                List.of("DEPARTMENT_USER"), List.of(), List.of(),
+                true, false, LocalDateTime.now(), LocalDateTime.now()
+        );
+        assertNotNull(legacyDto);
+        assertEquals("TEST_USER", legacyDto.getUserId());
+        assertNotNull(legacyDto.getAssignedHostels());
+        assertTrue(legacyDto.getAssignedHostels().isEmpty());
+
+        // 3. Verify new 16-argument constructor with assignedHostels
+        UserDTO modernDto = new UserDTO(
+                "test-id-2", "BOYS_ADMIN", "Boys Admin", "boys@nec.edu", "9876543211",
+                "HOSTEL", "Hostel Admin", "ACCOMMODATION_ADMIN",
+                List.of("ACCOMMODATION_ADMIN"), List.of("ACCOMMODATION_ADMIN"), List.of(),
+                List.of("Boys Hostel"), true, false, LocalDateTime.now(), LocalDateTime.now()
+        );
+        assertNotNull(modernDto);
+        assertEquals(List.of("Boys Hostel"), modernDto.getAssignedHostels());
+
+        // 4. Verify Builder pattern
+        UserDTO builderDto = UserDTO.builder()
+                .userId("BUILDER_USER")
+                .name("Builder User")
+                .build();
+        assertNotNull(builderDto);
+        assertEquals("BUILDER_USER", builderDto.getUserId());
+
+        // 5. Verify /api/admin/users REST endpoint through MockMvc
+        mockMvc.perform(get("/api/admin/users"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data.length()").value(users.size()));
     }
 
     @Test
@@ -662,8 +714,8 @@ public class CollegeServicesApplicationTests {
     void testAccommodation_Scenario1_BoysHostelOnlyFlow() {
         User cseUser = userRepository.findByUserId("CSE001").orElseThrow();
         User aoUser = userRepository.findByUserId("AO001").orElseThrow();
-        User boysAdmin = createOrGetHostelAdmin("ACC_BOYS_TEST", "Boys Warden", "Boys Hostel");
-        User girlsAdmin = createOrGetHostelAdmin("ACC_GIRLS_TEST", "Girls Warden", "Girls Hostel");
+        User boysAdmin = createOrGetHostelAdmin("ACC_BOYS_TEST", "Boys Hostel Admin", "Boys Hostel");
+        User girlsAdmin = createOrGetHostelAdmin("ACC_GIRLS_TEST", "Girls Hostel Admin", "Girls Hostel");
         ensureTestRoom("BH-TEST-101", "Boys Hostel", "AC Room");
 
         String inDate = java.time.LocalDate.now().plusDays(25).toString();
@@ -696,8 +748,8 @@ public class CollegeServicesApplicationTests {
         assertTrue(aoView.stream().anyMatch(r -> r.getRequestId().equals(req.getRequestId())),
                 "AO Admin must see request for approval");
 
-        AccommodationRequest aoApproved = accommodationService.aoApproveRequest(req.getRequestId(), "AO Approved for Boys", aoUser);
-        assertEquals("AO_APPROVED", aoApproved.getStatus());
+        AccommodationRequest aoApproved = accommodationService.aoForwardRequest(req.getRequestId(), "AO Forwarded for Boys", aoUser);
+        assertEquals("FORWARDED_TO_BOYS_ADMIN", aoApproved.getStatus());
 
         // 4. Verify Boys Admin can now see it, Girls Admin cannot
         boysAdminView = accommodationService.getAllRequests(null, null, null, null, null, null, boysAdmin);
@@ -720,8 +772,8 @@ public class CollegeServicesApplicationTests {
     void testAccommodation_Scenario2_GirlsHostelOnlyFlow() {
         User cseUser = userRepository.findByUserId("CSE001").orElseThrow();
         User aoUser = userRepository.findByUserId("AO001").orElseThrow();
-        User boysAdmin = createOrGetHostelAdmin("ACC_BOYS_TEST", "Boys Warden", "Boys Hostel");
-        User girlsAdmin = createOrGetHostelAdmin("ACC_GIRLS_TEST", "Girls Warden", "Girls Hostel");
+        User boysAdmin = createOrGetHostelAdmin("ACC_BOYS_TEST", "Boys Hostel Admin", "Boys Hostel");
+        User girlsAdmin = createOrGetHostelAdmin("ACC_GIRLS_TEST", "Girls Hostel Admin", "Girls Hostel");
         ensureTestRoom("GH-TEST-101", "Girls Hostel", "AC Room");
 
         String inDate = java.time.LocalDate.now().plusDays(27).toString();
@@ -749,9 +801,9 @@ public class CollegeServicesApplicationTests {
         assertFalse(girlsAdminView.stream().anyMatch(r -> r.getRequestId().equals(req.getRequestId())),
                 "Girls Admin must NOT see request while PENDING_AO_APPROVAL");
 
-        // 3. AO Admin Approves
-        AccommodationRequest aoApproved = accommodationService.aoApproveRequest(req.getRequestId(), "AO Approved for Girls", aoUser);
-        assertEquals("AO_APPROVED", aoApproved.getStatus());
+        // 3. AO Admin Forwards to Girls Hostel Admin
+        AccommodationRequest aoApproved = accommodationService.aoForwardRequest(req.getRequestId(), "AO Forwarded for Girls", aoUser);
+        assertEquals("FORWARDED_TO_GIRLS_ADMIN", aoApproved.getStatus());
 
         // 4. Verify Girls Admin can now see it, Boys Admin cannot
         girlsAdminView = accommodationService.getAllRequests(null, null, null, null, null, null, girlsAdmin);
@@ -836,8 +888,8 @@ public class CollegeServicesApplicationTests {
     void testAccommodation_Scenario4_AOApprovesBoysAndRejectsGirls() {
         User cseUser = userRepository.findByUserId("CSE001").orElseThrow();
         User aoUser = userRepository.findByUserId("AO001").orElseThrow();
-        User boysAdmin = createOrGetHostelAdmin("ACC_BOYS_TEST", "Boys Warden", "Boys Hostel");
-        User girlsAdmin = createOrGetHostelAdmin("ACC_GIRLS_TEST", "Girls Warden", "Girls Hostel");
+        User boysAdmin = createOrGetHostelAdmin("ACC_BOYS_TEST", "Boys Hostel Admin", "Boys Hostel");
+        User girlsAdmin = createOrGetHostelAdmin("ACC_GIRLS_TEST", "Girls Hostel Admin", "Girls Hostel");
         ensureTestRoom("BH-TEST-101", "Boys Hostel", "AC Room");
         ensureTestRoom("GH-TEST-101", "Girls Hostel", "AC Room");
 
@@ -856,11 +908,11 @@ public class CollegeServicesApplicationTests {
         AccommodationRequest boysReq = (AccommodationRequest) result.get("boysRequest");
         AccommodationRequest girlsReq = (AccommodationRequest) result.get("girlsRequest");
 
-        // AO Approves Boys, Rejects Girls
-        AccommodationRequest boysApproved = accommodationService.aoApproveRequest(boysReq.getRequestId(), "AO Allowed Boys", aoUser);
+        // AO Forwards Boys, Rejects Girls
+        AccommodationRequest boysApproved = accommodationService.aoForwardRequest(boysReq.getRequestId(), "AO Allowed Boys", aoUser);
         AccommodationRequest girlsRejected = accommodationService.aoRejectRequest(girlsReq.getRequestId(), "AO Denied Girls due to maintenance", aoUser);
 
-        assertEquals("AO_APPROVED", boysApproved.getStatus());
+        assertEquals("FORWARDED_TO_BOYS_ADMIN", boysApproved.getStatus());
         assertEquals("AO_REJECTED", girlsRejected.getStatus());
 
         // Verify Boys reaches only Boys Admin
@@ -882,8 +934,8 @@ public class CollegeServicesApplicationTests {
     void testAccommodation_Scenario5_AORejectsBoysAndApprovesGirls() {
         User cseUser = userRepository.findByUserId("CSE001").orElseThrow();
         User aoUser = userRepository.findByUserId("AO001").orElseThrow();
-        User boysAdmin = createOrGetHostelAdmin("ACC_BOYS_TEST", "Boys Warden", "Boys Hostel");
-        User girlsAdmin = createOrGetHostelAdmin("ACC_GIRLS_TEST", "Girls Warden", "Girls Hostel");
+        User boysAdmin = createOrGetHostelAdmin("ACC_BOYS_TEST", "Boys Hostel Admin", "Boys Hostel");
+        User girlsAdmin = createOrGetHostelAdmin("ACC_GIRLS_TEST", "Girls Hostel Admin", "Girls Hostel");
         ensureTestRoom("BH-TEST-101", "Boys Hostel", "AC Room");
         ensureTestRoom("GH-TEST-101", "Girls Hostel", "AC Room");
 
@@ -902,12 +954,12 @@ public class CollegeServicesApplicationTests {
         AccommodationRequest boysReq = (AccommodationRequest) result.get("boysRequest");
         AccommodationRequest girlsReq = (AccommodationRequest) result.get("girlsRequest");
 
-        // AO Rejects Boys, Approves Girls
+        // AO Rejects Boys, Forwards Girls
         AccommodationRequest boysRejected = accommodationService.aoRejectRequest(boysReq.getRequestId(), "AO Denied Boys", aoUser);
-        AccommodationRequest girlsApproved = accommodationService.aoApproveRequest(girlsReq.getRequestId(), "AO Allowed Girls", aoUser);
+        AccommodationRequest girlsApproved = accommodationService.aoForwardRequest(girlsReq.getRequestId(), "AO Allowed Girls", aoUser);
 
         assertEquals("AO_REJECTED", boysRejected.getStatus());
-        assertEquals("AO_APPROVED", girlsApproved.getStatus());
+        assertEquals("FORWARDED_TO_GIRLS_ADMIN", girlsApproved.getStatus());
 
         // Verify Girls reaches Girls Admin
         List<AccommodationRequest> girlsAdminView = accommodationService.getAllRequests(null, null, null, null, null, null, girlsAdmin);
@@ -928,8 +980,8 @@ public class CollegeServicesApplicationTests {
     void testAccommodation_Scenario6_AOApprovesBothReachesRespectiveAdmins() {
         User cseUser = userRepository.findByUserId("CSE001").orElseThrow();
         User aoUser = userRepository.findByUserId("AO001").orElseThrow();
-        User boysAdmin = createOrGetHostelAdmin("ACC_BOYS_TEST", "Boys Warden", "Boys Hostel");
-        User girlsAdmin = createOrGetHostelAdmin("ACC_GIRLS_TEST", "Girls Warden", "Girls Hostel");
+        User boysAdmin = createOrGetHostelAdmin("ACC_BOYS_TEST", "Boys Hostel Admin", "Boys Hostel");
+        User girlsAdmin = createOrGetHostelAdmin("ACC_GIRLS_TEST", "Girls Hostel Admin", "Girls Hostel");
         ensureTestRoom("BH-TEST-101", "Boys Hostel", "AC Room");
         ensureTestRoom("GH-TEST-101", "Girls Hostel", "AC Room");
 
@@ -948,12 +1000,12 @@ public class CollegeServicesApplicationTests {
         AccommodationRequest boysReq = (AccommodationRequest) result.get("boysRequest");
         AccommodationRequest girlsReq = (AccommodationRequest) result.get("girlsRequest");
 
-        // AO Approves Both
-        AccommodationRequest boysAO = accommodationService.aoApproveRequest(boysReq.getRequestId(), "AO Allowed Boys", aoUser);
-        AccommodationRequest girlsAO = accommodationService.aoApproveRequest(girlsReq.getRequestId(), "AO Allowed Girls", aoUser);
+        // AO Forwards Both
+        AccommodationRequest boysAO = accommodationService.aoForwardRequest(boysReq.getRequestId(), "AO Allowed Boys", aoUser);
+        AccommodationRequest girlsAO = accommodationService.aoForwardRequest(girlsReq.getRequestId(), "AO Allowed Girls", aoUser);
 
-        assertEquals("AO_APPROVED", boysAO.getStatus());
-        assertEquals("AO_APPROVED", girlsAO.getStatus());
+        assertEquals("FORWARDED_TO_BOYS_ADMIN", boysAO.getStatus());
+        assertEquals("FORWARDED_TO_GIRLS_ADMIN", girlsAO.getStatus());
 
         // Verify Boys reaches only Boys Admin
         List<AccommodationRequest> boysAdminView = accommodationService.getAllRequests(null, null, null, null, null, null, boysAdmin);
@@ -983,7 +1035,7 @@ public class CollegeServicesApplicationTests {
     void testAccommodation_Scenario7_ExistingSingleHostelRequestBackwardCompatible() {
         User cseUser = userRepository.findByUserId("CSE001").orElseThrow();
         User aoUser = userRepository.findByUserId("AO001").orElseThrow();
-        User boysAdmin = createOrGetHostelAdmin("ACC_BOYS_TEST", "Boys Warden", "Boys Hostel");
+        User boysAdmin = createOrGetHostelAdmin("ACC_BOYS_TEST", "Boys Hostel Admin", "Boys Hostel");
         ensureTestRoom("BH-TEST-101", "Boys Hostel", "AC Room");
 
         String inDate = java.time.LocalDate.now().plusDays(42).toString();
@@ -1006,15 +1058,56 @@ public class CollegeServicesApplicationTests {
         assertNull(created.getParentRequestId(), "Single request should have null parentRequestId");
         assertEquals("PENDING_AO_APPROVAL", created.getStatus());
 
-        // Step 1: AO Admin approves
-        AccommodationRequest aoApproved = accommodationService.aoApproveRequest(created.getRequestId(), "AO Allowed", aoUser);
-        assertEquals("AO_APPROVED", aoApproved.getStatus());
+        // Step 1: AO Admin forwards to Boys Hostel Admin
+        AccommodationRequest aoApproved = accommodationService.aoForwardRequest(created.getRequestId(), "AO Allowed", aoUser);
+        assertEquals("FORWARDED_TO_BOYS_ADMIN", aoApproved.getStatus());
 
-        // Step 2: Hostel Admin approves
+        // Step 2: Boys Hostel Admin approves
         AccommodationRequest finalApproved = accommodationService.approveRequest(created.getRequestId(), boysAdmin);
         assertEquals("APPROVED", finalApproved.getStatus());
 
         // Cleanup
         accommodationRequestRepository.delete(finalApproved);
+    }
+
+    @Test
+    void testAccommodation_Scenario8_AODirectApproveFlow() {
+        User cseUser = userRepository.findByUserId("CSE001").orElseThrow();
+        User aoUser = userRepository.findByUserId("AO001").orElseThrow();
+        User boysAdmin = createOrGetHostelAdmin("ACC_BOYS_TEST", "Boys Hostel Admin", "Boys Hostel");
+        User girlsAdmin = createOrGetHostelAdmin("ACC_GIRLS_TEST", "Girls Hostel Admin", "Girls Hostel");
+        ensureTestRoom("BH-TEST-101", "Boys Hostel", "AC Room");
+
+        String inDate = java.time.LocalDate.now().plusDays(45).toString();
+        String outDate = java.time.LocalDate.now().plusDays(46).toString();
+
+        AccommodationRequestDTO dto = AccommodationRequestDTO.builder()
+                .hostel("Boys Hostel")
+                .roomType("AC Room")
+                .roomId("BH-TEST-101")
+                .checkInDate(inDate)
+                .checkOutDate(outDate)
+                .guestsCount(1)
+                .purpose("AO Direct Approve Flow")
+                .facultyOrGuestName("VIP Guest")
+                .build();
+
+        AccommodationRequest created = accommodationService.createRequest(dto, cseUser);
+        assertNotNull(created);
+        assertEquals("PENDING_AO_APPROVAL", created.getStatus());
+
+        // AO Admin directly approves request
+        AccommodationRequest directApproved = accommodationService.aoDirectApproveRequest(created.getRequestId(), "VIP Direct Approval by AO", aoUser);
+        assertNotNull(directApproved);
+        assertEquals("APPROVED", directApproved.getStatus());
+        assertEquals("DIRECT_APPROVE", directApproved.getAoAction());
+
+        // Respective Hostel Admin should see it as already approved, cannot re-approve
+        org.junit.jupiter.api.Assertions.assertThrows(com.nec.collegeservices.exception.BadRequestException.class, () -> {
+            accommodationService.approveRequest(created.getRequestId(), boysAdmin);
+        });
+
+        // Cleanup
+        accommodationRequestRepository.delete(directApproved);
     }
 }

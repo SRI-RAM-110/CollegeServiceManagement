@@ -24,6 +24,7 @@ import {
   ChevronDown,
   Trash2,
   AlertTriangle,
+  Home,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { adminUserApi, seminarApi } from '../../services/api';
@@ -291,6 +292,7 @@ export default function UserManagement() {
       roles: user.roles || [],
       servicePermissions: user.servicePermissions || [],
       assignedHallIds: user.assignedHallIds || [],
+      assignedHostels: user.assignedHostels || [],
       active: user.active ?? true,
     });
     setEditModalOpen(true);
@@ -334,6 +336,7 @@ export default function UserManagement() {
       roles: user.roles || [],
       servicePermissions: user.servicePermissions || [],
       assignedHallIds: user.assignedHallIds || [],
+      assignedHostels: user.assignedHostels || [],
       active: user.active ?? true,
     });
     setAccessModalOpen(true);
@@ -352,6 +355,7 @@ export default function UserManagement() {
         roles: updatedRoles,
         servicePermissions: editForm.servicePermissions,
         assignedHallIds: editForm.assignedHallIds,
+        assignedHostels: editForm.assignedHostels || [],
         department: editForm.department,
       });
       addToast(`Access permissions updated for ${selectedUser.userId}!`, 'success');
@@ -715,13 +719,20 @@ export default function UserManagement() {
 
                         {/* Service permissions */}
                         <td className="py-2 px-2">
-                          <div className="flex flex-wrap gap-1 max-w-[120px]">
-                            {(u.servicePermissions && u.servicePermissions.length > 0) ? (
-                              u.servicePermissions.map((sp) => (
-                                <span key={sp} className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                                  {sp.replace('_ADMIN', '')}
-                                </span>
-                              ))
+                          <div className="flex flex-wrap gap-1 max-w-[130px]">
+                            {(u.servicePermissions && u.servicePermissions.length > 0) || (u.assignedHostels && u.assignedHostels.length > 0) ? (
+                              <>
+                                {(u.servicePermissions || []).map((sp) => (
+                                  <span key={sp} className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                                    {sp.replace('_ADMIN', '')}
+                                  </span>
+                                ))}
+                                {(u.assignedHostels || []).map((h) => (
+                                  <span key={h} className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                                    {h === 'Boys Hostel' ? 'Boys Hostel Admin' : (h === 'Girls Hostel' ? 'Girls Hostel Admin' : h)}
+                                  </span>
+                                ))}
+                              </>
                             ) : (
                               <span className="text-slate-500 text-[11px]">None</span>
                             )}
@@ -1325,6 +1336,59 @@ export default function UserManagement() {
             </div>
           </div>
 
+          {/* Section: ACCOMMODATION HOSTEL ASSIGNMENTS */}
+          {(editForm.servicePermissions.includes('ACCOMMODATION_ADMIN') || (editForm.assignedHostels && editForm.assignedHostels.length > 0)) && (
+            <div className="p-3 bg-purple-950/20 border border-purple-500/30 rounded-xl space-y-2.5 animate-fade-in">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 font-bold text-purple-300 text-xs">
+                  <Home className="w-4 h-4 text-purple-400" />
+                  <span>ACCOMMODATION HOSTEL ASSIGNMENTS</span>
+                </div>
+                <span className="text-[10px] text-purple-400 font-semibold">
+                  {(editForm.assignedHostels || []).length} hostel(s) assigned
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {[
+                  { id: 'Boys Hostel', label: 'Boys Hostel Admin', desc: 'Can access only Boys Hostel accommodation requests forwarded by AO Admin' },
+                  { id: 'Girls Hostel', label: 'Girls Hostel Admin', desc: 'Can access only Girls Hostel accommodation requests forwarded by AO Admin' },
+                ].map((h) => {
+                  const checked = (editForm.assignedHostels || []).includes(h.id);
+                  return (
+                    <label
+                      key={h.id}
+                      className={`flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer transition ${checked
+                          ? 'bg-purple-600/20 border-purple-500 text-white shadow-sm'
+                          : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                        }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          const current = editForm.assignedHostels || [];
+                          const updated = current.includes(h.id)
+                            ? current.filter((x) => x !== h.id)
+                            : [...current, h.id];
+                          setEditForm({
+                            ...editForm,
+                            assignedHostels: updated,
+                          });
+                        }}
+                        className="mt-0.5 rounded text-purple-600 focus:ring-0"
+                      />
+                      <div>
+                        <div className="font-bold text-xs">{h.label}</div>
+                        <div className="text-[10px] text-slate-400 leading-tight">{h.desc}</div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Section: SEMINAR HALL ACCESS */}
           {editForm.roles.includes('SEMINAR_COORDINATOR') && (
             <div className="p-3 bg-blue-950/20 border border-blue-500/30 rounded-xl space-y-2.5 animate-fade-in">
@@ -1478,6 +1542,59 @@ export default function UserManagement() {
               })}
             </div>
           </div>
+
+          {/* Accommodation Hostel Assignments (Shown when Accommodation service access is selected) */}
+          {(editForm.servicePermissions.includes('ACCOMMODATION_ADMIN') || (editForm.assignedHostels && editForm.assignedHostels.length > 0)) && (
+            <div className="p-3 bg-purple-950/20 border border-purple-500/30 rounded-xl space-y-2.5 animate-fade-in">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 font-bold text-purple-300 text-xs">
+                  <Home className="w-4 h-4 text-purple-400" />
+                  <span>ACCOMMODATION HOSTEL ASSIGNMENTS:</span>
+                </div>
+                <span className="text-[10px] text-purple-400 font-semibold">
+                  {(editForm.assignedHostels || []).length} hostel(s) assigned
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {[
+                  { id: 'Boys Hostel', label: 'Boys Hostel Admin', desc: 'Can access only Boys Hostel accommodation requests forwarded by AO Admin' },
+                  { id: 'Girls Hostel', label: 'Girls Hostel Admin', desc: 'Can access only Girls Hostel accommodation requests forwarded by AO Admin' },
+                ].map((h) => {
+                  const checked = (editForm.assignedHostels || []).includes(h.id);
+                  return (
+                    <label
+                      key={h.id}
+                      className={`flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer transition ${checked
+                          ? 'bg-purple-600/20 border-purple-500 text-white shadow-sm'
+                          : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                        }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          const current = editForm.assignedHostels || [];
+                          const updated = current.includes(h.id)
+                            ? current.filter((x) => x !== h.id)
+                            : [...current, h.id];
+                          setEditForm({
+                            ...editForm,
+                            assignedHostels: updated,
+                          });
+                        }}
+                        className="mt-0.5 rounded text-purple-600 focus:ring-0"
+                      />
+                      <div>
+                        <div className="font-bold text-xs">{h.label}</div>
+                        <div className="text-[10px] text-slate-400 leading-tight">{h.desc}</div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Seminar Hall Access (Only displayed when SEMINAR_COORDINATOR is selected) */}
           {editForm.roles.includes('SEMINAR_COORDINATOR') && (

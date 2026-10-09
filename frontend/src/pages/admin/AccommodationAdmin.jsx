@@ -613,8 +613,8 @@ export default function AccommodationAdmin() {
             >
               <option value="ALL">All Status</option>
               <option value="PENDING_AO_APPROVAL">Pending AO Approval</option>
-              <option value="FORWARDED_TO_BOYS_ADMIN">Forwarded to Boys Admin</option>
-              <option value="FORWARDED_TO_GIRLS_ADMIN">Forwarded to Girls Admin</option>
+              <option value="FORWARDED_TO_BOYS_ADMIN">Forwarded to Boys Hostel Admin</option>
+              <option value="FORWARDED_TO_GIRLS_ADMIN">Forwarded to Girls Hostel Admin</option>
               <option value="AO_APPROVED">AO Approved (Waiting Hostel Admin)</option>
               <option value="APPROVED">Approved</option>
               <option value="AO_REJECTED">AO Rejected</option>
