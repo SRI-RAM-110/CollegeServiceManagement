@@ -837,7 +837,7 @@ export const Accommodation = () => {
     setBoysState({
       hostel: 'Boys Hostel',
       roomType: 'AC Room',
-      roomId: boysRooms[0]?.roomId || 'BH-AC-1',
+      roomId: boysRooms[0]?.roomId || boysRooms[0]?.id || 'BH-AC-1',
       checkInDate: today,
       checkOutDate: plusTwo,
       guestsCount: 1,
@@ -851,7 +851,7 @@ export const Accommodation = () => {
     setGirlsState({
       hostel: 'Girls Hostel',
       roomType: 'AC Room',
-      roomId: girlsRooms[0]?.roomId || 'GH-AC-1',
+      roomId: girlsRooms[0]?.roomId || girlsRooms[0]?.id || 'GH-AC-1',
       checkInDate: today,
       checkOutDate: plusTwo,
       guestsCount: 1,
@@ -898,7 +898,7 @@ export const Accommodation = () => {
       showToast(`${title}: Number of guests cannot exceed 50`, 'warning');
       return false;
     }
-    const roomObj = roomList.find((r) => r.roomId === state.roomId);
+    const roomObj = roomList.find((r) => (r.roomId || r.id) === state.roomId);
     if (roomObj?.status === 'Maintenance' || roomObj?.status === 'Unavailable' || roomObj?.isUnderMaintenance) {
       showToast(`${title}: Room ${state.roomId} is currently under maintenance. Please select another room.`, 'error');
       return false;
@@ -1206,6 +1206,7 @@ export const Accommodation = () => {
                   <input
                     type="radio"
                     name="hostelSelect"
+                    value="BOYS"
                     checked={hostelSelectionMode === 'BOYS'}
                     onChange={() => setHostelSelectionMode('BOYS')}
                     className="mt-0.5 text-blue-500 cursor-pointer"
@@ -1233,6 +1234,7 @@ export const Accommodation = () => {
                   <input
                     type="radio"
                     name="hostelSelect"
+                    value="GIRLS"
                     checked={hostelSelectionMode === 'GIRLS'}
                     onChange={() => setHostelSelectionMode('GIRLS')}
                     className="mt-0.5 text-purple-500 cursor-pointer"
@@ -1260,6 +1262,7 @@ export const Accommodation = () => {
                   <input
                     type="radio"
                     name="hostelSelect"
+                    value="BOTH"
                     checked={hostelSelectionMode === 'BOTH'}
                     onChange={() => setHostelSelectionMode('BOTH')}
                     className="mt-0.5 text-emerald-500 cursor-pointer"
