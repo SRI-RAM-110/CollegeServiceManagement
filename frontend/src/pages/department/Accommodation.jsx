@@ -121,6 +121,7 @@ const computeTargetDates = (bookingType, checkInDate, checkOutDate, recurrenceDa
 };
 
 const HostelSectionConfig = ({
+  sectionId,
   hostelName,
   sectionTitle,
   badgeColor,
@@ -153,7 +154,7 @@ const HostelSectionConfig = ({
   };
 
   return (
-    <div className="hostel-section-block p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-4 mb-4">
+    <div id={sectionId} className="hostel-section-block p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-4 mb-4">
       <div className="flex items-center justify-between pb-2.5 border-b border-slate-800">
         <div className="flex items-center gap-2">
           <Home size={16} className={badgeColor === 'blue' ? 'text-blue-400' : 'text-purple-400'} />
@@ -1194,10 +1195,9 @@ export const Accommodation = () => {
                 Hostel Selection * (Select one or both)
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setHostelSelectionMode('BOYS')}
-                  className={`hostel-select-btn p-3 rounded-lg border text-left flex items-start gap-2.5 transition ${
+                <label
+                  htmlFor="hostel-mode-boys"
+                  className={`hostel-select-btn p-3 rounded-lg border text-left flex items-start gap-2.5 transition cursor-pointer ${
                     hostelSelectionMode === 'BOYS'
                       ? 'active-boys bg-blue-600/15 border-blue-500 shadow-sm'
                       : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
@@ -1205,6 +1205,7 @@ export const Accommodation = () => {
                 >
                   <input
                     type="radio"
+                    id="hostel-mode-boys"
                     name="hostelSelect"
                     value="BOYS"
                     checked={hostelSelectionMode === 'BOYS'}
@@ -1220,12 +1221,11 @@ export const Accommodation = () => {
                       Configure and request Boys Hostel rooms only
                     </div>
                   </div>
-                </button>
+                </label>
 
-                <button
-                  type="button"
-                  onClick={() => setHostelSelectionMode('GIRLS')}
-                  className={`hostel-select-btn p-3 rounded-lg border text-left flex items-start gap-2.5 transition ${
+                <label
+                  htmlFor="hostel-mode-girls"
+                  className={`hostel-select-btn p-3 rounded-lg border text-left flex items-start gap-2.5 transition cursor-pointer ${
                     hostelSelectionMode === 'GIRLS'
                       ? 'active-girls bg-purple-600/15 border-purple-500 shadow-sm'
                       : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
@@ -1233,6 +1233,7 @@ export const Accommodation = () => {
                 >
                   <input
                     type="radio"
+                    id="hostel-mode-girls"
                     name="hostelSelect"
                     value="GIRLS"
                     checked={hostelSelectionMode === 'GIRLS'}
@@ -1248,12 +1249,11 @@ export const Accommodation = () => {
                       Configure and request Girls Hostel rooms only
                     </div>
                   </div>
-                </button>
+                </label>
 
-                <button
-                  type="button"
-                  onClick={() => setHostelSelectionMode('BOTH')}
-                  className={`hostel-select-btn p-3 rounded-lg border text-left flex items-start gap-2.5 transition ${
+                <label
+                  htmlFor="hostel-mode-both"
+                  className={`hostel-select-btn p-3 rounded-lg border text-left flex items-start gap-2.5 transition cursor-pointer ${
                     hostelSelectionMode === 'BOTH'
                       ? 'active-both bg-emerald-600/15 border-emerald-500 shadow-sm'
                       : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
@@ -1261,6 +1261,7 @@ export const Accommodation = () => {
                 >
                   <input
                     type="radio"
+                    id="hostel-mode-both"
                     name="hostelSelect"
                     value="BOTH"
                     checked={hostelSelectionMode === 'BOTH'}
@@ -1276,13 +1277,48 @@ export const Accommodation = () => {
                       Configure separate requests for both hostels
                     </div>
                   </div>
-                </button>
+                </label>
               </div>
             </div>
+
+            {/* DUAL HOSTEL STATUS INDICATOR & QUICK NAVIGATION */}
+            {hostelSelectionMode === 'BOTH' && (
+              <div className="mb-4 p-2.5 px-3.5 rounded-lg bg-emerald-950/30 border border-emerald-800/40 text-emerald-300 text-xs flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Users size={15} className="text-emerald-400" />
+                  <span className="font-semibold">Dual Hostel Mode:</span>
+                  <span className="text-emerald-200/80">Both Boys Hostel & Girls Hostel forms are active below</span>
+                </div>
+                <div className="flex items-center gap-3 text-xs font-medium">
+                  <a
+                    href="#boys-hostel-section"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      document.getElementById('boys-hostel-section')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1"
+                  >
+                    ↓ Boys Hostel
+                  </a>
+                  <span className="text-slate-700">•</span>
+                  <a
+                    href="#girls-hostel-section"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      document.getElementById('girls-hostel-section')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="text-purple-400 hover:text-purple-300 hover:underline flex items-center gap-1"
+                  >
+                    ↓ Girls Hostel
+                  </a>
+                </div>
+              </div>
+            )}
 
             {/* SECTIONS RENDERING */}
             {(hostelSelectionMode === 'BOYS' || hostelSelectionMode === 'BOTH') && (
               <HostelSectionConfig
+                sectionId="boys-hostel-section"
                 hostelName="Boys Hostel"
                 sectionTitle="BOYS HOSTEL"
                 badgeColor="blue"
@@ -1300,6 +1336,7 @@ export const Accommodation = () => {
 
             {(hostelSelectionMode === 'GIRLS' || hostelSelectionMode === 'BOTH') && (
               <HostelSectionConfig
+                sectionId="girls-hostel-section"
                 hostelName="Girls Hostel"
                 sectionTitle="GIRLS HOSTEL"
                 badgeColor="purple"
