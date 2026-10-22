@@ -63,7 +63,7 @@ export default function App() {
               <Route
                 path="/dashboard"
                 element={
-                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER']}>
+                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER', 'DEPARTMENT_HOD']}>
                     <DepartmentDashboard />
                   </ProtectedRoute>
                 }
@@ -71,7 +71,7 @@ export default function App() {
               <Route
                 path="/seminar-booking"
                 element={
-                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER']}>
+                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER', 'DEPARTMENT_HOD']}>
                     <SeminarBooking />
                   </ProtectedRoute>
                 }
@@ -79,7 +79,7 @@ export default function App() {
               <Route
                 path="/accommodation"
                 element={
-                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER']}>
+                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER', 'DEPARTMENT_HOD']}>
                     <Accommodation />
                   </ProtectedRoute>
                 }
@@ -87,7 +87,7 @@ export default function App() {
               <Route
                 path="/transport"
                 element={
-                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER']}>
+                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER', 'DEPARTMENT_HOD']}>
                     <Transport />
                   </ProtectedRoute>
                 }
@@ -95,7 +95,7 @@ export default function App() {
               <Route
                 path="/stationery"
                 element={
-                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER']}>
+                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER', 'DEPARTMENT_HOD']}>
                     <Stationery />
                   </ProtectedRoute>
                 }
@@ -103,7 +103,7 @@ export default function App() {
               <Route
                 path="/snacks-meals"
                 element={
-                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER']}>
+                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER', 'DEPARTMENT_HOD']}>
                     <SnacksMeals />
                   </ProtectedRoute>
                 }
@@ -111,7 +111,7 @@ export default function App() {
               <Route
                 path="/my-requests"
                 element={
-                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER']}>
+                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER', 'DEPARTMENT_HOD']}>
                     <MyRequests />
                   </ProtectedRoute>
                 }

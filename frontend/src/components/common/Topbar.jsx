@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { useNavigate } from 'react-router-dom';
+import { getUserRoles } from '../../utils/authUtils';
 
 const ROLE_LABELS = {
   CREATOR: 'Creator',
@@ -60,18 +61,7 @@ const formatDepartment = (deptStr) => {
 };
 
 const getUserRolesList = (user) => {
-  const rolesSet = new Set();
-  if (user?.role && typeof user.role === 'string' && user.role.trim()) {
-    rolesSet.add(user.role.trim().toUpperCase());
-  }
-  if (Array.isArray(user?.roles)) {
-    user.roles.forEach((r) => {
-      if (r && typeof r === 'string' && r.trim()) {
-        rolesSet.add(r.trim().toUpperCase());
-      }
-    });
-  }
-  return Array.from(rolesSet);
+  return getUserRoles(user);
 };
 
 export const Topbar = ({ onToggleSidebar, searchPlaceholder = 'Search anything...' }) => {

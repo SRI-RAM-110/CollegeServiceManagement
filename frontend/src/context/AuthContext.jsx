@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authApi } from '../services/api';
+import { getUserRoles } from '../utils/authUtils';
 
 const AuthContext = createContext(null);
 
@@ -59,11 +60,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const getDefaultRouteForRole = (role, userObj = user) => {
-    const roles = [
-      ...(role ? [role] : []),
-      ...(userObj?.role ? [userObj.role] : []),
-      ...(Array.isArray(userObj?.roles) ? userObj.roles : []),
-    ];
+    const roles = getUserRoles(userObj);
     const isSuper = roles.includes('CREATOR') || roles.includes('AO_ADMIN');
     if (!isSuper) {
       if (
@@ -92,16 +89,14 @@ export const AuthProvider = ({ children }) => {
         return '/admin/stationery';
       case 'MEALS_ADMIN':
         return '/admin/meals';
+      case 'DEPARTMENT_HOD':
       case 'DEPARTMENT_USER':
       default:
         return '/dashboard';
     }
   };
 
-  const userRoles = [
-    ...(user?.role ? [user.role] : []),
-    ...(Array.isArray(user?.roles) ? user.roles : []),
-  ];
+  const userRoles = getUserRoles(user);
 
   const updateCurrentUser = (updatedFields) => {
     setUser((prev) => {
@@ -126,12 +121,12 @@ export const AuthProvider = ({ children }) => {
     isDepartmentHOD: userRoles.includes('DEPARTMENT_HOD'),
     isSeminarAdmin: userRoles.includes('SEMINAR_ADMIN'),
     isSeminarCoordinator: userRoles.includes('SEMINAR_COORDINATOR'),
-    isAccommodationAdmin: userRoles.includes('ACCOMMODATION_ADMIN'),
+    isAccommodationAdmin: userRoles.includes('ACCOMMODATION_ADMIN') || userRoles.includes('BOYS_HOSTEL_ADMIN') || userRoles.includes('GIRLS_HOSTEL_ADMIN'),
     isTransportAdmin: userRoles.includes('TRANSPORT_ADMIN'),
     isStationeryAdmin: userRoles.includes('STATIONERY_ADMIN'),
     isMealsAdmin: userRoles.includes('MEALS_ADMIN'),
     isServiceAdmin: userRoles.includes('SERVICE_ADMIN') || userRoles.some((r) => r.endsWith('_ADMIN') && r !== 'AO_ADMIN'),
-    isDepartmentUser: userRoles.includes('DEPARTMENT_USER'),
+    isDepartmentUser: userRoles.includes('DEPARTMENT_USER') || userRoles.includes('DEPARTMENT_HOD'),
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

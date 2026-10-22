@@ -23,14 +23,12 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { getUserRoles } from '../../utils/authUtils';
 
 export const Sidebar = ({ isOpen, onClose }) => {
   const { user } = useAuth();
   const location = useLocation();
-  const userRoles = [
-    ...(user?.role ? [user.role] : []),
-    ...(Array.isArray(user?.roles) ? user.roles : []),
-  ];
+  const userRoles = getUserRoles(user);
 
   const getNavLinks = () => {
     if (userRoles.includes('CREATOR') || userRoles.includes('AO_ADMIN')) {
