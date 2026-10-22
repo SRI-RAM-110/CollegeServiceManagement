@@ -14,6 +14,8 @@ const ROLE_LABELS = {
   DEPARTMENT_USER: 'Department User',
   SEMINAR_ADMIN: 'Seminar Admin',
   ACCOMMODATION_ADMIN: 'Accommodation Admin',
+  BOYS_HOSTEL_ADMIN: 'Boys Hostel Admin',
+  GIRLS_HOSTEL_ADMIN: 'Girls Hostel Admin',
   TRANSPORT_ADMIN: 'Transport Admin',
   STATIONERY_ADMIN: 'Stationery Admin',
   MEALS_ADMIN: 'Meals Admin',
@@ -121,7 +123,7 @@ export const Topbar = ({ onToggleSidebar, searchPlaceholder = 'Search anything..
         navigate(`/my-requests?q=${encodeURIComponent(targetRef)}`);
       } else if (role === 'SEMINAR_ADMIN') {
         navigate(`/admin/seminar?q=${encodeURIComponent(targetRef)}`);
-      } else if (role === 'ACCOMMODATION_ADMIN') {
+      } else if (role === 'ACCOMMODATION_ADMIN' || role === 'BOYS_HOSTEL_ADMIN' || role === 'GIRLS_HOSTEL_ADMIN') {
         navigate(`/admin/accommodation?q=${encodeURIComponent(targetRef)}`);
       } else if (role === 'TRANSPORT_ADMIN') {
         navigate(`/admin/transport?q=${encodeURIComponent(targetRef)}`);
@@ -148,7 +150,7 @@ export const Topbar = ({ onToggleSidebar, searchPlaceholder = 'Search anything..
       navigate(`/my-requests?q=${encodeURIComponent(q)}`);
     } else if (role === 'SEMINAR_ADMIN') {
       navigate(`/admin/seminar?q=${encodeURIComponent(q)}`);
-    } else if (role === 'ACCOMMODATION_ADMIN') {
+    } else if (role === 'ACCOMMODATION_ADMIN' || role === 'BOYS_HOSTEL_ADMIN' || role === 'GIRLS_HOSTEL_ADMIN') {
       navigate(`/admin/accommodation?q=${encodeURIComponent(q)}`);
     } else if (role === 'TRANSPORT_ADMIN') {
       navigate(`/admin/transport?q=${encodeURIComponent(q)}`);

@@ -25,7 +25,7 @@ export const ProtectedRoute = ({ children, allowedRoles }) => {
 
   if (allowedRoles && !userRoles.includes('CREATOR') && !allowedRoles.some(r => userRoles.includes(r))) {
     // If user's role is not allowed, redirect to their proper dashboard
-    const redirectUrl = getDefaultRouteForRole(user?.role || (userRoles.length > 0 ? userRoles[0] : 'DEPARTMENT_USER'));
+    const redirectUrl = getDefaultRouteForRole(user?.role || (userRoles.length > 0 ? userRoles[0] : 'DEPARTMENT_USER'), user);
     return <Navigate to={redirectUrl} replace />;
   }
 

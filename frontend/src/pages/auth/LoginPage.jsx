@@ -18,7 +18,7 @@ export const LoginPage = () => {
   useEffect(() => {
     // If already authenticated, redirect to role-specific dashboard
     if (isAuthenticated && user) {
-      navigate(getDefaultRouteForRole(user.role), { replace: true });
+      navigate(getDefaultRouteForRole(user.role, user), { replace: true });
     }
 
     const savedEmail = localStorage.getItem('rememberedEmail') || localStorage.getItem('rememberedUserId');
@@ -45,7 +45,7 @@ export const LoginPage = () => {
     setLoading(true);
     try {
       const loggedInUser = await login(trimmedEmail, password, rememberMe);
-      const target = getDefaultRouteForRole(loggedInUser.role);
+      const target = getDefaultRouteForRole(loggedInUser.role, loggedInUser);
       navigate(target, { replace: true });
     } catch (err) {
       setError(err.message || 'Invalid Email or Password');

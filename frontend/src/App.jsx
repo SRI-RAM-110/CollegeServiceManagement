@@ -34,7 +34,7 @@ function RootRedirect() {
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  return <Navigate to={getDefaultRouteForRole(user?.role)} replace />;
+  return <Navigate to={getDefaultRouteForRole(user?.role, user)} replace />;
 }
 
 export default function App() {
@@ -173,7 +173,7 @@ export default function App() {
               <Route
                 path="/admin/accommodation"
                 element={
-                  <ProtectedRoute allowedRoles={['CREATOR', 'AO_ADMIN', 'ACCOMMODATION_ADMIN']}>
+                  <ProtectedRoute allowedRoles={['CREATOR', 'AO_ADMIN', 'ACCOMMODATION_ADMIN', 'BOYS_HOSTEL_ADMIN', 'GIRLS_HOSTEL_ADMIN']}>
                     <AccommodationAdmin />
                   </ProtectedRoute>
                 }
@@ -181,7 +181,7 @@ export default function App() {
               <Route
                 path="/admin/accommodation/*"
                 element={
-                  <ProtectedRoute allowedRoles={['CREATOR', 'AO_ADMIN', 'ACCOMMODATION_ADMIN']}>
+                  <ProtectedRoute allowedRoles={['CREATOR', 'AO_ADMIN', 'ACCOMMODATION_ADMIN', 'BOYS_HOSTEL_ADMIN', 'GIRLS_HOSTEL_ADMIN']}>
                     <AccommodationAdmin />
                   </ProtectedRoute>
                 }

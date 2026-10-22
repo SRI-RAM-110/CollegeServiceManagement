@@ -58,7 +58,23 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('user');
   };
 
-  const getDefaultRouteForRole = (role) => {
+  const getDefaultRouteForRole = (role, userObj = user) => {
+    const roles = [
+      ...(role ? [role] : []),
+      ...(userObj?.role ? [userObj.role] : []),
+      ...(Array.isArray(userObj?.roles) ? userObj.roles : []),
+    ];
+    const isSuper = roles.includes('CREATOR') || roles.includes('AO_ADMIN');
+    if (!isSuper) {
+      if (
+        roles.includes('ACCOMMODATION_ADMIN') ||
+        roles.includes('BOYS_HOSTEL_ADMIN') ||
+        roles.includes('GIRLS_HOSTEL_ADMIN') ||
+        (Array.isArray(userObj?.assignedHostels) && userObj.assignedHostels.length > 0)
+      ) {
+        return '/admin/accommodation';
+      }
+    }
     switch (role) {
       case 'CREATOR':
       case 'AO_ADMIN':
@@ -67,6 +83,8 @@ export const AuthProvider = ({ children }) => {
       case 'SEMINAR_COORDINATOR':
         return '/admin/seminar';
       case 'ACCOMMODATION_ADMIN':
+      case 'BOYS_HOSTEL_ADMIN':
+      case 'GIRLS_HOSTEL_ADMIN':
         return '/admin/accommodation';
       case 'TRANSPORT_ADMIN':
         return '/admin/transport';

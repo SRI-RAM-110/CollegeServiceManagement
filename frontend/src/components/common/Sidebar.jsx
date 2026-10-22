@@ -53,9 +53,26 @@ export const Sidebar = ({ isOpen, onClose }) => {
       ];
     }
 
-    if (userRoles.includes('ACCOMMODATION_ADMIN')) {
+    const isHostelAdmin = userRoles.includes('ACCOMMODATION_ADMIN') || userRoles.includes('BOYS_HOSTEL_ADMIN') || userRoles.includes('GIRLS_HOSTEL_ADMIN') || (Array.isArray(user?.assignedHostels) && user.assignedHostels.length > 0);
+    const isDeptUser = userRoles.includes('DEPARTMENT_USER') || userRoles.includes('DEPARTMENT_HOD');
+
+    if (isHostelAdmin && !isDeptUser) {
       return [
         { name: 'Dashboard', path: '/admin/accommodation', icon: LayoutDashboard },
+        { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
+      ];
+    }
+
+    if (isHostelAdmin && isDeptUser) {
+      return [
+        { name: 'Hostel Dashboard', path: '/admin/accommodation', icon: LayoutDashboard },
+        { name: 'Department Dashboard', path: '/dashboard', icon: Building },
+        { name: 'Seminar Hall Booking', path: '/seminar-booking', icon: CalendarDays },
+        { name: 'Accommodation', path: '/accommodation', icon: BedDouble },
+        { name: 'Transport', path: '/transport', icon: Bus },
+        { name: 'Stationery', path: '/stationery', icon: FileText },
+        { name: 'Snacks & Meals', path: '/snacks-meals', icon: Coffee },
+        { name: 'My Requests', path: '/my-requests', icon: ListOrdered },
         { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
       ];
     }
@@ -83,7 +100,6 @@ export const Sidebar = ({ isOpen, onClose }) => {
 
     // Check for SEMINAR_COORDINATOR (single role or combined with department role)
     const isCoordinator = userRoles.includes('SEMINAR_COORDINATOR');
-    const isDeptUser = userRoles.includes('DEPARTMENT_USER') || userRoles.includes('DEPARTMENT_HOD');
 
     if (isCoordinator && !isDeptUser) {
       return [
