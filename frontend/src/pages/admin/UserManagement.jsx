@@ -38,11 +38,12 @@ const DEPARTMENTS = [
   { code: 'EEE', name: 'Electrical & Electronics Engineering' },
   { code: 'ME', name: 'Mechanical Engineering' },
   { code: 'CIVIL', name: 'Civil Engineering' },
-  { code: 'AI', name: 'AI & Data Science' },
+  { code: 'IT', name: 'Information Technology' },
+  { code: 'CSDS', name: 'Cyber Security & Data Science' },
   { code: 'MBA', name: 'Master of Business Administration' },
   { code: 'PHARM', name: 'Pharmacy' },
   { code: 'ADMIN', name: 'Administrative Office' },
-  { code: 'PLACEMENT OFFICER', name: 'Training And Placement Cell' },
+  { code: 'TPO', name: 'Training And Placement Cell' },
 ];
 
 const ROLES_LIST = [
@@ -62,12 +63,12 @@ const SERVICES_LIST = [
 ];
 
 const SEMINAR_HALLS_LIST = [
-  { id: 'SH-1', name: 'Seminar Hall 1', location: 'Block 3 – Ground Floor', capacity: 300 },
-  { id: 'SH-2', name: 'Seminar Hall 2', location: 'Block 3 – Third Floor', capacity: 200 },
-  { id: 'SH-3', name: 'Seminar Hall 3', location: 'Block 4 – Ground Floor', capacity: 350 },
-  { id: 'SH-4', name: 'Seminar Hall 4', location: 'Pharma Block', capacity: 200 },
-  { id: 'SH-5', name: 'Tech Hub', location: 'Block 3 – Third Floor', capacity: 150 },
-  { id: 'SH-6', name: 'Block 2 Seminar hall', location: 'Block 2 – Ground Floor', capacity: 250 },
+  { id: 'SH-2', name: 'Seminar Hall 1', location: 'Block 3 – Ground Floor', capacity: 300 },
+  { id: 'SH-3', name: 'Seminar Hall 2', location: 'Block 3 – Third Floor', capacity: 200 },
+  { id: 'SH-4', name: 'Seminar Hall 3', location: 'Block 4 – Ground Floor', capacity: 350 },
+  { id: 'SH-5', name: 'Seminar Hall 4', location: 'Pharma Block', capacity: 200 },
+  { id: 'TH-1', name: 'Tech Hub', location: 'Block 3 – Third Floor', capacity: 150 },
+  { id: 'SH-1', name: 'Block 2 Seminar hall', location: 'Block 2 – Ground Floor', capacity: 250 },
 ];
 
 export default function UserManagement() {
@@ -765,8 +766,8 @@ export default function UserManagement() {
                           <button
                             onClick={() => handleToggleStatus(u)}
                             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border transition ${u.active
-                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
-                                : 'bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20'
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                              : 'bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20'
                               }`}
                             title="Click to toggle status"
                           >
@@ -796,8 +797,8 @@ export default function UserManagement() {
                                   setOpenMenuUserId(isMenuOpen ? null : u.userId);
                                 }}
                                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition shadow-sm ${isMenuOpen
-                                    ? 'bg-blue-600/20 text-blue-300 border-blue-500/60 ring-1 ring-blue-500/40'
-                                    : 'bg-slate-800/90 hover:bg-slate-700/90 text-slate-200 hover:text-white border-slate-700 hover:border-blue-500/50 active:scale-95'
+                                  ? 'bg-blue-600/20 text-blue-300 border-blue-500/60 ring-1 ring-blue-500/40'
+                                  : 'bg-slate-800/90 hover:bg-slate-700/90 text-slate-200 hover:text-white border-slate-700 hover:border-blue-500/50 active:scale-95'
                                   }`}
                                 aria-expanded={isMenuOpen}
                                 title="Actions Menu"
@@ -873,8 +874,8 @@ export default function UserManagement() {
                                       handleToggleStatus(u);
                                     }}
                                     className={`w-full px-3 py-2 text-left text-xs flex items-center gap-2.5 transition ${u.active
-                                        ? 'text-slate-200 hover:bg-slate-800 hover:text-amber-300'
-                                        : 'text-slate-200 hover:bg-slate-800 hover:text-emerald-300'
+                                      ? 'text-slate-200 hover:bg-slate-800 hover:text-amber-300'
+                                      : 'text-slate-200 hover:bg-slate-800 hover:text-emerald-300'
                                       }`}
                                   >
                                     <Power className={`w-3.5 h-3.5 ${u.active ? 'text-amber-400' : 'text-emerald-400'}`} />
@@ -894,8 +895,8 @@ export default function UserManagement() {
                                     }}
                                     disabled={isSelf}
                                     className={`w-full px-3 py-2 text-left text-xs flex items-center gap-2.5 transition ${isSelf
-                                        ? 'opacity-40 cursor-not-allowed text-slate-500'
-                                        : 'text-rose-400 hover:bg-slate-800 hover:text-rose-200'
+                                      ? 'opacity-40 cursor-not-allowed text-slate-500'
+                                      : 'text-rose-400 hover:bg-slate-800 hover:text-rose-200'
                                       }`}
                                     title={isSelf ? 'Cannot remove currently logged-in account' : 'Permanently remove user'}
                                   >
@@ -1046,8 +1047,8 @@ export default function UserManagement() {
                   <label
                     key={r.id}
                     className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition ${checked
-                        ? 'bg-blue-600/15 border-blue-500/40 text-white'
-                        : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                      ? 'bg-blue-600/15 border-blue-500/40 text-white'
+                      : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
                       }`}
                   >
                     <input
@@ -1085,8 +1086,8 @@ export default function UserManagement() {
                   <label
                     key={s.id}
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition ${checked
-                        ? 'bg-amber-500/20 border-amber-500/50 text-amber-200'
-                        : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                      ? 'bg-amber-500/20 border-amber-500/50 text-amber-200'
+                      : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
                       }`}
                   >
                     <input
@@ -1127,8 +1128,8 @@ export default function UserManagement() {
                     <label
                       key={h.id}
                       className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition ${checked
-                          ? 'bg-blue-600/20 border-blue-500 text-white shadow-sm'
-                          : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                        ? 'bg-blue-600/20 border-blue-500 text-white shadow-sm'
+                        : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
                         }`}
                     >
                       <input
@@ -1275,8 +1276,8 @@ export default function UserManagement() {
                   <label
                     key={r.id}
                     className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition ${checked
-                        ? 'bg-blue-600/15 border-blue-500/40 text-white'
-                        : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                      ? 'bg-blue-600/15 border-blue-500/40 text-white'
+                      : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
                       }`}
                   >
                     <input
@@ -1314,8 +1315,8 @@ export default function UserManagement() {
                   <label
                     key={s.id}
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition ${checked
-                        ? 'bg-amber-500/20 border-amber-500/50 text-amber-200'
-                        : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                      ? 'bg-amber-500/20 border-amber-500/50 text-amber-200'
+                      : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
                       }`}
                   >
                     <input
@@ -1359,8 +1360,8 @@ export default function UserManagement() {
                     <label
                       key={h.id}
                       className={`flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer transition ${checked
-                          ? 'bg-purple-600/20 border-purple-500 text-white shadow-sm'
-                          : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                        ? 'bg-purple-600/20 border-purple-500 text-white shadow-sm'
+                        : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
                         }`}
                     >
                       <input
@@ -1409,8 +1410,8 @@ export default function UserManagement() {
                     <label
                       key={h.id}
                       className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition ${checked
-                          ? 'bg-blue-600/20 border-blue-500 text-white shadow-sm'
-                          : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                        ? 'bg-blue-600/20 border-blue-500 text-white shadow-sm'
+                        : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
                         }`}
                     >
                       <input
@@ -1483,8 +1484,8 @@ export default function UserManagement() {
                   <label
                     key={r.id}
                     className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition ${checked
-                        ? 'bg-blue-600/15 border-blue-500/40 text-white'
-                        : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                      ? 'bg-blue-600/15 border-blue-500/40 text-white'
+                      : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
                       }`}
                   >
                     <input
@@ -1521,8 +1522,8 @@ export default function UserManagement() {
                   <label
                     key={s.id}
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition ${checked
-                        ? 'bg-amber-500/20 border-amber-500/50 text-amber-200'
-                        : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                      ? 'bg-amber-500/20 border-amber-500/50 text-amber-200'
+                      : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
                       }`}
                   >
                     <input
@@ -1566,8 +1567,8 @@ export default function UserManagement() {
                     <label
                       key={h.id}
                       className={`flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer transition ${checked
-                          ? 'bg-purple-600/20 border-purple-500 text-white shadow-sm'
-                          : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                        ? 'bg-purple-600/20 border-purple-500 text-white shadow-sm'
+                        : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
                         }`}
                     >
                       <input
@@ -1616,8 +1617,8 @@ export default function UserManagement() {
                     <label
                       key={h.id}
                       className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition ${checked
-                          ? 'bg-blue-600/20 border-blue-500 text-white shadow-sm'
-                          : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                        ? 'bg-blue-600/20 border-blue-500 text-white shadow-sm'
+                        : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
                         }`}
                     >
                       <input
