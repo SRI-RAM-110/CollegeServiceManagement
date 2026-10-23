@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   PieChart as PieChartIcon,
   TrendingUp,
@@ -19,9 +19,10 @@ import {
   Send,
   UserCheck,
   ShieldAlert,
-  ArrowUpDown,
   BarChart3
 } from 'lucide-react';
+import { MultiSelectDropdown } from '../common/MultiSelectDropdown';
+import { useTheme } from '../../context/ThemeContext';
 
 const DEPARTMENT_FULL_NAMES = {
   CSE: 'Computer Science & Engineering',
@@ -46,14 +47,478 @@ const UNIFIED_GRAPH_SERVICES = [
   { id: 'MEALS', label: 'Snacks & Meals', shortName: 'Snacks & Meals', icon: Coffee, color: 'text-sky-400' }
 ];
 
+export const PIE_SERVICE_OPTIONS = [
+  { id: 'SEMINAR_HALL', label: 'Seminar Hall Booking', shortName: 'Seminar Hall', icon: Building2, color: '#3B82F6' },
+  { id: 'ACCOMMODATION', label: 'Accommodation', shortName: 'Accommodation', icon: Home, color: '#10B981' },
+  { id: 'TRANSPORT', label: 'Transport', shortName: 'Transport', icon: Bus, color: '#F59E0B' },
+  { id: 'STATIONERY', label: 'Stationery', shortName: 'Stationery', icon: FileText, color: '#6366F1' },
+  { id: 'MEALS', label: 'Snacks & Meals', shortName: 'Snacks & Meals', icon: Coffee, color: '#0EA5E9' }
+];
+
+export const STATUS_BAR_SERVICE_OPTIONS = PIE_SERVICE_OPTIONS;
+
+/**
+ * Helper to split service name into two clean X-axis lines to prevent any truncation or overlapping
+ */
+function getServiceXAxisLines(serviceId, shortName, label) {
+  if (serviceId === 'SEMINAR_HALL' || serviceId === 'SEMINAR') {
+    return { line1: 'Seminar', line2: 'Hall' };
+  }
+  if (serviceId === 'ACCOMMODATION') {
+    return { line1: 'Accom.', line2: 'Hostel' };
+  }
+  if (serviceId === 'TRANSPORT') {
+    return { line1: 'Transport', line2: '' };
+  }
+  if (serviceId === 'STATIONERY') {
+    return { line1: 'Stationery', line2: '' };
+  }
+  if (serviceId === 'MEALS') {
+    return { line1: 'Snacks &', line2: 'Meals' };
+  }
+  const name = shortName || label || serviceId;
+  const parts = name.split(' ');
+  if (parts.length > 1) {
+    return { line1: parts[0], line2: parts.slice(1).join(' ') };
+  }
+  return { line1: name, line2: '' };
+}
+
+/**
+ * StatusBarChartCard renders an individual vertical bar graph for a request status:
+ * 1. Approved Requests
+ * 2. Pending Requests (with accurate AO Admin Forwarding count callout integrated into header)
+ * 3. Rejected Requests
+ * 4. Cancelled Requests
+ *
+ * Compares selected services with vertical bars, Y-axis counts, X-axis categories,
+ * informative hover tooltips, accessible text colors, and graceful zero handling without fabricating data.
+ */
+function StatusBarChartCard({
+  title,
+  icon: Icon,
+  statusKey,
+  accentColor,
+  accentBg,
+  accentBorder,
+  barColor = '#3B82F6',
+  barHoverColor = '#60A5FA',
+  total = 0,
+  slices = [],
+  aoCount = 0,
+  hoveredService,
+  setHoveredService,
+  isLight = false
+}) {
+  // Chart geometry constants with increased plotting area and generous margins
+  const svgWidth = 300;
+  const svgHeight = 235;
+  const marginLeft = 32;
+  const marginRight = 8;
+  const marginTop = 28;
+  const marginBottom = 48;
+  const plotWidth = svgWidth - marginLeft - marginRight; // 260
+  const plotHeight = svgHeight - marginTop - marginBottom; // 159
+
+  // Determine Y-axis max scale
+  const maxCount = Math.max(...slices.map((s) => s.count), 0);
+  let yMax = 5;
+  if (maxCount > 50) {
+    yMax = Math.ceil(maxCount / 20) * 20;
+  } else if (maxCount > 20) {
+    yMax = Math.ceil(maxCount / 10) * 10;
+  } else if (maxCount > 10) {
+    yMax = Math.ceil(maxCount / 5) * 5;
+  } else if (maxCount > 5) {
+    yMax = 10;
+  } else {
+    yMax = 5;
+  }
+
+  // 3 horizontal grid lines (top, mid, baseline)
+  const yTicks = [
+    { val: yMax, y: marginTop },
+    { val: Math.round(yMax / 2), y: marginTop + plotHeight / 2 },
+    { val: 0, y: marginTop + plotHeight }
+  ];
+
+  const N = slices.length;
+  const slotWidth = N > 0 ? plotWidth / N : plotWidth; // 52px per slot
+  const barWidth = 24; // Prominent, clear bars
+
+  return (
+    <div
+      className={`status-bar-chart-card p-5 rounded-2xl flex flex-col justify-between transition-all duration-200 min-h-[510px] group border ${
+        isLight
+          ? 'bg-white hover:shadow-lg'
+          : 'bg-slate-900/80 hover:border-slate-700/90 shadow-xl'
+      } ${accentBorder}`}
+      style={{
+        boxShadow: isLight
+          ? '0 2px 8px -1px rgba(15, 23, 42, 0.06), 0 1px 3px -1px rgba(15, 23, 42, 0.04)'
+          : undefined
+      }}
+    >
+      <div className="flex flex-col h-full justify-between">
+        {/* Card Header: Title, Icon, AO Callout (if pending), and Total Count */}
+        <div className={`flex items-center justify-between pb-3.5 border-b mb-3 min-h-[58px] ${
+          isLight ? 'border-slate-200' : 'border-slate-800/80'
+        }`}>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className={`w-9 h-9 rounded-xl ${accentBg} border ${accentBorder} flex items-center justify-center shrink-0`}>
+              <Icon className={`w-4 h-4 ${accentColor}`} />
+            </div>
+            <div className="min-w-0">
+              <h4 className={`text-sm font-bold leading-tight truncate ${
+                isLight ? 'text-slate-900' : 'text-white'
+              }`}>
+                {title}
+              </h4>
+              {statusKey === 'PENDING' && aoCount > 0 ? (
+                <span
+                  className={`inline-flex items-center gap-1.5 mt-1 text-[11px] font-medium px-2 py-0.5 rounded-md border ${
+                    isLight
+                      ? 'bg-cyan-50 border-cyan-200 text-cyan-800'
+                      : 'bg-cyan-950/70 border-cyan-800/60 text-cyan-300'
+                  }`}
+                  title={`${aoCount} accommodation requests awaiting AO forwarding`}
+                >
+                  <Send className="w-2.5 h-2.5 text-cyan-500 shrink-0" />
+                  <strong className={isLight ? 'text-cyan-950 font-bold' : 'text-cyan-200 font-bold'}>{aoCount}</strong> awaiting AO fwd
+                </span>
+              ) : (
+                <span className={`text-[11px] block mt-1 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                  By Service Category
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+            <span
+              className={`text-xs font-mono font-bold px-2.5 py-1 rounded-lg ${accentBg} ${accentColor} border ${accentBorder} shadow-xs`}
+            >
+              {total} <span className="text-[10px] font-normal opacity-85">reqs</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Vertical Bar Chart Visual (Pure SVG) */}
+        <div className={`relative w-full overflow-hidden flex items-center justify-center py-2.5 px-1 rounded-xl transition-colors ${
+          isLight ? 'bg-slate-50/70 border border-slate-100' : 'bg-slate-950/30'
+        }`}>
+          <svg
+            viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+            className="w-full h-auto select-none overflow-visible"
+            style={{ minHeight: '170px', maxHeight: '255px' }}
+          >
+            {/* Y-Axis Label */}
+            <text
+              x={marginLeft - 6}
+              y={marginTop - 10}
+              textAnchor="end"
+              fill={isLight ? '#475569' : '#94a3b8'}
+              fontSize="10.5px"
+              fontWeight="600"
+              style={{ fill: isLight ? '#475569' : '#94a3b8' }}
+            >
+              Reqs
+            </text>
+
+            {/* Horizontal Gridlines & Y-Axis Ticks */}
+            {yTicks.map((tick, idx) => (
+              <g key={idx}>
+                <line
+                  x1={marginLeft}
+                  y1={tick.y}
+                  x2={svgWidth - marginRight}
+                  y2={tick.y}
+                  stroke={idx === yTicks.length - 1 ? (isLight ? '#cbd5e1' : '#475569') : (isLight ? 'rgba(203, 213, 225, 0.7)' : 'rgba(148, 163, 184, 0.15)')}
+                  strokeDasharray={idx === yTicks.length - 1 ? 'none' : '3 3'}
+                  strokeWidth={idx === yTicks.length - 1 ? 1.5 : 1}
+                />
+                <text
+                  x={marginLeft - 8}
+                  y={tick.y + 3.5}
+                  textAnchor="end"
+                  fill={isLight ? '#475569' : '#94a3b8'}
+                  fontSize="10.5px"
+                  fontFamily="monospace"
+                  fontWeight="600"
+                  style={{ fill: isLight ? '#475569' : '#94a3b8' }}
+                >
+                  {tick.val}
+                </text>
+              </g>
+            ))}
+
+            {/* X-Axis Baseline */}
+            <line
+              x1={marginLeft}
+              y1={marginTop + plotHeight}
+              x2={svgWidth - marginRight}
+              y2={marginTop + plotHeight}
+              stroke={isLight ? '#cbd5e1' : '#475569'}
+              strokeWidth="1.5"
+            />
+
+            {/* Vertical Bars for each Service Category */}
+            {slices.map((slice, i) => {
+              const barHeight = maxCount > 0 ? (slice.count / yMax) * plotHeight : 0;
+              const barX = marginLeft + i * slotWidth + (slotWidth - barWidth) / 2;
+              const barCenterX = barX + barWidth / 2;
+              const barY = (marginTop + plotHeight) - barHeight;
+              const isHovered = hoveredService?.statusKey === statusKey && hoveredService?.serviceId === slice.serviceId;
+              const { line1, line2 } = getServiceXAxisLines(slice.serviceId, slice.shortName, slice.label);
+
+              return (
+                <g
+                  key={slice.serviceId}
+                  className="cursor-pointer group"
+                  onMouseEnter={() => setHoveredService({ statusKey, statusTitle: title, barColor, ...slice })}
+                  onMouseLeave={() => setHoveredService(null)}
+                >
+                  <title>{`${slice.label}: ${slice.count} ${title} (${slice.pct}% of ${title})`}</title>
+
+                  {/* Interactive Column Hover Zone */}
+                  <rect
+                    x={marginLeft + i * slotWidth + 1}
+                    y={marginTop}
+                    width={slotWidth - 2}
+                    height={plotHeight + marginBottom - 4}
+                    fill={isHovered ? (isLight ? 'rgba(0, 0, 0, 0.04)' : 'rgba(255, 255, 255, 0.06)') : 'transparent'}
+                    rx="4"
+                    className="transition-colors"
+                  />
+
+                  {/* Vertical Bar */}
+                  {slice.count > 0 ? (
+                    <rect
+                      x={barX}
+                      y={barY}
+                      width={barWidth}
+                      height={Math.max(barHeight, 4)}
+                      rx="4"
+                      fill={isHovered ? barHoverColor : barColor}
+                      className="transition-all duration-200"
+                      style={{
+                        filter: isHovered
+                          ? isLight
+                            ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))'
+                            : `drop-shadow(0 0 6px ${barColor})`
+                          : 'none'
+                      }}
+                    />
+                  ) : (
+                    /* Zero-value baseline indicator */
+                    <rect
+                      x={barX}
+                      y={marginTop + plotHeight - 2}
+                      width={barWidth}
+                      height="2"
+                      rx="1"
+                      fill={isLight ? '#cbd5e1' : '#334155'}
+                    />
+                  )}
+
+                  {/* Actual Request Count on top of bar */}
+                  <text
+                    x={barCenterX}
+                    y={slice.count > 0 ? Math.max(barY - 6, marginTop + 12) : marginTop + plotHeight - 8}
+                    textAnchor="middle"
+                    fill={
+                      slice.count > 0
+                        ? isHovered
+                          ? isLight
+                            ? '#0f172a'
+                            : '#ffffff'
+                          : isLight
+                            ? '#0f172a'
+                            : '#e2e8f0'
+                        : isLight
+                          ? '#94a3b8'
+                          : '#64748b'
+                    }
+                    fontSize={slice.count > 0 ? '11.5px' : '10px'}
+                    fontFamily="monospace"
+                    fontWeight={slice.count > 0 ? (isHovered ? '800' : '700') : '500'}
+                    style={{
+                      fill:
+                        slice.count > 0
+                          ? isHovered
+                            ? isLight
+                              ? '#0f172a'
+                              : '#ffffff'
+                            : isLight
+                              ? '#0f172a'
+                              : '#e2e8f0'
+                          : isLight
+                            ? '#94a3b8'
+                            : '#64748b'
+                    }}
+                  >
+                    {slice.count}
+                  </text>
+
+                  {/* Category Name on X-Axis (Wrapped 2-line label with theme-aware high contrast) */}
+                  <text
+                    x={barCenterX}
+                    y={marginTop + plotHeight + 16}
+                    textAnchor="middle"
+                    fill={
+                      isHovered
+                        ? isLight
+                          ? '#0f172a'
+                          : '#ffffff'
+                        : isLight
+                          ? '#334155'
+                          : '#cbd5e1'
+                    }
+                    fontSize="10.5px"
+                    fontWeight={isHovered ? '700' : '600'}
+                    style={{
+                      fill:
+                        isHovered
+                          ? isLight
+                            ? '#0f172a'
+                            : '#ffffff'
+                          : isLight
+                            ? '#334155'
+                            : '#cbd5e1'
+                    }}
+                  >
+                    <tspan x={barCenterX} dy="0">{line1}</tspan>
+                    {line2 && <tspan x={barCenterX} dy="13">{line2}</tspan>}
+                  </text>
+
+                  {/* On-bar Hover Tooltip Pill */}
+                  {isHovered && slice.count > 0 && (
+                    <g className="pointer-events-none transition-all">
+                      <rect
+                        x={Math.max(marginLeft, Math.min(barCenterX - 40, svgWidth - marginRight - 80))}
+                        y={Math.max(4, barY - 26)}
+                        width="80"
+                        height="20"
+                        rx="5"
+                        fill={isLight ? '#ffffff' : '#0f172a'}
+                        stroke={barColor}
+                        strokeWidth="1.5"
+                        style={{
+                          filter: isLight
+                            ? 'drop-shadow(0 4px 6px rgba(0,0,0,0.12))'
+                            : 'drop-shadow(0 4px 8px rgba(0,0,0,0.6))'
+                        }}
+                      />
+                      <text
+                        x={Math.max(marginLeft, Math.min(barCenterX - 40, svgWidth - marginRight - 80)) + 40}
+                        y={Math.max(4, barY - 26) + 13.5}
+                        textAnchor="middle"
+                        fill={isLight ? '#0f172a' : '#ffffff'}
+                        fontSize="10px"
+                        fontWeight="700"
+                        style={{ fill: isLight ? '#0f172a' : '#ffffff' }}
+                      >
+                        {slice.count} ({slice.pct}%)
+                      </text>
+                    </g>
+                  )}
+                </g>
+              );
+            })}
+
+            {/* Empty State Banner when total === 0 */}
+            {total === 0 && (
+              <g className="pointer-events-none">
+                <rect
+                  x={marginLeft + 15}
+                  y={marginTop + plotHeight / 2 - 14}
+                  width={plotWidth - 30}
+                  height="28"
+                  rx="6"
+                  fill={isLight ? '#ffffff' : '#0f172a'}
+                  stroke={isLight ? '#cbd5e1' : '#334155'}
+                  strokeWidth="1"
+                />
+                <text
+                  x={marginLeft + plotWidth / 2}
+                  y={marginTop + plotHeight / 2 + 4}
+                  textAnchor="middle"
+                  fill={isLight ? '#64748b' : '#94a3b8'}
+                  fontSize="11px"
+                  fontWeight="500"
+                  style={{ fill: isLight ? '#64748b' : '#94a3b8' }}
+                >
+                  No {title.toLowerCase()} for criteria
+                </text>
+              </g>
+            )}
+          </svg>
+        </div>
+
+        {/* Legend / 5-Service Breakdown List with counts & percentages */}
+        <div className={`space-y-2 pt-4 border-t mt-3 ${
+          isLight ? 'border-slate-200' : 'border-slate-800/80'
+        }`}>
+          {total > 0 ? (
+            slices.map((slice) => {
+              const isHovered = hoveredService?.statusKey === statusKey && hoveredService?.serviceId === slice.serviceId;
+              return (
+                <div
+                  key={slice.serviceId}
+                  onMouseEnter={() => setHoveredService({ statusKey, statusTitle: title, barColor, ...slice })}
+                  onMouseLeave={() => setHoveredService(null)}
+                  className={`flex items-center justify-between text-xs py-2 px-3 rounded-xl cursor-pointer transition-all ${
+                    isHovered
+                      ? isLight
+                        ? 'bg-slate-100 text-slate-900 font-semibold shadow-xs'
+                        : 'bg-slate-800 text-white font-semibold shadow-sm'
+                      : isLight
+                        ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span
+                      className={`w-3 h-3 rounded-full shrink-0 ring-2 ${
+                        isLight ? 'ring-slate-100' : 'ring-slate-800'
+                      }`}
+                      style={{ backgroundColor: slice.color }}
+                    ></span>
+                    <span className={`truncate text-xs font-medium ${
+                      isLight
+                        ? isHovered ? 'text-slate-900' : 'text-slate-700'
+                        : isHovered ? 'text-white' : 'text-slate-300'
+                    }`}>
+                      {slice.shortName || slice.label}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 font-mono text-xs shrink-0">
+                    <strong className={isLight ? 'text-slate-900 font-bold' : 'text-white font-bold'}>
+                      {slice.count}
+                    </strong>
+                    <span className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>
+                      ({slice.pct}%)
+                    </span>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className={`py-6 text-center text-xs font-medium ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+              No {title.toLowerCase()} for selected criteria
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Interactive Analytics Graphs for Reports & Analytics Page
  * Displays:
- * 1. Request Status Distribution & Pending Workflow Breakdown (Interactive Donut Chart with AO Forwarding distinction)
- * 2. Resource / Facility Utilization (Seminar Hall, Accommodation, Transport, Stationery, Meals)
- * 3. Department Comparison (Grouped Horizontal Bar Chart with comprehensive status metrics)
- * 
- * NOTE: Requests Over Time has been completely removed as requested.
+ * 1. Unified Service & Status Analytics (4 Distinct Status Pie Charts with Service & Department Multi-Selects)
+ * 2. Resource & Facility Utilization with Department Multi-Select Filter
+ * 3. Department Comparison & Grouped Status Metrics (Top legend removed, individual metrics intact)
  */
 export default function ReportsAnalyticsGraphs({
   reportData,
@@ -66,13 +531,148 @@ export default function ReportsAnalyticsGraphs({
   startDate = '',
   endDate = '',
   displayedServiceBreakdown = [],
-  displayedDeptBreakdown = []
+  displayedDeptBreakdown = [],
+  departmentOptions = []
 }) {
   // Active facility sub-tab when multiple services are selected
   const [activeFacilityTab, setActiveFacilityTab] = useState(null);
   const [hoveredStatusIndex, setHoveredStatusIndex] = useState(null);
   const [hoveredDeptIndex, setHoveredDeptIndex] = useState(null);
   const [deptSortMetric, setDeptSortMetric] = useState('TOTAL'); // 'TOTAL', 'APPROVED', 'PENDING', 'NAME'
+
+  // Dynamic light/dark theme awareness
+  let isLight = false;
+  try {
+    const themeCtx = useTheme();
+    isLight = themeCtx?.isLight || themeCtx?.theme === 'light';
+  } catch {
+    isLight = typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'light';
+  }
+
+  // Extract / standardize department options from application's existing department data source
+  const availableDeptOptions = useMemo(() => {
+    if (departmentOptions && departmentOptions.length > 0) {
+      return departmentOptions.map((d) => (typeof d === 'string' ? { id: d, label: d } : d));
+    }
+    const set = new Set();
+    (reportData?.departmentBreakdown || []).forEach((d) => {
+      if (d.department) set.add(d.department);
+    });
+    (reportData?.detailedRecords || []).forEach((r) => {
+      if (r.department) set.add(r.department);
+    });
+    if (set.size > 0) {
+      return Array.from(set).sort().map((d) => ({ id: d, label: d }));
+    }
+    return ['CSE', 'ECE', 'EEE', 'MECH', 'CIVIL', 'IT', 'AIML', 'MBA', 'MCA', 'BS&H'].map((d) => ({ id: d, label: d }));
+  }, [departmentOptions, reportData]);
+
+  // Section 3: Unified Service & Status Analytics Filters
+  const [pieSelectedServices, setPieSelectedServices] = useState(PIE_SERVICE_OPTIONS.map((s) => s.id));
+  const [pieSelectedDepts, setPieSelectedDepts] = useState(() => availableDeptOptions.map((d) => d.id));
+  const [hoveredPieSlice, setHoveredPieSlice] = useState(null);
+
+  // Section 2: Resource & Facility Utilization Department Multi-Select Filter
+  const [facilitySelectedDepts, setFacilitySelectedDepts] = useState(() => availableDeptOptions.map((d) => d.id));
+
+  // Sync department selections when availableDeptOptions loads
+  const prevAvailableDeptsRef = useRef(availableDeptOptions);
+  useEffect(() => {
+    if (availableDeptOptions.length > 0 && prevAvailableDeptsRef.current.length === 0) {
+      setPieSelectedDepts(availableDeptOptions.map((d) => d.id));
+      setFacilitySelectedDepts(availableDeptOptions.map((d) => d.id));
+    }
+    prevAvailableDeptsRef.current = availableDeptOptions;
+  }, [availableDeptOptions]);
+
+  // -------------------------------------------------------------
+  // FOUR PIE CHARTS DATA (Unified Service & Status Analytics)
+  // -------------------------------------------------------------
+  const pieChartsData = useMemo(() => {
+    const records = reportData?.detailedRecords || [];
+    const isServiceMatch = (rKey, targetServiceId) => {
+      const s = (rKey || '').toUpperCase().trim();
+      if (targetServiceId === 'SEMINAR_HALL') return s === 'SEMINAR' || s === 'SEMINAR_HALL';
+      return s === targetServiceId.toUpperCase().trim();
+    };
+
+    const getStatusCategory = (r) => {
+      const st = (r.status || '').toUpperCase().trim();
+      if (
+        st === 'APPROVED' || st === 'BOOKED' || st === 'COLLECTED' ||
+        st === 'READY_FOR_COLLECTION' || st === 'AO_DIRECT_APPROVED' || st === 'COMPLETED'
+      ) {
+        return 'APPROVED';
+      }
+      if (st === 'REJECTED' || st === 'AO_REJECTED') {
+        return 'REJECTED';
+      }
+      if (st === 'CANCELLED' || st === 'CANCELLATION_REQUESTED') {
+        return 'CANCELLED';
+      }
+      return 'PENDING';
+    };
+
+    // Filter by selected services and selected departments
+    const filteredRecords = records.filter((r) => {
+      const serviceMatch = pieSelectedServices.some((srvId) => isServiceMatch(r.serviceKey, srvId));
+      const deptMatch = pieSelectedDepts.includes(r.department);
+      return serviceMatch && deptMatch;
+    });
+
+    const totalFiltered = filteredRecords.length;
+
+    // Slices for each of the four statuses
+    const calculateStatusData = (statusKey) => {
+      const statusRecords = filteredRecords.filter((r) => getStatusCategory(r) === statusKey);
+      const total = statusRecords.length;
+
+      let aoForwardingCount = 0;
+      if (statusKey === 'PENDING') {
+        statusRecords.forEach((r) => {
+          const srv = (r.serviceKey || '').toUpperCase().trim();
+          const st = (r.status || '').toUpperCase().trim();
+          const stage = (r.workflowStage || '').toUpperCase().trim();
+          const aoStatus = (r.aoApprovalStatus || '').toUpperCase().trim();
+          const fwd = r.forwardedTo || '';
+          if (srv === 'ACCOMMODATION') {
+            if (stage === 'AWAITING_AO_FORWARDING' || st === 'PENDING_AO_APPROVAL' || ((st === 'PENDING' || st === 'UNDER_REVIEW') && (aoStatus === 'PENDING' || !aoStatus) && !fwd)) {
+              aoForwardingCount += 1;
+            }
+          }
+        });
+      }
+
+      const slices = PIE_SERVICE_OPTIONS
+        .filter((srv) => pieSelectedServices.includes(srv.id))
+        .map((srv) => {
+          const count = statusRecords.filter((r) => isServiceMatch(r.serviceKey, srv.id)).length;
+          const pct = total > 0 ? parseFloat(((count / total) * 100).toFixed(1)) : 0;
+          return {
+            serviceId: srv.id,
+            label: srv.label,
+            shortName: srv.shortName,
+            color: srv.color,
+            count,
+            pct
+          };
+        });
+
+      return {
+        total,
+        slices,
+        aoCount: aoForwardingCount
+      };
+    };
+
+    return {
+      totalFiltered,
+      approved: calculateStatusData('APPROVED'),
+      pending: calculateStatusData('PENDING'),
+      rejected: calculateStatusData('REJECTED'),
+      cancelled: calculateStatusData('CANCELLED')
+    };
+  }, [reportData, pieSelectedServices, pieSelectedDepts]);
 
   // Determine active services
   const isServiceActive = (srvKey) => {
@@ -283,12 +883,17 @@ export default function ReportsAnalyticsGraphs({
 
   // -------------------------------------------------------------
   // GRAPH 2: RESOURCE / FACILITY UTILIZATION DATA
+  // Filtered dynamically by facilitySelectedDepts (Department Multi-Select)
   // -------------------------------------------------------------
   const facilityData = useMemo(() => {
+    const isAllDeptSelected = availableDeptOptions.length > 0 && facilitySelectedDepts.length === availableDeptOptions.length;
+    const isNoneDeptSelected = facilitySelectedDepts.length === 0;
+    const isDeptFiltered = !isAllDeptSelected && !isNoneDeptSelected;
+
     // 1. Seminar Hall Utilization
     const allHalls = reportData?.hallBreakdown || [];
     const isSpecificHall = selectedHall && selectedHall !== 'ALL';
-    const displayHalls = isSpecificHall
+    const baseHalls = isSpecificHall
       ? allHalls.filter((h) =>
           h.hallId?.equalsIgnoreCase
             ? h.hallId.equalsIgnoreCase(selectedHall)
@@ -296,42 +901,184 @@ export default function ReportsAnalyticsGraphs({
         )
       : allHalls;
 
+    let displayHalls = [];
+    if (isNoneDeptSelected) {
+      displayHalls = [];
+    } else if (!isDeptFiltered) {
+      displayHalls = baseHalls;
+    } else {
+      const semRecords = (reportData?.detailedRecords || []).filter(
+        (r) => (r.serviceKey === 'SEMINAR' || r.serviceKey === 'SEMINAR_HALL') && facilitySelectedDepts.includes(r.department)
+      );
+
+      displayHalls = baseHalls.map((h) => {
+        const id = (h.hallId || '').toUpperCase();
+        const matched = semRecords.filter((r) => {
+          const res = (r.resource || '').toUpperCase();
+          if (res.includes(id)) return true;
+          if (id === 'SH-1') return res.includes('SEMINAR HALL 1') || res === 'BLOCK 3 SEMINAR HALL';
+          if (id === 'SH-2') return res.includes('SEMINAR HALL 2');
+          if (id === 'SH-3') return res.includes('SEMINAR HALL 3');
+          if (id === 'SH-4') return res.includes('SEMINAR HALL 4');
+          if (id === 'SH-5') return res.includes('TECH HUB');
+          if (id === 'SH-6') return res.includes('BLOCK 2');
+          return false;
+        });
+
+        let forenoon = 0;
+        let afternoon = 0;
+        let fullDay = 0;
+
+        matched.forEach((r) => {
+          const slot = (r.slotOrTiming || '').toUpperCase();
+          if (slot.includes('FORENOON')) forenoon += 1;
+          else if (slot.includes('AFTERNOON')) afternoon += 1;
+          else if (slot.includes('FULL')) fullDay += 1;
+          else forenoon += 1;
+        });
+
+        const bookedHours = forenoon * 3 + afternoon * 4 + fullDay * 7;
+
+        return {
+          ...h,
+          total: matched.length,
+          forenoonCount: forenoon,
+          afternoonCount: afternoon,
+          fullDayCount: fullDay,
+          totalBookedHours: bookedHours
+        };
+      });
+    }
+
     const maxHallHours = Math.max(...displayHalls.map((h) => h.totalBookedHours || 0), 1);
     const maxHallBookings = Math.max(...displayHalls.map((h) => h.total || 0), 1);
 
     // 2. Accommodation
-    const accRoomUsage = reportData?.accommodationMetrics?.roomUsage || {};
-    const accRoomsList = Object.entries(accRoomUsage)
-      .map(([room, count]) => ({
-        name: room,
-        count
-      }))
-      .sort((a, b) => b.count - a.count);
+    let accRoomsList = [];
+    let totalAccGuests = 0;
+    if (isNoneDeptSelected) {
+      accRoomsList = [];
+      totalAccGuests = 0;
+    } else if (!isDeptFiltered) {
+      const accRoomUsage = reportData?.accommodationMetrics?.roomUsage || {};
+      accRoomsList = Object.entries(accRoomUsage)
+        .map(([room, count]) => ({
+          name: room,
+          count
+        }))
+        .sort((a, b) => b.count - a.count);
+      totalAccGuests = reportData?.accommodationMetrics?.totalGuests || 0;
+    } else {
+      const accRecords = (reportData?.detailedRecords || []).filter(
+        (r) => r.serviceKey === 'ACCOMMODATION' && facilitySelectedDepts.includes(r.department)
+      );
+      const roomCounts = {};
+      accRecords.forEach((r) => {
+        const room = r.resource || 'Guest Room';
+        roomCounts[room] = (roomCounts[room] || 0) + 1;
+        totalAccGuests += (r.guestOrQuantityCount || 1);
+      });
+      accRoomsList = Object.entries(roomCounts)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+    }
     const maxAccBookings = Math.max(...accRoomsList.map((r) => r.count), 1);
 
     // 3. Transport
-    const transVehicleUsage = reportData?.transportMetrics?.vehicleUsage || {};
-    const transList = Object.entries(transVehicleUsage)
-      .map(([vehicle, count]) => ({
-        name: vehicle,
-        count
-      }))
-      .sort((a, b) => b.count - a.count);
+    let transList = [];
+    let totalTransPassengers = 0;
+    if (isNoneDeptSelected) {
+      transList = [];
+      totalTransPassengers = 0;
+    } else if (!isDeptFiltered) {
+      const transVehicleUsage = reportData?.transportMetrics?.vehicleUsage || {};
+      transList = Object.entries(transVehicleUsage)
+        .map(([vehicle, count]) => ({
+          name: vehicle,
+          count
+        }))
+        .sort((a, b) => b.count - a.count);
+      totalTransPassengers = reportData?.transportMetrics?.totalPassengers || 0;
+    } else {
+      const transRecords = (reportData?.detailedRecords || []).filter(
+        (r) => r.serviceKey === 'TRANSPORT' && facilitySelectedDepts.includes(r.department)
+      );
+      const vehicleCounts = {};
+      transRecords.forEach((r) => {
+        const vehicle = r.resource || 'Fleet Vehicle';
+        vehicleCounts[vehicle] = (vehicleCounts[vehicle] || 0) + 1;
+        totalTransPassengers += (r.guestOrQuantityCount || 1);
+      });
+      transList = Object.entries(vehicleCounts)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+    }
     const maxTransBookings = Math.max(...transList.map((t) => t.count), 1);
 
     // 4. Stationery
-    const stationeryList = (reportData?.stationeryItems || []).slice(0, 7);
+    let stationeryList = [];
+    if (isNoneDeptSelected) {
+      stationeryList = [];
+    } else if (!isDeptFiltered) {
+      stationeryList = (reportData?.stationeryItems || []).slice(0, 7);
+    } else {
+      const statRecords = (reportData?.detailedRecords || []).filter(
+        (r) => r.serviceKey === 'STATIONERY' && facilitySelectedDepts.includes(r.department)
+      );
+      const itemMap = {};
+      statRecords.forEach((r) => {
+        const item = r.resource || 'Stationery Item';
+        if (!itemMap[item]) {
+          itemMap[item] = { name: item, totalQuantity: 0, requestCount: 0, unit: 'units' };
+        }
+        itemMap[item].totalQuantity += (r.guestOrQuantityCount || 1);
+        itemMap[item].requestCount += 1;
+      });
+      stationeryList = Object.values(itemMap).sort((a, b) => b.totalQuantity - a.totalQuantity).slice(0, 7);
+    }
     const maxStationeryQty = Math.max(...stationeryList.map((s) => s.totalQuantity || 0), 1);
 
     // 5. Snacks & Meals Headcount
-    const meals = reportData?.mealsHeadcount || {};
-    const mealList = [
-      { name: 'Lunch', count: meals.lunch || 0, color: 'bg-emerald-500', barColor: '#10B981' },
-      { name: 'Dinner', count: meals.dinner || 0, color: 'bg-blue-500', barColor: '#3B82F6' },
-      { name: 'Snacks', count: meals.snacks || 0, color: 'bg-amber-500', barColor: '#F59E0B' },
-      { name: 'Breakfast', count: meals.breakfast || 0, color: 'bg-indigo-500', barColor: '#6366F1' },
-      { name: 'Tea / Coffee', count: meals.teaCoffee || 0, color: 'bg-rose-500', barColor: '#F43F5E' }
-    ];
+    let mealList = [];
+    if (isNoneDeptSelected) {
+      mealList = [
+        { name: 'Lunch', count: 0, color: 'bg-emerald-500', barColor: '#10B981' },
+        { name: 'Dinner', count: 0, color: 'bg-blue-500', barColor: '#3B82F6' },
+        { name: 'Snacks', count: 0, color: 'bg-amber-500', barColor: '#F59E0B' },
+        { name: 'Breakfast', count: 0, color: 'bg-indigo-500', barColor: '#6366F1' },
+        { name: 'Tea / Coffee', count: 0, color: 'bg-rose-500', barColor: '#F43F5E' }
+      ];
+    } else if (!isDeptFiltered) {
+      const meals = reportData?.mealsHeadcount || {};
+      mealList = [
+        { name: 'Lunch', count: meals.lunch || 0, color: 'bg-emerald-500', barColor: '#10B981' },
+        { name: 'Dinner', count: meals.dinner || 0, color: 'bg-blue-500', barColor: '#3B82F6' },
+        { name: 'Snacks', count: meals.snacks || 0, color: 'bg-amber-500', barColor: '#F59E0B' },
+        { name: 'Breakfast', count: meals.breakfast || 0, color: 'bg-indigo-500', barColor: '#6366F1' },
+        { name: 'Tea / Coffee', count: meals.teaCoffee || 0, color: 'bg-rose-500', barColor: '#F43F5E' }
+      ];
+    } else {
+      const mealRecords = (reportData?.detailedRecords || []).filter(
+        (r) => r.serviceKey === 'MEALS' && facilitySelectedDepts.includes(r.department)
+      );
+      let lunch = 0, dinner = 0, snacks = 0, breakfast = 0, teaCoffee = 0;
+      mealRecords.forEach((r) => {
+        const text = `${r.resource || ''} ${r.details || ''} ${r.purpose || ''}`.toUpperCase();
+        const count = r.guestOrQuantityCount || 1;
+        if (text.includes('LUNCH')) lunch += count;
+        if (text.includes('DINNER')) dinner += count;
+        if (text.includes('SNACK')) snacks += count;
+        if (text.includes('BREAKFAST')) breakfast += count;
+        if (text.includes('TEA') || text.includes('COFFEE')) teaCoffee += count;
+      });
+      mealList = [
+        { name: 'Lunch', count: lunch, color: 'bg-emerald-500', barColor: '#10B981' },
+        { name: 'Dinner', count: dinner, color: 'bg-blue-500', barColor: '#3B82F6' },
+        { name: 'Snacks', count: snacks, color: 'bg-amber-500', barColor: '#F59E0B' },
+        { name: 'Breakfast', count: breakfast, color: 'bg-indigo-500', barColor: '#6366F1' },
+        { name: 'Tea / Coffee', count: teaCoffee, color: 'bg-rose-500', barColor: '#F43F5E' }
+      ];
+    }
     const maxMealCount = Math.max(...mealList.map((m) => m.count), 1);
 
     return {
@@ -340,15 +1087,17 @@ export default function ReportsAnalyticsGraphs({
       maxHallBookings,
       isSpecificHall,
       accommodation: accRoomsList,
+      totalAccGuests,
       maxAccBookings,
       transport: transList,
+      totalTransPassengers,
       maxTransBookings,
       stationery: stationeryList,
       maxStationeryQty,
       meals: mealList,
       maxMealCount
     };
-  }, [reportData, selectedHall]);
+  }, [reportData, selectedHall, facilitySelectedDepts, availableDeptOptions]);
 
   // -------------------------------------------------------------
   // GRAPH 3: DEPARTMENT COMPARISON (GROUPED HORIZONTAL BARS)
@@ -474,9 +1223,9 @@ export default function ReportsAnalyticsGraphs({
   }, [displayedDeptBreakdown, reportData, selectedDepartments, deptSortMetric]);
 
   return (
-    <div className="space-y-6 pt-2">
+    <div className="space-y-8 pt-2">
       {/* Analytics Section Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
         <div>
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-blue-400" />
@@ -507,777 +1256,470 @@ export default function ReportsAnalyticsGraphs({
         </div>
       </div>
 
-      {/* TOP ROW: 2 Columns for Desktop (Status Distribution & Facility Utilization) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* ========================================================= */}
-        {/* UNIFIED SERVICE & STATUS ANALYTICS GRAPH                  */}
-        {/* ========================================================= */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
+      {/* ========================================================= */}
+      {/* 1. UNIFIED SERVICE & STATUS ANALYTICS (FOUR BAR CHARTS)   */}
+      {/* ========================================================= */}
+      <div className={`status-bar-chart-section rounded-2xl p-6 shadow-xl space-y-6 border transition-colors ${
+        isLight ? 'bg-white border-slate-200 shadow-slate-100' : 'bg-slate-900/90 border-slate-800'
+      }`}>
+        {/* Header: Section Title + Multi-Select Filters */}
+        <div className={`flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-5 border-b ${
+          isLight ? 'border-slate-200' : 'border-slate-800/80'
+        }`}>
           <div>
-            {/* Header: Title + Service Selector Dropdown */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80 mb-4">
-              <div>
-                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-blue-400" />
-                  Unified Service & Status Analytics
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Combined service request volume and status distribution
-                </p>
-              </div>
+            <h3 className={`text-base font-bold flex items-center gap-2 ${isLight ? 'text-slate-900' : 'text-white'}`}>
+              <BarChart3 className="w-5 h-5 text-blue-500" />
+              Unified Service & Status Analytics
+            </h3>
+            <p className={`text-xs mt-0.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+              Comparative vertical bar distributions of Approved, Pending, Rejected, and Cancelled requisitions across college services
+            </p>
+          </div>
 
-              {/* Service Selection Dropdown */}
-              <div className="flex items-center gap-2">
-                <label htmlFor="service-analytics-select" className="text-xs text-slate-400 font-medium hidden sm:inline">
-                  Service:
-                </label>
-                <div className="relative">
-                  <select
-                    id="service-analytics-select"
-                    value={selectedGraphService}
-                    onChange={(e) => setSelectedGraphService(e.target.value)}
-                    className="input text-xs py-1.5 pl-2.5 pr-7 bg-slate-800 border-slate-700 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/40 cursor-pointer font-medium"
-                  >
-                    {UNIFIED_GRAPH_SERVICES.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 whitespace-nowrap">
-                  Total: {unifiedServiceData.currentViewData.total}
-                </span>
-              </div>
+          {/* Filters: Service Multi-Select, Department Multi-Select & Filtered Total */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Service Multi-Select */}
+            <div className="w-48 sm:w-56">
+              <MultiSelectDropdown
+                label="Filter Services"
+                options={PIE_SERVICE_OPTIONS}
+                selectedValues={pieSelectedServices}
+                onChange={setPieSelectedServices}
+                placeholder="Select Services..."
+                allSelectedLabel="All Services"
+                icon={Layers}
+                className="text-xs"
+              />
             </div>
 
-            {/* Consistent Status Legend */}
-            <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-850/60 border border-slate-800/80 mb-4 text-xs">
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                Status Legend:
+            {/* Department Multi-Select */}
+            <div className="w-48 sm:w-56">
+              <MultiSelectDropdown
+                label="Filter Departments"
+                options={availableDeptOptions}
+                selectedValues={pieSelectedDepts}
+                onChange={setPieSelectedDepts}
+                placeholder="Select Depts..."
+                allSelectedLabel="All Departments"
+                icon={Building}
+                searchable={true}
+                className="text-xs"
+              />
+            </div>
+
+            {/* Total Filtered Records Indicator */}
+            <div className="flex flex-col justify-end">
+              <span className="text-[11px] font-semibold text-slate-400 mb-1 opacity-0 hidden sm:block">Total</span>
+              <span className={`text-xs font-mono font-semibold px-3 py-2 rounded-xl border whitespace-nowrap flex items-center gap-1.5 shadow-sm ${
+                isLight ? 'bg-slate-100 border-slate-200 text-slate-800' : 'bg-slate-800 border-slate-700 text-slate-200'
+              }`}>
+                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                Filtered: <strong className={isLight ? 'text-slate-900' : 'text-white'}>{pieChartsData.totalFiltered}</strong> Reqs
               </span>
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="flex items-center gap-1.5 text-slate-300 font-medium">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span> Approved
-                </span>
-                <span className="flex items-center gap-1.5 text-slate-300 font-medium">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-amber-500"></span> Pending
-                </span>
-                <span className="flex items-center gap-1.5 text-slate-300 font-medium">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-rose-500"></span> Rejected
-                </span>
-                <span className="flex items-center gap-1.5 text-slate-300 font-medium">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-slate-500"></span> Cancelled
-                </span>
-              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Single Shared Hint Banner for all Status Chart Cards */}
+        <div className={`status-bar-chart-hint flex items-center justify-between px-4 py-2.5 rounded-xl border text-xs transition-colors ${
+          isLight ? 'bg-slate-50 border-slate-200 text-slate-600' : 'bg-slate-850/60 border-slate-800 text-slate-400'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Info className="w-4 h-4 text-blue-500 shrink-0" />
+            <span>Hover over any vertical bar or service item below for exact request counts and percentages.</span>
+          </div>
+          <div className={`hidden sm:flex items-center gap-1.5 text-[11px] font-mono shrink-0 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+            <span>{pieSelectedServices.length} Services Compared</span>
+          </div>
+        </div>
+
+        {/* Four Status Vertical Bar Charts Responsive Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+          {/* 1. Approved Requests Vertical Bar Chart */}
+          <StatusBarChartCard
+            title="Approved Requests"
+            icon={CheckCircle2}
+            statusKey="APPROVED"
+            accentColor={isLight ? 'text-emerald-700' : 'text-emerald-400'}
+            accentBg={isLight ? 'bg-emerald-50' : 'bg-emerald-500/10'}
+            accentBorder={isLight ? 'border-emerald-200' : 'border-emerald-500/20'}
+            barColor={isLight ? '#059669' : '#10B981'}
+            barHoverColor={isLight ? '#10B981' : '#34D399'}
+            total={pieChartsData.approved.total}
+            slices={pieChartsData.approved.slices}
+            hoveredService={hoveredPieSlice}
+            setHoveredService={setHoveredPieSlice}
+            isLight={isLight}
+          />
+
+          {/* 2. Pending Requests Vertical Bar Chart (includes AO Admin Forwarding count) */}
+          <StatusBarChartCard
+            title="Pending Requests"
+            icon={Clock}
+            statusKey="PENDING"
+            accentColor={isLight ? 'text-amber-800' : 'text-amber-400'}
+            accentBg={isLight ? 'bg-amber-50' : 'bg-amber-500/10'}
+            accentBorder={isLight ? 'border-amber-200' : 'border-amber-500/20'}
+            barColor={isLight ? '#D97706' : '#F59E0B'}
+            barHoverColor={isLight ? '#F59E0B' : '#FBBF24'}
+            total={pieChartsData.pending.total}
+            slices={pieChartsData.pending.slices}
+            aoCount={pieChartsData.pending.aoCount}
+            hoveredService={hoveredPieSlice}
+            setHoveredService={setHoveredPieSlice}
+            isLight={isLight}
+          />
+
+          {/* 3. Rejected Requests Vertical Bar Chart */}
+          <StatusBarChartCard
+            title="Rejected Requests"
+            icon={XCircle}
+            statusKey="REJECTED"
+            accentColor={isLight ? 'text-rose-700' : 'text-rose-400'}
+            accentBg={isLight ? 'bg-rose-50' : 'bg-rose-500/10'}
+            accentBorder={isLight ? 'border-rose-200' : 'border-rose-500/20'}
+            barColor={isLight ? '#E11D48' : '#F43F5E'}
+            barHoverColor={isLight ? '#F43F5E' : '#FB7185'}
+            total={pieChartsData.rejected.total}
+            slices={pieChartsData.rejected.slices}
+            hoveredService={hoveredPieSlice}
+            setHoveredService={setHoveredPieSlice}
+            isLight={isLight}
+          />
+
+          {/* 4. Cancelled Requests Vertical Bar Chart */}
+          <StatusBarChartCard
+            title="Cancelled Requests"
+            icon={AlertCircle}
+            statusKey="CANCELLED"
+            accentColor={isLight ? 'text-slate-700' : 'text-slate-400'}
+            accentBg={isLight ? 'bg-slate-100' : 'bg-slate-800/40'}
+            accentBorder={isLight ? 'border-slate-300' : 'border-slate-700/60'}
+            barColor={isLight ? '#475569' : '#64748B'}
+            barHoverColor={isLight ? '#64748B' : '#94A3B8'}
+            total={pieChartsData.cancelled.total}
+            slices={pieChartsData.cancelled.slices}
+            hoveredService={hoveredPieSlice}
+            setHoveredService={setHoveredPieSlice}
+            isLight={isLight}
+          />
+        </div>
+
+        {/* Section 1 Footer */}
+        <div className="pt-3.5 border-t border-slate-800/60 flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-slate-500 gap-2">
+          <span className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            Approval Rate across filtered criteria:{' '}
+            <strong className="text-emerald-400 font-mono">
+              {pieChartsData.totalFiltered > 0
+                ? ((pieChartsData.approved.total / pieChartsData.totalFiltered) * 100).toFixed(1)
+                : '0.0'}
+              %
+            </strong>
+          </span>
+          <span className="text-slate-400 font-mono text-[10px]">
+            Synchronized with active global & service filters
+          </span>
+        </div>
+      </div>
+
+      {/* ========================================================= */}
+      {/* 2. RESOURCE & FACILITY UTILIZATION                        */}
+      {/* ========================================================= */}
+      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+        <div>
+          {/* Header: Title + Department Filter + Sub-Service Tabs */}
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-4 border-b border-slate-800/80 mb-5">
+            <div>
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-indigo-400" />
+                Resource & Facility Utilization
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Capacity metrics, booking volume, and resource demand filtered by department
+              </p>
             </div>
 
-            {/* VIEW 1: ALL SERVICES COMPARISON (Grouped / Stacked Horizontal Bar Chart) */}
-            {selectedGraphService === 'ALL' ? (
-              <div className="space-y-3 py-1">
-                {unifiedServiceData.serviceList.map((srv) => {
-                  const SrvIcon = srv.icon;
-                  const total = srv.total;
-                  const hasRequests = total > 0;
-                  
-                  const approvedW = total > 0 ? (srv.approved / total) * 100 : 0;
-                  const pendingW = total > 0 ? (srv.pending / total) * 100 : 0;
-                  const rejectedW = total > 0 ? (srv.rejected / total) * 100 : 0;
-                  const cancelledW = total > 0 ? (srv.cancelled / total) * 100 : 0;
+            {/* Controls: Department Multi-Select & Sub-Service Tabs */}
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Department Multi-Select Filter */}
+              <div className="w-48 sm:w-56">
+                <MultiSelectDropdown
+                  label="Filter by Department"
+                  options={availableDeptOptions}
+                  selectedValues={facilitySelectedDepts}
+                  onChange={setFacilitySelectedDepts}
+                  placeholder="Select Depts..."
+                  allSelectedLabel="All Departments"
+                  icon={Building}
+                  searchable={true}
+                  className="text-xs"
+                />
+              </div>
 
-                  return (
-                    <div
-                      key={srv.id}
-                      className="p-2.5 rounded-xl bg-slate-850/40 border border-slate-800/80 hover:bg-slate-800/50 hover:border-slate-700/80 transition-all space-y-1.5"
-                    >
-                      {/* Service Header with Total Requisitions */}
-                      <div className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-lg bg-slate-800 border border-slate-700/60 flex items-center justify-center">
-                            <SrvIcon className={`w-3.5 h-3.5 ${srv.color}`} />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedGraphService(srv.id)}
-                            className="text-white font-semibold hover:text-blue-400 transition flex items-center gap-1 text-left"
-                            title={`Click to inspect ${srv.label}`}
-                          >
-                            <span>{srv.label}</span>
-                            <ChevronRight className="w-3 h-3 text-slate-500" />
-                          </button>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] font-mono text-slate-400">
-                            Total: <strong className="text-white font-bold">{total}</strong>
+              {/* Sub-Service Tab Selector when Multiple Services are Active */}
+              {activeServicesList.length > 1 && (
+                <div className="flex flex-col justify-end">
+                  <span className="text-[11px] font-semibold text-slate-400 mb-1">Active Facility</span>
+                  <div className="flex items-center bg-slate-850 rounded-xl p-1 border border-slate-800 overflow-x-auto max-w-full">
+                    {activeServicesList.map((srv) => {
+                      const IconComp = srv.icon;
+                      const isActive = currentFacilityTab === srv.id;
+                      return (
+                        <button
+                          key={srv.id}
+                          type="button"
+                          onClick={() => setActiveFacilityTab(srv.id)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg font-medium transition whitespace-nowrap ${
+                            isActive
+                              ? 'bg-blue-600 text-white shadow-sm'
+                              : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          <IconComp className="w-3.5 h-3.5" />
+                          {srv.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* TAB CONTENT: SEMINAR HALLS */}
+          {currentFacilityTab === 'SEMINAR_HALL' && (
+            <div className="space-y-4 pt-1">
+              {facilityData.isSpecificHall && (
+                <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300 flex items-center justify-between">
+                  <span>
+                    Filtering resource: <strong>{selectedHall}</strong>
+                  </span>
+                  <span className="font-mono text-white">Specific Venue View</span>
+                </div>
+              )}
+
+              {facilityData.halls.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  {facilityData.halls.map((hall) => {
+                    const hours = hall.totalBookedHours || 0;
+                    const pct = Math.min(
+                      100,
+                      Math.round((hours / Math.max(facilityData.maxHallHours, 1)) * 100)
+                    );
+
+                    return (
+                      <div key={hall.hallId} className="space-y-2 p-3.5 rounded-xl bg-slate-850/50 border border-slate-800/70 hover:border-slate-700/80 transition shadow-sm">
+                        <div className="flex items-center justify-between text-xs flex-wrap gap-2">
+                          <span className="text-slate-200 font-medium flex items-center gap-1.5 flex-wrap">
+                            <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+                            {hall.hallName}
+                            <span className="text-[10px] text-slate-500 font-mono">({hall.hallId})</span>
+                            <span className="text-[10px] text-slate-400 bg-slate-800/90 px-1.5 py-0.5 rounded border border-slate-700/60 font-normal" title="Physical seating capacity (Facility-level information)">
+                              Cap: {hall.capacity} (Facility-level)
+                            </span>
+                          </span>
+                          <span className="text-slate-400 font-mono text-[11px]">
+                            <strong className="text-white">{hours} hrs</strong> ({hall.total} bookings)
                           </span>
                         </div>
-                      </div>
-
-                      {/* Stacked Horizontal Bar Chart */}
-                      <div className="h-3.5 w-full bg-slate-800 rounded-full overflow-hidden flex shadow-inner">
-                        {hasRequests ? (
-                          <>
-                            {srv.approved > 0 && (
-                              <div
-                                style={{ width: `${approvedW}%` }}
-                                className="bg-emerald-500 h-full transition-all duration-300 hover:brightness-110"
-                                title={`${srv.label} - Approved: ${srv.approved} (${srv.approvedPct}%)`}
-                              />
-                            )}
-                            {srv.pending > 0 && (
-                              <div
-                                style={{ width: `${pendingW}%` }}
-                                className="bg-amber-500 h-full transition-all duration-300 hover:brightness-110"
-                                title={`${srv.label} - Pending: ${srv.pending} (${srv.pendingPct}%)`}
-                              />
-                            )}
-                            {srv.rejected > 0 && (
-                              <div
-                                style={{ width: `${rejectedW}%` }}
-                                className="bg-rose-500 h-full transition-all duration-300 hover:brightness-110"
-                                title={`${srv.label} - Rejected: ${srv.rejected} (${srv.rejectedPct}%)`}
-                              />
-                            )}
-                            {srv.cancelled > 0 && (
-                              <div
-                                style={{ width: `${cancelledW}%` }}
-                                className="bg-slate-500 h-full transition-all duration-300 hover:brightness-110"
-                                title={`${srv.label} - Cancelled: ${srv.cancelled} (${srv.cancelledPct}%)`}
-                              />
-                            )}
-                          </>
-                        ) : (
+                        {/* Progress Bar with Slot Distribution */}
+                        <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden flex shadow-inner">
                           <div
-                            style={{ width: '100%' }}
-                            className="bg-slate-800/80 h-full flex items-center justify-center text-[9px] text-slate-600"
-                          >
-                            0 requisitions
-                          </div>
-                        )}
+                            style={{ width: `${(hall.forenoonCount / Math.max(hall.total, 1)) * pct}%` }}
+                            className="bg-blue-500 h-full"
+                            title={`Forenoon (3h): ${hall.forenoonCount}`}
+                          />
+                          <div
+                            style={{ width: `${(hall.afternoonCount / Math.max(hall.total, 1)) * pct}%` }}
+                            className="bg-indigo-500 h-full"
+                            title={`Afternoon (4h): ${hall.afternoonCount}`}
+                          />
+                          <div
+                            style={{ width: `${(hall.fullDayCount / Math.max(hall.total, 1)) * pct}%` }}
+                            className="bg-emerald-500 h-full"
+                            title={`Full Day (7h): ${hall.fullDayCount}`}
+                          />
+                        </div>
                       </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-12 text-center text-slate-500 text-xs">
+                  No seminar hall bookings found for selected department(s) or criteria.
+                </div>
+              )}
 
-                      {/* Granular Actual Counts & Status Breakdown Row */}
-                      <div className="grid grid-cols-4 gap-1 text-[11px] font-mono pt-0.5">
-                        <div className="flex items-center justify-between px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                          <span className="text-[10px] text-emerald-300/80">Appr:</span>
-                          <span className="font-bold">{srv.approved}</span>
+              {/* Slot Color Legend */}
+              <div className="flex flex-wrap items-center justify-center gap-5 text-xs text-slate-400 pt-3 border-t border-slate-800/60">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-blue-500"></span> Forenoon (3h)
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-indigo-500"></span> Afternoon (4h)
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span> Full Day (7h)
+                </span>
+                <span className="text-slate-500 text-[11px]">| Seating Capacity is Facility-level information</span>
+              </div>
+            </div>
+          )}
+
+          {/* TAB CONTENT: ACCOMMODATION */}
+          {currentFacilityTab === 'ACCOMMODATION' && (
+            <div className="space-y-4 pt-1">
+              <div className="flex items-center justify-between text-xs text-slate-400 pb-1 border-b border-slate-800/60">
+                <span>Hostel / Room Allocation</span>
+                <span>
+                  Total Guests across selected departments:{' '}
+                  <strong className="text-white font-mono">
+                    {facilityData.totalAccGuests}
+                  </strong>
+                </span>
+              </div>
+
+              {facilityData.accommodation.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {facilityData.accommodation.map((room) => {
+                    const pct = Math.round((room.count / facilityData.maxAccBookings) * 100);
+                    return (
+                      <div key={room.name} className="space-y-1.5 p-3 rounded-xl bg-slate-850/50 border border-slate-800/70">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-300 font-medium truncate">{room.name}</span>
+                          <span className="font-mono text-emerald-400 font-bold text-xs shrink-0">{room.count} stays</span>
                         </div>
-                        <div className="flex items-center justify-between px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                          <span className="text-[10px] text-amber-300/80">Pend:</span>
-                          <span className="font-bold">{srv.pending}</span>
+                        <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                          <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${pct}%` }}></div>
                         </div>
-                        <div className="flex items-center justify-between px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">
-                          <span className="text-[10px] text-rose-300/80">Rej:</span>
-                          <span className="font-bold">{srv.rejected}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-12 text-center text-slate-500 text-xs">
+                  No guest house bookings found for selected department(s).
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB CONTENT: TRANSPORT */}
+          {currentFacilityTab === 'TRANSPORT' && (
+            <div className="space-y-4 pt-1">
+              <div className="flex items-center justify-between text-xs text-slate-400 pb-1 border-b border-slate-800/60">
+                <span>Fleet Vehicle Deployment</span>
+                <span>
+                  Total Passengers across selected departments:{' '}
+                  <strong className="text-white font-mono">
+                    {facilityData.totalTransPassengers}
+                  </strong>
+                </span>
+              </div>
+
+              {facilityData.transport.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {facilityData.transport.map((v) => {
+                    const pct = Math.round((v.count / facilityData.maxTransBookings) * 100);
+                    return (
+                      <div key={v.name} className="space-y-1.5 p-3 rounded-xl bg-slate-850/50 border border-slate-800/70">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-300 font-medium truncate">{v.name}</span>
+                          <span className="font-mono text-amber-400 font-bold text-xs shrink-0">{v.count} trips</span>
                         </div>
-                        <div className="flex items-center justify-between px-1.5 py-0.5 rounded bg-slate-500/10 text-slate-400 border border-slate-500/20">
-                          <span className="text-[10px] text-slate-400/80">Canc:</span>
-                          <span className="font-bold">{srv.cancelled}</span>
+                        <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                          <div className="h-full bg-amber-500 rounded-full" style={{ width: `${pct}%` }}></div>
                         </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-12 text-center text-slate-500 text-xs">
+                  No fleet journeys recorded for selected department(s).
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB CONTENT: STATIONERY */}
+          {currentFacilityTab === 'STATIONERY' && (
+            <div className="space-y-4 pt-1">
+              <div className="flex items-center justify-between text-xs text-slate-400 pb-1 border-b border-slate-800/60">
+                <span>Top Requested Consumables</span>
+                <span>
+                  Items Tracked: <strong className="text-white font-mono">{facilityData.stationery.length}</strong>
+                </span>
+              </div>
+
+              {facilityData.stationery.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {facilityData.stationery.map((item) => {
+                    const pct = Math.round((item.totalQuantity / facilityData.maxStationeryQty) * 100);
+                    return (
+                      <div key={item.name} className="space-y-1.5 p-3 rounded-xl bg-slate-850/50 border border-slate-800/70">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-300 font-medium truncate">{item.name}</span>
+                          <span className="font-mono text-indigo-400 font-bold text-xs shrink-0">
+                            {item.totalQuantity} {item.unit}{' '}
+                            <span className="text-slate-500 font-normal">({item.requestCount} reqs)</span>
+                          </span>
+                        </div>
+                        <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                          <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${pct}%` }}></div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-12 text-center text-slate-500 text-xs">
+                  No stationery requisitions found for selected department(s).
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB CONTENT: SNACKS & MEALS */}
+          {currentFacilityTab === 'MEALS' && (
+            <div className="space-y-4 pt-1">
+              <div className="flex items-center justify-between text-xs text-slate-400 pb-1 border-b border-slate-800/60">
+                <span>Catering Headcount Breakdown</span>
+                <span>Approved Servings for Selected Department(s)</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                {facilityData.meals.map((meal) => {
+                  const pct = Math.round((meal.count / facilityData.maxMealCount) * 100);
+                  return (
+                    <div key={meal.name} className="space-y-1.5 p-3 rounded-xl bg-slate-850/50 border border-slate-800/70">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-300 font-medium">{meal.name}</span>
+                        <span className="font-mono text-white font-bold text-xs">{meal.count}</span>
+                      </div>
+                      <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${pct}%`, backgroundColor: meal.barColor }}
+                        ></div>
                       </div>
                     </div>
                   );
                 })}
               </div>
-            ) : (
-              /* VIEW 2: INDIVIDUAL SERVICE BREAKDOWN (Detailed Single Service View) */
-              <div className="space-y-3.5 py-1">
-                {/* Single Service Header Banner */}
-                <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-850 border border-slate-800">
-                  <div className="flex items-center gap-2.5">
-                    {(() => {
-                      const activeSrvObj = UNIFIED_GRAPH_SERVICES.find((s) => s.id === selectedGraphService);
-                      const IconC = activeSrvObj?.icon || Layers;
-                      return (
-                        <>
-                          <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-                            <IconC className="w-4 h-4 text-blue-400" />
-                          </div>
-                          <div>
-                            <h4 className="text-xs font-bold text-white">
-                              {activeSrvObj?.label || selectedGraphService}
-                            </h4>
-                            <p className="text-[10px] text-slate-400">
-                              Service-specific status volume and fulfillment breakdown
-                            </p>
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedGraphService('ALL')}
-                    className="text-[11px] text-blue-400 hover:text-blue-300 flex items-center gap-1 font-medium bg-blue-500/10 hover:bg-blue-500/20 px-2 py-1 rounded-lg border border-blue-500/30 transition"
-                  >
-                    <span>View All Services</span>
-                  </button>
-                </div>
-
-                {/* 4 Status KPI Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <div className="p-2.5 rounded-xl bg-emerald-950/20 border border-emerald-500/30">
-                    <span className="text-[10px] uppercase font-semibold text-emerald-400 block">Approved</span>
-                    <div className="flex items-baseline justify-between mt-1">
-                      <span className="text-lg font-bold font-mono text-white">
-                        {unifiedServiceData.currentViewData.approved}
-                      </span>
-                      <span className="text-xs font-mono text-emerald-400 font-semibold">
-                        {unifiedServiceData.currentViewData.approvedPct}%
-                      </span>
-                    </div>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-amber-950/20 border border-amber-500/30">
-                    <span className="text-[10px] uppercase font-semibold text-amber-400 block">Pending</span>
-                    <div className="flex items-baseline justify-between mt-1">
-                      <span className="text-lg font-bold font-mono text-white">
-                        {unifiedServiceData.currentViewData.pending}
-                      </span>
-                      <span className="text-xs font-mono text-amber-400 font-semibold">
-                        {unifiedServiceData.currentViewData.pendingPct}%
-                      </span>
-                    </div>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-rose-950/20 border border-rose-500/30">
-                    <span className="text-[10px] uppercase font-semibold text-rose-400 block">Rejected</span>
-                    <div className="flex items-baseline justify-between mt-1">
-                      <span className="text-lg font-bold font-mono text-white">
-                        {unifiedServiceData.currentViewData.rejected}
-                      </span>
-                      <span className="text-xs font-mono text-rose-400 font-semibold">
-                        {unifiedServiceData.currentViewData.rejectedPct}%
-                      </span>
-                    </div>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-slate-800/40 border border-slate-700/60">
-                    <span className="text-[10px] uppercase font-semibold text-slate-400 block">Cancelled</span>
-                    <div className="flex items-baseline justify-between mt-1">
-                      <span className="text-lg font-bold font-mono text-white">
-                        {unifiedServiceData.currentViewData.cancelled}
-                      </span>
-                      <span className="text-xs font-mono text-slate-400 font-semibold">
-                        {unifiedServiceData.currentViewData.cancelledPct}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Overall Service Proportion Stacked Bar */}
-                <div className="space-y-1 pt-1">
-                  <div className="flex items-center justify-between text-xs text-slate-400">
-                    <span>Status Distribution</span>
-                    <span className="font-mono text-white font-medium">
-                      Total: {unifiedServiceData.currentViewData.total} Requisitions
-                    </span>
-                  </div>
-                  <div className="h-3.5 w-full bg-slate-800 rounded-full overflow-hidden flex shadow-inner">
-                    {unifiedServiceData.currentViewData.total > 0 ? (
-                      <>
-                        <div
-                          style={{ width: `${unifiedServiceData.currentViewData.approvedPct}%` }}
-                          className="bg-emerald-500 h-full"
-                          title={`Approved: ${unifiedServiceData.currentViewData.approved} (${unifiedServiceData.currentViewData.approvedPct}%)`}
-                        />
-                        <div
-                          style={{ width: `${unifiedServiceData.currentViewData.pendingPct}%` }}
-                          className="bg-amber-500 h-full"
-                          title={`Pending: ${unifiedServiceData.currentViewData.pending} (${unifiedServiceData.currentViewData.pendingPct}%)`}
-                        />
-                        <div
-                          style={{ width: `${unifiedServiceData.currentViewData.rejectedPct}%` }}
-                          className="bg-rose-500 h-full"
-                          title={`Rejected: ${unifiedServiceData.currentViewData.rejected} (${unifiedServiceData.currentViewData.rejectedPct}%)`}
-                        />
-                        <div
-                          style={{ width: `${unifiedServiceData.currentViewData.cancelledPct}%` }}
-                          className="bg-slate-500 h-full"
-                          title={`Cancelled: ${unifiedServiceData.currentViewData.cancelled} (${unifiedServiceData.currentViewData.cancelledPct}%)`}
-                        />
-                      </>
-                    ) : (
-                      <div className="w-full bg-slate-800 h-full flex items-center justify-center text-[10px] text-slate-600">
-                        No requests recorded for this service
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Status Progress Detail Rows */}
-                <div className="space-y-1.5 pt-1">
-                  {[
-                    { label: 'Approved', count: unifiedServiceData.currentViewData.approved, pct: unifiedServiceData.currentViewData.approvedPct, color: 'bg-emerald-500', text: 'text-emerald-400' },
-                    { label: 'Pending Review', count: unifiedServiceData.currentViewData.pending, pct: unifiedServiceData.currentViewData.pendingPct, color: 'bg-amber-500', text: 'text-amber-400' },
-                    { label: 'Rejected', count: unifiedServiceData.currentViewData.rejected, pct: unifiedServiceData.currentViewData.rejectedPct, color: 'bg-rose-500', text: 'text-rose-400' },
-                    { label: 'Cancelled', count: unifiedServiceData.currentViewData.cancelled, pct: unifiedServiceData.currentViewData.cancelledPct, color: 'bg-slate-500', text: 'text-slate-400' }
-                  ].map((row) => (
-                    <div key={row.label} className="space-y-0.5">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-300 font-medium flex items-center gap-1.5">
-                          <span className={`w-1.5 h-1.5 rounded-full ${row.color}`}></span>
-                          {row.label}
-                        </span>
-                        <span className="font-mono text-slate-400 text-[11px]">
-                          <strong className={row.text}>{row.count}</strong> ({row.pct}%)
-                        </span>
-                      </div>
-                      <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                        <div
-                          style={{ width: `${row.pct}%` }}
-                          className={`${row.color} h-full rounded-full transition-all duration-300`}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* DISTINCT PENDING WORKFLOW STAGE BREAKDOWN */}
-            <div className="mt-4 pt-3.5 border-t border-slate-800/80">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-amber-400" />
-                  Pending Workflow Stages Breakdown
-                </span>
-                <span className="text-[10px] text-slate-500 font-mono">
-                  {selectedGraphService === 'ALL'
-                    ? <>Total Pending: <strong className="text-amber-400">{unifiedServiceData.overallStats.pending}</strong></>
-                    : <>Service Pending: <strong className="text-amber-400">{unifiedServiceData.currentViewData.pending}</strong></>
-                  }
-                </span>
-              </div>
-
-              {selectedGraphService === 'ACCOMMODATION' ? (
-                /* Accommodation-Specific 2-Stage Pending Workflow */
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div
-                    className={`p-2.5 rounded-xl border transition-all ${
-                      unifiedServiceData.currentViewData.pendingAoForwarding > 0
-                        ? 'bg-cyan-950/30 border-cyan-500/40 shadow-sm'
-                        : 'bg-slate-850/40 border-slate-800 opacity-60'
-                    }`}
-                    title="Accommodation requests pending AO Admin review and forwarding"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-semibold text-cyan-300 flex items-center gap-1">
-                        <Send className="w-3 h-3 text-cyan-400" />
-                        1. Awaiting AO Admin Forwarding
-                      </span>
-                      <span className="text-xs font-bold font-mono text-cyan-300">
-                        {unifiedServiceData.currentViewData.pendingAoForwarding}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-1 leading-snug">
-                      Requisitions awaiting AO review to assign/forward to Boys or Girls Hostel Admin
-                    </p>
-                  </div>
-
-                  <div
-                    className={`p-2.5 rounded-xl border transition-all ${
-                      unifiedServiceData.currentViewData.pendingHostelAdmin > 0
-                        ? 'bg-orange-950/30 border-orange-500/40 shadow-sm'
-                        : 'bg-slate-850/40 border-slate-800 opacity-60'
-                    }`}
-                    title="Forwarded by AO Admin, awaiting hostel administrator room allocation"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-semibold text-orange-300 flex items-center gap-1">
-                        <Home className="w-3 h-3 text-orange-400" />
-                        2. Awaiting Hostel Admin Action
-                      </span>
-                      <span className="text-xs font-bold font-mono text-orange-300">
-                        {unifiedServiceData.currentViewData.pendingHostelAdmin}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-1 leading-snug">
-                      Forwarded to Boys/Girls Hostel Administrator for room verification & allocation
-                    </p>
-                  </div>
-                </div>
-              ) : selectedGraphService !== 'ALL' ? (
-                /* Other Individual Service Pending Note */
-                <div className="p-2.5 rounded-xl bg-slate-850/50 border border-slate-800 text-xs flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-slate-300">
-                    <Clock className="w-3.5 h-3.5 text-amber-400" />
-                    <span>
-                      {selectedGraphService === 'SEMINAR_HALL' && 'Seminar Hall booking requests under coordinator verification'}
-                      {selectedGraphService === 'TRANSPORT' && 'Transport vehicle allocation requests pending transport incharge'}
-                      {selectedGraphService === 'STATIONERY' && 'Stationery requests pending inventory verification & dispatch'}
-                      {selectedGraphService === 'MEALS' && 'Snacks & meals catering orders under cafeteria approval'}
-                    </span>
-                  </div>
-                  <span className="font-mono font-bold text-amber-400">
-                    {unifiedServiceData.currentViewData.pending} Pending
-                  </span>
-                </div>
-              ) : (
-                /* All Services 3-Way Pending Workflow Breakdown */
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {/* 1. Awaiting AO Admin Forwarding */}
-                  <div
-                    className={`p-2.5 rounded-xl border transition-all ${
-                      unifiedServiceData.overallStats.pendingAoForwarding > 0
-                        ? 'bg-cyan-950/30 border-cyan-500/40 shadow-sm'
-                        : 'bg-slate-850/40 border-slate-800 opacity-60'
-                    }`}
-                    title="Accommodation requests pending AO Admin review and forwarding"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-semibold text-cyan-300 flex items-center gap-1">
-                        <Send className="w-3 h-3 text-cyan-400" />
-                        Awaiting AO Forwarding
-                      </span>
-                      <span className="text-xs font-bold font-mono text-cyan-300">
-                        {unifiedServiceData.overallStats.pendingAoForwarding}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-1 leading-snug">
-                      Accommodation requests to forward to hostel admin
-                    </p>
-                  </div>
-
-                  {/* 2. Awaiting Hostel Administrator */}
-                  <div
-                    className={`p-2.5 rounded-xl border transition-all ${
-                      unifiedServiceData.overallStats.pendingHostelAdmin > 0
-                        ? 'bg-orange-950/30 border-orange-500/40 shadow-sm'
-                        : 'bg-slate-850/40 border-slate-800 opacity-60'
-                    }`}
-                    title="Forwarded by AO Admin, currently awaiting Boys or Girls Hostel Admin approval"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-semibold text-orange-300 flex items-center gap-1">
-                        <Home className="w-3 h-3 text-orange-400" />
-                        Awaiting Hostel Admin
-                      </span>
-                      <span className="text-xs font-bold font-mono text-orange-300">
-                        {unifiedServiceData.overallStats.pendingHostelAdmin}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-1 leading-snug">
-                      Forwarded to Boys/Girls Hostel Administrator
-                    </p>
-                  </div>
-
-                  {/* 3. General Service Pending */}
-                  <div
-                    className={`p-2.5 rounded-xl border transition-all ${
-                      unifiedServiceData.overallStats.pendingGeneral > 0
-                        ? 'bg-amber-950/30 border-amber-500/40 shadow-sm'
-                        : 'bg-slate-850/40 border-slate-800 opacity-60'
-                    }`}
-                    title="Seminar Hall, Transport, Stationery, Snacks & Meals requests awaiting review"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-semibold text-amber-300 flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5 text-amber-400" />
-                        Other Services Pending
-                      </span>
-                      <span className="text-xs font-bold font-mono text-amber-300">
-                        {unifiedServiceData.overallStats.pendingGeneral}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-1 leading-snug">
-                      Seminar, Transport, Stationery & Meals
-                    </p>
-                  </div>
-                </div>
-              )}
             </div>
-          </div>
-
-          {/* Unified Graph Footer */}
-          <div className="pt-3 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500 mt-3">
-            <span>
-              Approval Rate:{' '}
-              <strong className="text-emerald-400 font-mono">
-                {unifiedServiceData.currentViewData.total > 0
-                  ? Math.round(
-                      (unifiedServiceData.currentViewData.approved / unifiedServiceData.currentViewData.total) * 100
-                    )
-                  : 0}
-                %
-              </strong>
-            </span>
-            <span className="text-slate-400">
-              {unifiedServiceData.currentViewData.total === 0
-                ? 'No records match filter'
-                : 'Synchronized with active filters'}
-            </span>
-          </div>
+          )}
         </div>
 
-        {/* ========================================================= */}
-        {/* GRAPH 2: RESOURCE / FACILITY UTILIZATION                  */}
-        {/* ========================================================= */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
-          <div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800/80 mb-4">
-              <div>
-                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-indigo-400" />
-                  Resource & Facility Utilization
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Capacity metrics, booking volume, and resource demand
-                </p>
-              </div>
-
-              {/* Sub-Service Tab Selector when Multiple Services are Active */}
-              {activeServicesList.length > 1 && (
-                <div className="flex items-center bg-slate-850 rounded-lg p-0.5 border border-slate-800 overflow-x-auto max-w-full">
-                  {activeServicesList.map((srv) => {
-                    const IconComp = srv.icon;
-                    const isActive = currentFacilityTab === srv.id;
-                    return (
-                      <button
-                        key={srv.id}
-                        type="button"
-                        onClick={() => setActiveFacilityTab(srv.id)}
-                        className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md font-medium transition whitespace-nowrap ${
-                          isActive
-                            ? 'bg-blue-600 text-white shadow-sm'
-                            : 'text-slate-400 hover:text-slate-200'
-                        }`}
-                      >
-                        <IconComp className="w-3.5 h-3.5" />
-                        {srv.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* TAB CONTENT: SEMINAR HALLS */}
-            {currentFacilityTab === 'SEMINAR_HALL' && (
-              <div className="space-y-3 pt-1">
-                {facilityData.isSpecificHall && (
-                  <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300 flex items-center justify-between">
-                    <span>
-                      Filtering resource: <strong>{selectedHall}</strong>
-                    </span>
-                    <span className="font-mono text-white">Specific Venue View</span>
-                  </div>
-                )}
-
-                {facilityData.halls.length > 0 ? (
-                  <div className="space-y-3">
-                    {facilityData.halls.map((hall) => {
-                      const hours = hall.totalBookedHours || 0;
-                      const pct = Math.min(
-                        100,
-                        Math.round((hours / Math.max(facilityData.maxHallHours, 1)) * 100)
-                      );
-
-                      return (
-                        <div key={hall.hallId} className="space-y-1">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-slate-200 font-medium flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-                              {hall.hallName}
-                              <span className="text-[10px] text-slate-500 font-mono">({hall.hallId})</span>
-                            </span>
-                            <span className="text-slate-400 font-mono text-[11px]">
-                              <strong className="text-white">{hours} hrs</strong> ({hall.total} bookings)
-                            </span>
-                          </div>
-                          {/* Progress Bar with Slot Distribution */}
-                          <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden flex">
-                            <div
-                              style={{ width: `${(hall.forenoonCount / Math.max(hall.total, 1)) * pct}%` }}
-                              className="bg-blue-500 h-full"
-                              title={`Forenoon: ${hall.forenoonCount}`}
-                            />
-                            <div
-                              style={{ width: `${(hall.afternoonCount / Math.max(hall.total, 1)) * pct}%` }}
-                              className="bg-indigo-500 h-full"
-                              title={`Afternoon: ${hall.afternoonCount}`}
-                            />
-                            <div
-                              style={{ width: `${(hall.fullDayCount / Math.max(hall.total, 1)) * pct}%` }}
-                              className="bg-emerald-500 h-full"
-                              title={`Full Day: ${hall.fullDayCount}`}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {/* Slot Color Legend */}
-                    <div className="flex items-center justify-center gap-4 text-[10px] text-slate-400 pt-2">
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded bg-blue-500"></span> Forenoon (3h)
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded bg-indigo-500"></span> Afternoon (4h)
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded bg-emerald-500"></span> Full Day (7h)
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="py-8 text-center text-slate-500 text-xs">
-                    No seminar hall bookings found for selected criteria.
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* TAB CONTENT: ACCOMMODATION */}
-            {currentFacilityTab === 'ACCOMMODATION' && (
-              <div className="space-y-3 pt-1">
-                <div className="flex items-center justify-between text-xs text-slate-400 pb-1">
-                  <span>Hostel / Room Allocation</span>
-                  <span>
-                    Total Guests:{' '}
-                    <strong className="text-white font-mono">
-                      {reportData?.accommodationMetrics?.totalGuests || 0}
-                    </strong>
-                  </span>
-                </div>
-
-                {facilityData.accommodation.length > 0 ? (
-                  <div className="space-y-2.5">
-                    {facilityData.accommodation.map((room) => {
-                      const pct = Math.round((room.count / facilityData.maxAccBookings) * 100);
-                      return (
-                        <div key={room.name} className="space-y-1">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-slate-300">{room.name}</span>
-                            <span className="font-mono text-white text-xs">{room.count} stays</span>
-                          </div>
-                          <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${pct}%` }}></div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="py-8 text-center text-slate-500 text-xs">
-                    No guest house bookings found for selected criteria.
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* TAB CONTENT: TRANSPORT */}
-            {currentFacilityTab === 'TRANSPORT' && (
-              <div className="space-y-3 pt-1">
-                <div className="flex items-center justify-between text-xs text-slate-400 pb-1">
-                  <span>Fleet Vehicle Deployment</span>
-                  <span>
-                    Total Passengers:{' '}
-                    <strong className="text-white font-mono">
-                      {reportData?.transportMetrics?.totalPassengers || 0}
-                    </strong>
-                  </span>
-                </div>
-
-                {facilityData.transport.length > 0 ? (
-                  <div className="space-y-2.5">
-                    {facilityData.transport.map((v) => {
-                      const pct = Math.round((v.count / facilityData.maxTransBookings) * 100);
-                      return (
-                        <div key={v.name} className="space-y-1">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-slate-300">{v.name}</span>
-                            <span className="font-mono text-white text-xs">{v.count} trips</span>
-                          </div>
-                          <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                            <div className="h-full bg-amber-500 rounded-full" style={{ width: `${pct}%` }}></div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="py-8 text-center text-slate-500 text-xs">
-                    No fleet journeys recorded for selected criteria.
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* TAB CONTENT: STATIONERY */}
-            {currentFacilityTab === 'STATIONERY' && (
-              <div className="space-y-3 pt-1">
-                <div className="flex items-center justify-between text-xs text-slate-400 pb-1">
-                  <span>Top Requested Consumables</span>
-                  <span>
-                    Items Tracked: <strong className="text-white font-mono">{facilityData.stationery.length}</strong>
-                  </span>
-                </div>
-
-                {facilityData.stationery.length > 0 ? (
-                  <div className="space-y-2.5">
-                    {facilityData.stationery.map((item) => {
-                      const pct = Math.round((item.totalQuantity / facilityData.maxStationeryQty) * 100);
-                      return (
-                        <div key={item.name} className="space-y-1">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-slate-300">{item.name}</span>
-                            <span className="font-mono text-indigo-400 text-xs">
-                              {item.totalQuantity} {item.unit}{' '}
-                              <span className="text-slate-500">({item.requestCount} reqs)</span>
-                            </span>
-                          </div>
-                          <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                            <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${pct}%` }}></div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="py-8 text-center text-slate-500 text-xs">
-                    No stationery requisitions found for selected criteria.
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* TAB CONTENT: SNACKS & MEALS */}
-            {currentFacilityTab === 'MEALS' && (
-              <div className="space-y-3 pt-1">
-                <div className="flex items-center justify-between text-xs text-slate-400 pb-1">
-                  <span>Catering Headcount Breakdown</span>
-                  <span>Approved Servings</span>
-                </div>
-
-                <div className="space-y-2.5">
-                  {facilityData.meals.map((meal) => {
-                    const pct = Math.round((meal.count / facilityData.maxMealCount) * 100);
-                    return (
-                      <div key={meal.name} className="space-y-1">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-300">{meal.name}</span>
-                          <span className="font-mono text-white text-xs">{meal.count} guests</span>
-                        </div>
-                        <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all"
-                            style={{ width: `${pct}%`, backgroundColor: meal.barColor }}
-                          ></div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Facility Footer */}
-          <div className="pt-3 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500">
-            <span>
-              Active Resource:{' '}
-              <strong className="text-slate-300 font-semibold">{currentFacilityTab.replace('_', ' ')}</strong>
-            </span>
-            <span>Capacity analytics updated</span>
-          </div>
+        {/* Facility Footer */}
+        <div className="pt-3 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500 mt-4">
+          <span>
+            Active Resource:{' '}
+            <strong className="text-slate-300 font-semibold">{currentFacilityTab.replace('_', ' ')}</strong>
+          </span>
+          <span>Department-filtered capacity metrics updated</span>
         </div>
       </div>
 
@@ -1296,23 +1738,8 @@ export default function ReportsAnalyticsGraphs({
             </p>
           </div>
 
-          {/* Controls: Legend and Sorting */}
+          {/* Controls: Sorting Controls (Top Legend removed per requirement) */}
           <div className="flex flex-wrap items-center gap-3">
-            {/* Status Legend */}
-            <div className="flex flex-wrap items-center gap-3 text-xs bg-slate-800/60 border border-slate-700/60 px-3 py-1.5 rounded-xl">
-              <span className="flex items-center gap-1.5 text-slate-300">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Approved
-              </span>
-              <span className="flex items-center gap-1.5 text-slate-300">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Pending
-              </span>
-              <span className="flex items-center gap-1.5 text-slate-300">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Rejected
-              </span>
-              <span className="flex items-center gap-1.5 text-slate-300">
-                <span className="w-2.5 h-2.5 rounded-full bg-slate-500"></span> Cancelled
-              </span>
-            </div>
 
             {/* Sort Toggle */}
             <div className="flex items-center bg-slate-850 rounded-xl p-1 border border-slate-800 text-xs">

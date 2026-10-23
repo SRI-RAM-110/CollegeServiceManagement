@@ -382,20 +382,20 @@ export default function Reports() {
   const mealsServiceActive = isServiceIncluded('MEALS');
 
   return (
-    <div className="space-y-6 pb-16">
+    <div className="space-y-8 pb-20">
       {/* 1. Header & Institutional Branding (Tabs removed for unified layout) */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm shadow-xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
                 <BarChart3 className="w-5 h-5 text-blue-400" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
                   Reports & Analytics
                 </h1>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-400 mt-0.5">
                   Narasaraopet Engineering College (Autonomous) &bull; Service Performance & Requisition Auditing
                 </p>
               </div>
@@ -403,10 +403,10 @@ export default function Reports() {
           </div>
 
           {/* User Role Context & Export Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-xs text-slate-300">
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-              <span>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800/80 border border-slate-700/60 text-xs text-slate-300 h-10">
+              <ShieldCheck className="w-4 h-4 text-blue-400 shrink-0" />
+              <span className="font-medium">
                 {permissions?.aoAdmin
                   ? 'AO Super Admin'
                   : permissions?.seminarCoordinator
@@ -420,7 +420,7 @@ export default function Reports() {
             <button
               onClick={fetchReportData}
               disabled={loading}
-              className="btn btn-secondary flex items-center gap-1.5 px-3 py-2 text-xs"
+              className="btn btn-secondary flex items-center gap-2 px-3.5 py-2 text-xs rounded-xl h-10 font-medium transition"
               title="Refresh Data"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-blue-400' : ''}`} />
@@ -430,7 +430,7 @@ export default function Reports() {
             <button
               onClick={handleExportPdf}
               disabled={pdfDownloading || loading}
-              className="btn flex items-center gap-1.5 px-3 py-2 text-xs bg-rose-600/90 hover:bg-rose-500 text-white rounded-lg transition shadow-sm font-medium disabled:opacity-50"
+              className="btn flex items-center gap-2 px-3.5 py-2 text-xs bg-rose-600 hover:bg-rose-500 text-white rounded-xl transition shadow-sm font-medium h-10 disabled:opacity-50"
             >
               <Download className={`w-3.5 h-3.5 ${pdfDownloading ? 'animate-bounce' : ''}`} />
               <span>{pdfDownloading ? 'Generating...' : 'Download PDF'}</span>
@@ -439,7 +439,7 @@ export default function Reports() {
             <button
               onClick={handleExportExcel}
               disabled={excelDownloading || loading}
-              className="btn flex items-center gap-1.5 px-3 py-2 text-xs bg-emerald-600/90 hover:bg-emerald-500 text-white rounded-lg transition shadow-sm font-medium disabled:opacity-50"
+              className="btn flex items-center gap-2 px-3.5 py-2 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition shadow-sm font-medium h-10 disabled:opacity-50"
             >
               <FileSpreadsheet className={`w-3.5 h-3.5 ${excelDownloading ? 'animate-bounce' : ''}`} />
               <span>{excelDownloading ? 'Exporting...' : 'Download Excel'}</span>
@@ -449,11 +449,11 @@ export default function Reports() {
       </div>
 
       {/* 2. Interactive Date Filters & Multi-Select Filters */}
-      <div className="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-5 space-y-4">
+      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-5 shadow-xl">
         {/* Quick Date Filters + Custom Picker */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800/60">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-xs font-semibold text-slate-400 mr-2 flex items-center gap-1">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-slate-400 mr-2 flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-blue-400" /> Date Filter:
             </span>
             {[
@@ -467,10 +467,10 @@ export default function Reports() {
               <button
                 key={d.id}
                 onClick={() => handleQuickDate(d.id)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
                   dateRangeType === d.id
-                    ? 'bg-blue-500/20 text-blue-400 border border-blue-500/40'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                    ? 'bg-blue-500/20 text-blue-400 border border-blue-500/40 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/70 border border-transparent'
                 }`}
               >
                 {d.label}
@@ -485,7 +485,7 @@ export default function Reports() {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="input text-xs py-1.5 px-2 bg-slate-800 border-slate-700 text-white rounded-lg"
+                className="input text-xs py-2 px-2.5 bg-slate-800 border-slate-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                 placeholder="From Date"
               />
               <span className="text-slate-500 text-xs">to</span>
@@ -493,7 +493,7 @@ export default function Reports() {
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="input text-xs py-1.5 px-2 bg-slate-800 border-slate-700 text-white rounded-lg"
+                className="input text-xs py-2 px-2.5 bg-slate-800 border-slate-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                 placeholder="To Date"
               />
             </div>
@@ -501,7 +501,7 @@ export default function Reports() {
         </div>
 
         {/* Dropdown Filters Grid with Multi-Selects */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
           {/* Multi-Select Service Filter */}
           <MultiSelectDropdown
             label="Services"
@@ -523,7 +523,7 @@ export default function Reports() {
                 </span>
                 <span className="text-[10px] text-emerald-400 font-mono">Assigned</span>
               </label>
-              <div className="w-full flex items-center justify-between px-3 py-2 text-xs rounded-xl bg-slate-800/80 border border-slate-700 text-emerald-400 font-medium">
+              <div className="w-full flex items-center justify-between px-3 py-2 text-xs rounded-xl bg-slate-800/80 border border-slate-700 text-emerald-400 font-medium h-10">
                 <span>{permissions.userDepartment}</span>
                 <span className="text-[10px] text-slate-500 font-normal">Locked</span>
               </div>
@@ -554,7 +554,7 @@ export default function Reports() {
             </label>
             {seminarHallServiceActive ? (
               permissions?.seminarCoordinator && permissions?.allowedHalls?.length === 1 ? (
-                <div className="w-full flex items-center justify-between px-3 py-2 text-xs rounded-xl bg-slate-800/80 border border-slate-700 text-blue-400 font-medium">
+                <div className="w-full flex items-center justify-between px-3 py-2 text-xs rounded-xl bg-slate-800/80 border border-slate-700 text-blue-400 font-medium h-10">
                   <span>{permissions.allowedHalls[0].hallName}</span>
                   <span className="text-[10px] text-slate-500 font-normal">Assigned</span>
                 </div>
@@ -562,7 +562,7 @@ export default function Reports() {
                 <select
                   value={selectedHallId}
                   onChange={(e) => setSelectedHallId(e.target.value)}
-                  className="input text-xs py-2 px-3 bg-slate-800 border-slate-700 text-white rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                  className="input text-xs py-2 px-3 bg-slate-800 border-slate-700 text-white rounded-xl w-full h-10 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                 >
                   <option value="ALL">All Seminar Halls</option>
                   {permissions?.allowedHalls?.map((hall) => (
@@ -573,7 +573,7 @@ export default function Reports() {
                 </select>
               )
             ) : (
-              <div className="w-full px-3 py-2 text-xs rounded-xl bg-slate-800/50 border border-slate-700/50 text-slate-500 flex items-center justify-between">
+              <div className="w-full px-3 py-2 text-xs rounded-xl bg-slate-800/50 border border-slate-700/50 text-slate-500 flex items-center justify-between h-10">
                 <span>Not applicable</span>
                 <span className="text-[10px] text-slate-600">Select Hall</span>
               </div>
@@ -594,10 +594,10 @@ export default function Reports() {
       </div>
 
       {/* 3. Executive KPI Metric Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
-        <div className="card-panel p-4 border-l-4 border-l-blue-500">
-          <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
-            <span>Total Requisitions</span>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="card-panel p-5 rounded-2xl border-l-4 border-l-blue-500 shadow-md">
+          <div className="flex items-center justify-between text-slate-400 text-xs mb-1.5">
+            <span className="font-medium">Total Requisitions</span>
             <Layers className="w-4 h-4 text-blue-400" />
           </div>
           <div className="text-2xl font-bold font-mono text-white">
@@ -608,9 +608,9 @@ export default function Reports() {
           </div>
         </div>
 
-        <div className="card-panel p-4 border-l-4 border-l-emerald-500">
-          <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
-            <span>Approved / Confirmed</span>
+        <div className="card-panel p-5 rounded-2xl border-l-4 border-l-emerald-500 shadow-md">
+          <div className="flex items-center justify-between text-slate-400 text-xs mb-1.5">
+            <span className="font-medium">Approved / Confirmed</span>
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="text-2xl font-bold font-mono text-emerald-400">
@@ -623,9 +623,9 @@ export default function Reports() {
           </div>
         </div>
 
-        <div className="card-panel p-4 border-l-4 border-l-amber-500">
-          <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
-            <span>Pending Review</span>
+        <div className="card-panel p-5 rounded-2xl border-l-4 border-l-amber-500 shadow-md">
+          <div className="flex items-center justify-between text-slate-400 text-xs mb-1.5">
+            <span className="font-medium">Pending Review</span>
             <Clock className="w-4 h-4 text-amber-400" />
           </div>
           <div className="text-2xl font-bold font-mono text-amber-400">
@@ -638,9 +638,9 @@ export default function Reports() {
           </div>
         </div>
 
-        <div className="card-panel p-4 border-l-4 border-l-rose-500">
-          <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
-            <span>Rejected</span>
+        <div className="card-panel p-5 rounded-2xl border-l-4 border-l-rose-500 shadow-md">
+          <div className="flex items-center justify-between text-slate-400 text-xs mb-1.5">
+            <span className="font-medium">Rejected</span>
             <XCircle className="w-4 h-4 text-rose-400" />
           </div>
           <div className="text-2xl font-bold font-mono text-rose-400">
@@ -651,9 +651,9 @@ export default function Reports() {
           </div>
         </div>
 
-        <div className="card-panel p-4 border-l-4 border-l-slate-500">
-          <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
-            <span>Cancelled</span>
+        <div className="card-panel p-5 rounded-2xl border-l-4 border-l-slate-500 shadow-md">
+          <div className="flex items-center justify-between text-slate-400 text-xs mb-1.5">
+            <span className="font-medium">Cancelled</span>
             <AlertCircle className="w-4 h-4 text-slate-400" />
           </div>
           <div className="text-2xl font-bold font-mono text-slate-300">
@@ -678,6 +678,7 @@ export default function Reports() {
         endDate={endDate}
         displayedServiceBreakdown={displayedServiceBreakdown}
         displayedDeptBreakdown={displayedDeptBreakdown}
+        departmentOptions={departmentOptions}
       />
 
       {/* 5. Service Metrics & Analytics Section */}
@@ -1113,8 +1114,8 @@ export default function Reports() {
       </div>
 
       {/* 6. Detailed Requests Table Section */}
-      <div className="card-panel p-5 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
           <div>
             <h2 className="text-base font-bold text-white flex items-center gap-2">
               <FileText className="w-4 h-4 text-blue-400" />
@@ -1126,7 +1127,7 @@ export default function Reports() {
           </div>
 
           {/* Search Input & Page Size */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
@@ -1137,7 +1138,7 @@ export default function Reports() {
                   setCurrentPage(1);
                 }}
                 placeholder="Search requests..."
-                className="input text-xs py-1.5 pl-8 pr-3 bg-slate-800 border-slate-700 text-white rounded-lg w-48 sm:w-64 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                className="input text-xs py-2 pl-9 pr-3 bg-slate-800 border-slate-700 text-white rounded-xl w-48 sm:w-64 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
               />
             </div>
 
@@ -1147,7 +1148,7 @@ export default function Reports() {
                 setPageSize(Number(e.target.value));
                 setCurrentPage(1);
               }}
-              className="input text-xs py-1.5 px-2 bg-slate-800 border-slate-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+              className="input text-xs py-2 px-3 bg-slate-800 border-slate-700 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/40"
             >
               <option value={10}>10 / page</option>
               <option value={15}>15 / page</option>

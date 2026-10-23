@@ -1675,3 +1675,27 @@
 [data-theme="light"] .shadow-2xl {
   box-shadow: 0 10px 25px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04) !important;
 }
+
+/* ============================================================
+   REPORTS & ANALYTICS: FOUR STATUS CHART CARDS (LIGHT THEME)
+   ============================================================ */
+[data-theme="light"] .status-bar-chart-section {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04) !important;
+}
+
+[data-theme="light"] .status-bar-chart-card {
+  background: #ffffff !important;
+  box-shadow: 0 2px 8px -1px rgba(15, 23, 42, 0.06), 0 1px 3px -1px rgba(15, 23, 42, 0.04) !important;
+}
+
+[data-theme="light"] .status-bar-chart-card:hover {
+  box-shadow: 0 8px 24px -2px rgba(15, 23, 42, 0.08) !important;
+}
+
+[data-theme="light"] .status-bar-chart-hint {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #475569 !important;
+}
