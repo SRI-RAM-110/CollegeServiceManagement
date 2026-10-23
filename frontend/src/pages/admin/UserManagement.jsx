@@ -740,26 +740,44 @@ export default function UserManagement() {
                           </div>
                         </td>
 
+
                         {/* Seminar Hall Access */}
                         <td className="py-2 px-2">
-                          <div className="flex flex-wrap gap-1 max-w-[130px]">
+                          <div className="flex flex-wrap gap-1 max-w-[220px]">
                             {isCoord ? (
-                              (u.assignedHallIds && u.assignedHallIds.length > 0) ? (
-                                u.assignedHallIds.map((h) => (
-                                  <span key={h} className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-blue-500/15 text-blue-300 border border-blue-500/30">
-                                    {h}
-                                  </span>
-                                ))
+                              u.assignedHallIds && u.assignedHallIds.length > 0 ? (
+                                u.assignedHallIds.map((hallId) => {
+                                  const hall = availableHalls.find(
+                                    (h) =>
+                                      String(h.id).trim().toLowerCase() ===
+                                      String(hallId).trim().toLowerCase()
+                                  );
+
+                                  return (
+                                    <span
+                                      key={hallId}
+                                      title={hall ? `${hall.name} (${hallId})` : hallId}
+                                      className="inline-block text-[11px] px-2 py-1 rounded-md font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30 whitespace-normal break-words"
+                                    >
+                                      {hall?.name || hallId}
+                                    </span>
+                                  );
+                                })
                               ) : (
-                                <span className="text-rose-400 text-[10px] italic">No Halls Assigned</span>
+                                <span className="text-rose-400 text-[10px] italic">
+                                  No Halls Assigned
+                                </span>
                               )
-                            ) : (isAO || isTargetCreator) ? (
-                              <span className="text-emerald-400 text-[10px] font-medium">All Halls ({isTargetCreator ? 'Creator' : 'Global'})</span>
+                            ) : isAO || isTargetCreator ? (
+                              <span className="text-emerald-400 text-[10px] font-medium">
+                                All Halls ({isTargetCreator ? 'Creator' : 'Global'})
+                              </span>
                             ) : (
                               <span className="text-slate-500 text-[11px]">N/A</span>
                             )}
                           </div>
                         </td>
+
 
                         {/* Status */}
                         <td className="py-2 px-1.5 text-center">
