@@ -632,7 +632,9 @@ export default function Reports() {
             {summary.pending || 0}
           </div>
           <div className="text-[11px] text-slate-500 mt-1 truncate">
-            Awaiting administrator action
+            {summary.pendingAoReview > 0
+              ? `${summary.pendingAoReview} awaiting AO forwarding`
+              : 'Awaiting administrator action'}
           </div>
         </div>
 
@@ -692,70 +694,8 @@ export default function Reports() {
           </div>
         </div>
 
-        {/* Overall Service Usage Breakdown Table */}
-        <div className="card-panel p-5 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Layers className="w-4 h-4 text-blue-400" />
-              Overall Service Breakdown
-            </h3>
-            <span className="text-xs text-slate-400 font-mono">
-              {displayedServiceBreakdown.length} active service{displayedServiceBreakdown.length !== 1 ? 's' : ''}
-            </span>
-          </div>
+        {/* Overall Service Breakdown table has been combined into the Unified Service & Status Analytics Graph above */}
 
-          <div className="overflow-x-auto">
-            <table className="table w-full text-left">
-              <thead>
-                <tr className="border-b border-slate-800 text-[11px] text-slate-400 uppercase tracking-wider">
-                  <th className="pb-3 font-semibold">Service</th>
-                  <th className="pb-3 font-semibold text-center">Total Requests</th>
-                  <th className="pb-3 font-semibold text-center text-emerald-400">Approved</th>
-                  <th className="pb-3 font-semibold text-center text-amber-400">Pending</th>
-                  <th className="pb-3 font-semibold text-center text-rose-400">Rejected</th>
-                  <th className="pb-3 font-semibold text-center text-slate-400">Cancelled</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60 text-xs">
-                {displayedServiceBreakdown.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" className="py-6 text-center text-slate-500">
-                      No service usage records found for the selected filters.
-                    </td>
-                  </tr>
-                ) : (
-                  displayedServiceBreakdown.map((row) => (
-                    <tr key={row.serviceName} className="hover:bg-slate-800/30 transition">
-                      <td className="py-3 font-medium text-white flex items-center gap-2">
-                        {row.serviceName === 'Seminar Hall' && <Building2 className="w-4 h-4 text-blue-400" />}
-                        {row.serviceName === 'Accommodation' && <Home className="w-4 h-4 text-emerald-400" />}
-                        {row.serviceName === 'Transport' && <Truck className="w-4 h-4 text-amber-400" />}
-                        {row.serviceName === 'Stationery' && <FileText className="w-4 h-4 text-indigo-400" />}
-                        {row.serviceName === 'Snacks & Meals' && <Utensils className="w-4 h-4 text-sky-400" />}
-                        <span>{row.serviceName}</span>
-                      </td>
-                      <td className="py-3 text-center font-mono font-bold text-slate-200">
-                        {row.totalRequests}
-                      </td>
-                      <td className="py-3 text-center font-mono text-emerald-400 font-semibold">
-                        {row.approved}
-                      </td>
-                      <td className="py-3 text-center font-mono text-amber-400 font-semibold">
-                        {row.pending}
-                      </td>
-                      <td className="py-3 text-center font-mono text-rose-400 font-semibold">
-                        {row.rejected}
-                      </td>
-                      <td className="py-3 text-center font-mono text-slate-400">
-                        {row.cancelled}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
 
         {/* Dynamic Detail Panels for Active Services */}
 

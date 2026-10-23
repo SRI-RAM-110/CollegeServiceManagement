@@ -415,9 +415,32 @@ public class ReportService {
     private List<AccommodationRequest> fetchAccommodationRequests(ReportFilterRequest filter, User user, UserReportPermissionsDTO perm, DateRange range) {
         List<AccommodationRequest> all = accommodationRequestRepository.findAll();
         boolean isMyRequestsOnly = "MY_REQUESTS".equalsIgnoreCase(filter.getViewType());
+        boolean isSuper = perm.isAOAdmin() || (user != null && (user.hasRole("CREATOR") || user.hasRole("AO_ADMIN")));
+        boolean isAccAdmin = user != null && (user.hasRole("ACCOMMODATION_ADMIN") || user.hasRole("BOYS_HOSTEL_ADMIN") || user.hasRole("GIRLS_HOSTEL_ADMIN") || user.hasServicePermission("ACCOMMODATION_ADMIN"));
+        boolean isHostelAdminOnly = isAccAdmin && !isSuper;
 
         return all.stream()
                 .filter(a -> !isMyRequestsOnly || UnifiedRequestService.isRequestedByUser(a.getRequestedBy(), user))
+                .filter(a -> {
+                    if (isHostelAdminOnly) {
+                        if (!user.isAssignedToHostel(a.getHostel())) {
+                            return false;
+                        }
+                        if ("PENDING_AO_APPROVAL".equalsIgnoreCase(a.getStatus()) || "AO_REJECTED".equalsIgnoreCase(a.getStatus())) {
+                            return false;
+                        }
+                        if ("DIRECT_APPROVE".equalsIgnoreCase(a.getAoAction())) {
+                            return false;
+                        }
+                        boolean isForwardedToThisAdmin = "FORWARD".equalsIgnoreCase(a.getAoAction()) ||
+                                "AO_APPROVED".equalsIgnoreCase(a.getStatus()) ||
+                                (a.getStatus() != null && a.getStatus().startsWith("FORWARDED_TO_"));
+                        if (!isForwardedToThisAdmin) {
+                            return false;
+                        }
+                    }
+                    return true;
+                })
                 .filter(a -> matchDepartment(a.getDepartment(), filter.getDepartments(), filter.getDepartment()))
                 .filter(a -> matchStatuses(a.getStatus(), filter.getStatuses(), filter.getStatus()))
                 .filter(a -> matchDate(a.getCheckInDate(), range))
@@ -472,22 +495,21 @@ public class ReportService {
         if (act.equals(flt)) return true;
 
         if (flt.equals("APPROVED")) {
-            return act.equals("APPROVED") || act.equals("BOOKED") || act.equals("COLLECTED")
-                    || act.equals("READY_FOR_COLLECTION") || act.equals("AO_DIRECT_APPROVED")
-                    || act.equals("COMPLETED");
+            return isApprovedStatus(act);
         }
         if (flt.equals("PENDING")) {
-            return act.equals("PENDING") || act.equals("PENDING_AO_APPROVAL") || act.equals("AO_APPROVED")
-                    || act.equals("FORWARDED_TO_BOYS_ADMIN") || act.equals("FORWARDED_TO_GIRLS_ADMIN");
+            return isPendingStatus(act);
         }
         if (flt.equals("UNDER_REVIEW")) {
-            return act.equals("UNDER_REVIEW") || act.equals("REVIEW");
+            return act.equals("UNDER_REVIEW") || act.equals("REVIEW")
+                    || act.equals("PENDING_AO_APPROVAL") || act.equals("AO_APPROVED")
+                    || act.equals("FORWARDED_TO_BOYS_ADMIN") || act.equals("FORWARDED_TO_GIRLS_ADMIN");
         }
         if (flt.equals("REJECTED")) {
-            return act.equals("REJECTED") || act.equals("AO_REJECTED");
+            return isRejectedStatus(act);
         }
         if (flt.equals("CANCELLED")) {
-            return act.equals("CANCELLED") || act.equals("CANCELLATION_REQUESTED");
+            return isCancelledStatus(act);
         }
         if (flt.equals("COMPLETED")) {
             return act.equals("COMPLETED") || act.equals("COLLECTED");
@@ -526,6 +548,31 @@ public class ReportService {
     }
 
     private ReportDataDTO.ReportRecordDTO toRecord(AccommodationRequest a) {
+        String stage;
+        String st = a.getStatus() != null ? a.getStatus().trim().toUpperCase() : "";
+        if (isApprovedStatus(st)) {
+            stage = "APPROVED";
+        } else if (isRejectedStatus(st)) {
+            stage = "REJECTED";
+        } else if (isCancelledStatus(st)) {
+            stage = "CANCELLED";
+        } else if ("PENDING_AO_APPROVAL".equals(st) || ("PENDING".equals(st) && ("PENDING".equalsIgnoreCase(a.getAoApprovalStatus()) || a.getAoApprovalStatus() == null) && (a.getForwardedTo() == null || a.getForwardedTo().isBlank()))) {
+            stage = "AWAITING_AO_FORWARDING";
+        } else if ("FORWARDED_TO_BOYS_ADMIN".equals(st) || "FORWARDED_TO_GIRLS_ADMIN".equals(st) || "AO_APPROVED".equals(st) || "FORWARDED".equalsIgnoreCase(a.getAoApprovalStatus())) {
+            stage = "FORWARDED_HOSTEL_ADMIN";
+        } else {
+            stage = "PENDING_REVIEW";
+        }
+
+        String fwTo = a.getForwardedTo();
+        if ((fwTo == null || fwTo.isBlank()) && a.getHostel() != null) {
+            if (a.getHostel().toLowerCase().contains("boys")) {
+                fwTo = "BOYS_HOSTEL";
+            } else if (a.getHostel().toLowerCase().contains("girls")) {
+                fwTo = "GIRLS_HOSTEL";
+            }
+        }
+
         return ReportDataDTO.ReportRecordDTO.builder()
                 .requestId(a.getRequestId())
                 .service("Accommodation")
@@ -542,6 +589,9 @@ public class ReportService {
                 .slotOrTiming(a.getCheckInDate() + " to " + a.getCheckOutDate())
                 .guestOrQuantityCount(a.getGuestsCount())
                 .details("Guests: " + (a.getGuestsCount() != null ? a.getGuestsCount() : 1) + " | Room: " + (a.getRoomId() != null ? a.getRoomId() : a.getRoomType()))
+                .workflowStage(stage)
+                .aoApprovalStatus(a.getAoApprovalStatus())
+                .forwardedTo(fwTo)
                 .build();
     }
 
@@ -621,12 +671,20 @@ public class ReportService {
         long rejected = records.stream().filter(r -> isRejectedStatus(r.getStatus())).count();
         long cancelled = records.stream().filter(r -> isCancelledStatus(r.getStatus())).count();
 
+        long pendingAoReview = records.stream().filter(this::isAwaitingAoForwarding).count();
+        long pendingHostelReview = records.stream().filter(this::isAwaitingHostelReview).count();
+        long pendingGeneral = pending - pendingAoReview - pendingHostelReview;
+        if (pendingGeneral < 0) pendingGeneral = 0;
+
         return ReportDataDTO.ReportSummaryDTO.builder()
                 .totalRequests(total)
                 .approved(approved)
                 .pending(pending)
                 .rejected(rejected)
                 .cancelled(cancelled)
+                .pendingAoReview(pendingAoReview)
+                .pendingHostelReview(pendingHostelReview)
+                .pendingGeneral(pendingGeneral)
                 .build();
     }
 
@@ -666,6 +724,7 @@ public class ReportService {
         List<ReportDataDTO.DepartmentBreakdownDTO> list = new ArrayList<>();
         for (Map.Entry<String, List<ReportDataDTO.ReportRecordDTO>> entry : grouped.entrySet()) {
             List<ReportDataDTO.ReportRecordDTO> recs = entry.getValue();
+            long pendingAo = recs.stream().filter(this::isAwaitingAoForwarding).count();
             list.add(ReportDataDTO.DepartmentBreakdownDTO.builder()
                     .department(entry.getKey())
                     .total(recs.size())
@@ -673,6 +732,7 @@ public class ReportService {
                     .pending(recs.stream().filter(r -> isPendingStatus(r.getStatus())).count())
                     .rejected(recs.stream().filter(r -> isRejectedStatus(r.getStatus())).count())
                     .cancelled(recs.stream().filter(r -> isCancelledStatus(r.getStatus())).count())
+                    .pendingAoReview(pendingAo)
                     .seminarCount(recs.stream().filter(r -> "SEMINAR".equalsIgnoreCase(r.getServiceKey())).count())
                     .accommodationCount(recs.stream().filter(r -> "ACCOMMODATION".equalsIgnoreCase(r.getServiceKey())).count())
                     .transportCount(recs.stream().filter(r -> "TRANSPORT".equalsIgnoreCase(r.getServiceKey())).count())
@@ -862,23 +922,57 @@ public class ReportService {
 
     private boolean isApprovedStatus(String s) {
         if (s == null) return false;
-        return s.equalsIgnoreCase("APPROVED") || s.equalsIgnoreCase("BOOKED")
-                || s.equalsIgnoreCase("COLLECTED") || s.equalsIgnoreCase("READY_FOR_COLLECTION");
+        String u = s.trim().toUpperCase();
+        return u.equals("APPROVED") || u.equals("BOOKED") || u.equals("COLLECTED")
+                || u.equals("READY_FOR_COLLECTION") || u.equals("AO_DIRECT_APPROVED")
+                || u.equals("COMPLETED");
     }
 
     private boolean isPendingStatus(String s) {
         if (s == null) return false;
-        return s.equalsIgnoreCase("PENDING") || s.equalsIgnoreCase("UNDER_REVIEW");
+        String u = s.trim().toUpperCase();
+        return u.equals("PENDING") || u.equals("UNDER_REVIEW")
+                || u.equals("PENDING_AO_APPROVAL") || u.equals("AO_APPROVED")
+                || u.equals("FORWARDED_TO_BOYS_ADMIN") || u.equals("FORWARDED_TO_GIRLS_ADMIN")
+                || u.equals("RESCHEDULE_REQUESTED");
     }
 
     private boolean isRejectedStatus(String s) {
         if (s == null) return false;
-        return s.equalsIgnoreCase("REJECTED");
+        String u = s.trim().toUpperCase();
+        return u.equals("REJECTED") || u.equals("AO_REJECTED");
     }
 
     private boolean isCancelledStatus(String s) {
         if (s == null) return false;
-        return s.equalsIgnoreCase("CANCELLED");
+        String u = s.trim().toUpperCase();
+        return u.equals("CANCELLED") || u.equals("CANCELLATION_REQUESTED");
+    }
+
+    private boolean isAwaitingAoForwarding(ReportDataDTO.ReportRecordDTO r) {
+        if (r == null || r.getStatus() == null) return false;
+        if (!"ACCOMMODATION".equalsIgnoreCase(r.getServiceKey())) return false;
+        String st = r.getStatus().trim().toUpperCase();
+        if ("PENDING_AO_APPROVAL".equals(st)) return true;
+        if ("PENDING".equals(st) && ("PENDING".equalsIgnoreCase(r.getAoApprovalStatus()) || r.getAoApprovalStatus() == null)
+                && (r.getForwardedTo() == null || r.getForwardedTo().isBlank())) {
+            return true;
+        }
+        return false;
+    }
+
+    private boolean isAwaitingHostelReview(ReportDataDTO.ReportRecordDTO r) {
+        if (r == null || r.getStatus() == null) return false;
+        if (!"ACCOMMODATION".equalsIgnoreCase(r.getServiceKey())) return false;
+        if (!isPendingStatus(r.getStatus())) return false;
+        String st = r.getStatus().trim().toUpperCase();
+        if ("FORWARDED_TO_BOYS_ADMIN".equals(st) || "FORWARDED_TO_GIRLS_ADMIN".equals(st) || "AO_APPROVED".equals(st)) {
+            return true;
+        }
+        if ("FORWARDED".equalsIgnoreCase(r.getAoApprovalStatus())) {
+            return true;
+        }
+        return false;
     }
 
     private DateRange resolveDateRange(ReportFilterRequest filter) {

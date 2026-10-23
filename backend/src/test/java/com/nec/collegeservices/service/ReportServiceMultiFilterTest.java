@@ -367,4 +367,150 @@ public class ReportServiceMultiFilterTest {
         assertTrue(perms.getAllowedServices().contains("STATIONERY"));
         assertTrue(perms.getAllowedServices().contains("MEALS"));
     }
+
+    @Test
+    @DisplayName("Scenario 12: AO Admin accommodation requests awaiting forwarding are properly counted in pending and breakdown")
+    public void testAoAdminAccommodationPendingWorkflow() {
+        AccommodationRequest pendingAo = AccommodationRequest.builder()
+                .requestId("ACC-AO-001")
+                .department("CSE")
+                .purpose("Guest Lecture")
+                .hostel("Boys Hostel")
+                .roomType("AC Room")
+                .roomId("BH-AC-1")
+                .status("PENDING_AO_APPROVAL")
+                .aoApprovalStatus("PENDING")
+                .checkInDate("2026-10-25")
+                .checkOutDate("2026-10-27")
+                .guestsCount(1)
+                .requestedBy("Prof. Rao")
+                .requesterUserId("CSE001")
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        AccommodationRequest forwardedBoys = AccommodationRequest.builder()
+                .requestId("ACC-FWD-002")
+                .department("ECE")
+                .purpose("Workshop Guest")
+                .hostel("Boys Hostel")
+                .roomType("AC Room")
+                .roomId("BH-AC-2")
+                .status("FORWARDED_TO_BOYS_ADMIN")
+                .aoApprovalStatus("FORWARDED")
+                .forwardedTo("BOYS_HOSTEL_ADMIN")
+                .checkInDate("2026-10-25")
+                .checkOutDate("2026-10-27")
+                .guestsCount(1)
+                .requestedBy("Dr. Kumar")
+                .requesterUserId("ECE001")
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        AccommodationRequest approvedAcc = AccommodationRequest.builder()
+                .requestId("ACC-APP-003")
+                .department("EEE")
+                .purpose("Visiting Professor")
+                .hostel("Girls Hostel")
+                .roomType("AC Room")
+                .roomId("GH-AC-1")
+                .status("APPROVED")
+                .checkInDate("2026-10-25")
+                .checkOutDate("2026-10-27")
+                .guestsCount(1)
+                .requestedBy("Prof. Prasad")
+                .requesterUserId("EEE001")
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        when(accommodationRequestRepository.findAll()).thenReturn(List.of(pendingAo, forwardedBoys, approvedAcc));
+
+        ReportFilterRequest filter = ReportFilterRequest.builder()
+                .services(List.of("ACCOMMODATION"))
+                .departments(List.of("ALL"))
+                .statuses(List.of("ALL"))
+                .dateRangeType("ALL")
+                .build();
+
+        ReportDataDTO data = reportService.generateReportData(filter, aoAdminUser);
+
+        assertNotNull(data);
+        assertEquals(3, data.getSummary().getTotalRequests());
+        assertEquals(1, data.getSummary().getApproved());
+        assertEquals(2, data.getSummary().getPending()); // pendingAo + forwardedBoys
+        assertEquals(0, data.getSummary().getRejected());
+        assertEquals(0, data.getSummary().getCancelled());
+
+        // Granular workflow breakdown verification
+        assertEquals(1, data.getSummary().getPendingAoReview());
+        assertEquals(1, data.getSummary().getPendingHostelReview());
+        assertEquals(0, data.getSummary().getPendingGeneral());
+
+        // Sum agreement
+        assertEquals(data.getSummary().getTotalRequests(),
+                data.getSummary().getApproved() + data.getSummary().getPending() + data.getSummary().getRejected() + data.getSummary().getCancelled());
+
+        // Detailed records workflowStage check
+        ReportDataDTO.ReportRecordDTO aoRec = data.getDetailedRecords().stream()
+                .filter(r -> r.getRequestId().equals("ACC-AO-001")).findFirst().orElse(null);
+        assertNotNull(aoRec);
+        assertEquals("AWAITING_AO_FORWARDING", aoRec.getWorkflowStage());
+
+        ReportDataDTO.ReportRecordDTO fwdRec = data.getDetailedRecords().stream()
+                .filter(r -> r.getRequestId().equals("ACC-FWD-002")).findFirst().orElse(null);
+        assertNotNull(fwdRec);
+        assertEquals("FORWARDED_HOSTEL_ADMIN", fwdRec.getWorkflowStage());
+    }
+
+    @Test
+    @DisplayName("Scenario 13: Hostel Admin cannot see requests awaiting AO Admin forwarding")
+    public void testHostelAdminCannotSeeAoPendingRequests() {
+        AccommodationRequest pendingAo = AccommodationRequest.builder()
+                .requestId("ACC-AO-001")
+                .department("CSE")
+                .purpose("Guest Lecture")
+                .hostel("Boys Hostel")
+                .status("PENDING_AO_APPROVAL")
+                .aoApprovalStatus("PENDING")
+                .checkInDate("2026-10-25")
+                .checkOutDate("2026-10-27")
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        AccommodationRequest forwardedBoys = AccommodationRequest.builder()
+                .requestId("ACC-FWD-002")
+                .department("ECE")
+                .purpose("Workshop Guest")
+                .hostel("Boys Hostel")
+                .status("FORWARDED_TO_BOYS_ADMIN")
+                .aoApprovalStatus("FORWARDED")
+                .forwardedTo("BOYS_HOSTEL_ADMIN")
+                .checkInDate("2026-10-25")
+                .checkOutDate("2026-10-27")
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        when(accommodationRequestRepository.findAll()).thenReturn(List.of(pendingAo, forwardedBoys));
+
+        User boysAdmin = User.builder()
+                .userId("BH001")
+                .name("Boys Hostel Admin")
+                .role("BOYS_HOSTEL_ADMIN")
+                .servicePermissions(List.of("ACCOMMODATION_ADMIN"))
+                .assignedHostels(List.of("Boys Hostel"))
+                .build();
+
+        ReportFilterRequest filter = ReportFilterRequest.builder()
+                .services(List.of("ACCOMMODATION"))
+                .departments(List.of("ALL"))
+                .statuses(List.of("ALL"))
+                .dateRangeType("ALL")
+                .build();
+
+        ReportDataDTO data = reportService.generateReportData(filter, boysAdmin);
+
+        assertNotNull(data);
+        // Boys Admin must ONLY see the forwarded request ACC-FWD-002, NOT ACC-AO-001
+        assertEquals(1, data.getSummary().getTotalRequests());
+        assertEquals("ACC-FWD-002", data.getDetailedRecords().get(0).getRequestId());
+    }
 }

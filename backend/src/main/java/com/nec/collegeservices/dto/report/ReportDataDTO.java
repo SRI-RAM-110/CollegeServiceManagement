@@ -77,6 +77,9 @@ public class ReportDataDTO {
         private long pending;
         private long rejected;
         private long cancelled;
+        private long pendingAoReview;        // Awaiting AO Admin review / forwarding
+        private long pendingHostelReview;    // Forwarded to & awaiting Hostel Admin action
+        private long pendingGeneral;         // Other service pending requests
     }
 
     @Data
@@ -104,6 +107,7 @@ public class ReportDataDTO {
         private long pending;
         private long rejected;
         private long cancelled;
+        private long pendingAoReview;
         private long seminarCount;
         private long accommodationCount;
         private long transportCount;
@@ -204,5 +208,8 @@ public class ReportDataDTO {
         private String slotOrTiming; // e.g. "FORENOON", "09:00 AM - 05:00 PM"
         private Integer guestOrQuantityCount;
         private String details;
+        private String workflowStage;
+        private String aoApprovalStatus;
+        private String forwardedTo;
     }
 }
