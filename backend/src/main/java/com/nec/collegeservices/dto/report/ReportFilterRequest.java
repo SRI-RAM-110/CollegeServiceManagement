@@ -17,10 +17,20 @@ public class ReportFilterRequest {
     private String service = "ALL";
 
     /**
+     * List of selected services for multi-select
+     */
+    private java.util.List<String> services;
+
+    /**
      * ALL or department code (e.g. CSE, ECE, EEE, etc.)
      */
     @Builder.Default
     private String department = "ALL";
+
+    /**
+     * List of selected departments for multi-select
+     */
+    private java.util.List<String> departments;
 
     /**
      * ALL or seminar hall ID (e.g. SH-1, SH-2, TECH-HUB)
@@ -33,6 +43,11 @@ public class ReportFilterRequest {
      */
     @Builder.Default
     private String status = "ALL";
+
+    /**
+     * List of selected statuses for multi-select
+     */
+    private java.util.List<String> statuses;
 
     /**
      * ALL, TODAY, THIS_WEEK, THIS_MONTH, THIS_YEAR, CUSTOM
@@ -61,3 +76,4 @@ public class ReportFilterRequest {
      */
     private String search;
 }
+

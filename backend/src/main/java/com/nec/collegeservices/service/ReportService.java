@@ -72,22 +72,8 @@ public class ReportService {
         boolean canViewAllDepts = isAO || isServiceAdmin || isSemCoord;
 
         List<String> allowedServices = new ArrayList<>();
-        if (isAO) {
-            allowedServices.addAll(List.of("ALL", "SEMINAR_HALL", "ACCOMMODATION", "TRANSPORT", "STATIONERY", "MEALS"));
-        } else if (isSemAdmin || isSemCoord) {
-            allowedServices.add("SEMINAR_HALL");
-        } else if (isAccAdmin) {
-            allowedServices.add("ACCOMMODATION");
-        } else if (isTransAdmin) {
-            allowedServices.add("TRANSPORT");
-        } else if (isStatAdmin) {
-            allowedServices.add("STATIONERY");
-        } else if (isMealsAdmin) {
-            allowedServices.add("MEALS");
-        } else {
-            // Department User
-            allowedServices.addAll(List.of("ALL", "SEMINAR_HALL", "ACCOMMODATION", "TRANSPORT", "STATIONERY", "MEALS"));
-        }
+        allowedServices.addAll(List.of("SEMINAR_HALL", "ACCOMMODATION", "TRANSPORT", "STATIONERY", "MEALS"));
+
 
         // Available Halls
         List<SeminarHall> allHalls = seminarHallRepository.findAll();
@@ -172,11 +158,11 @@ public class ReportService {
         // Fetch filtered items
         List<ReportDataDTO.ReportRecordDTO> records = new ArrayList<>();
 
-        boolean includeSeminar = shouldIncludeService(filter.getService(), "SEMINAR");
-        boolean includeAccom = shouldIncludeService(filter.getService(), "ACCOMMODATION");
-        boolean includeTransport = shouldIncludeService(filter.getService(), "TRANSPORT");
-        boolean includeStationery = shouldIncludeService(filter.getService(), "STATIONERY");
-        boolean includeMeals = shouldIncludeService(filter.getService(), "MEALS");
+        boolean includeSeminar = shouldIncludeService(filter, "SEMINAR");
+        boolean includeAccom = shouldIncludeService(filter, "ACCOMMODATION");
+        boolean includeTransport = shouldIncludeService(filter, "TRANSPORT");
+        boolean includeStationery = shouldIncludeService(filter, "STATIONERY");
+        boolean includeMeals = shouldIncludeService(filter, "MEALS");
 
         List<SeminarBooking> seminarList = new ArrayList<>();
         List<AccommodationRequest> accomList = new ArrayList<>();
@@ -261,6 +247,16 @@ public class ReportService {
             }
         }
 
+        String activeServiceLabel = filter.getServices() != null && !filter.getServices().isEmpty()
+                ? String.join(", ", filter.getServices())
+                : filter.getService();
+        String activeDeptLabel = filter.getDepartments() != null && !filter.getDepartments().isEmpty()
+                ? String.join(", ", filter.getDepartments())
+                : filter.getDepartment();
+        String activeStatusLabel = filter.getStatuses() != null && !filter.getStatuses().isEmpty()
+                ? String.join(", ", filter.getStatuses())
+                : filter.getStatus();
+
         ReportDataDTO.ReportMetadataDTO metadata = ReportDataDTO.ReportMetadataDTO.builder()
                 .reportTitle(title)
                 .generatedBy(user.getName() != null ? user.getName() : user.getUserId())
@@ -268,11 +264,11 @@ public class ReportService {
                 .userDepartment(user.getDepartment())
                 .generatedAt(LocalDateTime.now())
                 .dateRangeLabel(range.label)
-                .activeService(filter.getService())
-                .activeDepartment(filter.getDepartment())
+                .activeService(activeServiceLabel)
+                .activeDepartment(activeDeptLabel)
                 .activeHall(filter.getHallId())
                 .activeHallName(activeHallName)
-                .activeStatus(filter.getStatus())
+                .activeStatus(activeStatusLabel)
                 .viewType(filter.getViewType())
                 .build();
 
@@ -319,27 +315,25 @@ public class ReportService {
             filter.setDateRangeType("ALL");
         }
 
+        // Clean lists if provided
+        if (filter.getServices() != null) {
+            filter.setServices(filter.getServices().stream().filter(s -> s != null && !s.isBlank()).collect(Collectors.toList()));
+        }
+        if (filter.getDepartments() != null) {
+            filter.setDepartments(filter.getDepartments().stream().filter(d -> d != null && !d.isBlank()).collect(Collectors.toList()));
+        }
+        if (filter.getStatuses() != null) {
+            filter.setStatuses(filter.getStatuses().stream().filter(st -> st != null && !st.isBlank()).collect(Collectors.toList()));
+        }
+
         // 1. Department Enforcement: Department Users can only access their own department!
         if (permissions.isDepartmentUser()) {
             String userDept = user.getDepartment() != null ? user.getDepartment().trim() : "CSE";
-            if (filter.getDepartment() != null && !filter.getDepartment().equalsIgnoreCase("ALL") && !filter.getDepartment().equalsIgnoreCase(userDept)) {
-                throw new AccessDeniedException("You are not authorized to view service reports for department: " + filter.getDepartment());
-            }
             filter.setDepartment(userDept);
+            filter.setDepartments(List.of(userDept));
         }
 
-        // 2. Service Enforcement: Service Admins can only access their assigned service!
-        if (permissions.isServiceAdmin() && !permissions.isAOAdmin()) {
-            if (permissions.getAllowedServices().size() == 1) {
-                String allowed = permissions.getAllowedServices().get(0);
-                if (filter.getService() != null && !filter.getService().equalsIgnoreCase("ALL") && !isServiceMatch(filter.getService(), allowed)) {
-                    throw new AccessDeniedException("You are only authorized to access reports for: " + allowed);
-                }
-                filter.setService(allowed);
-            }
-        }
-
-        // 3. Hall Enforcement: Seminar Coordinators can only access their assigned hall(s)!
+        // 2. Hall Enforcement: Seminar Coordinators can only access their assigned hall(s)!
         if (permissions.isSeminarCoordinator()) {
             List<String> allowedHallIds = permissions.getAllowedHalls().stream()
                     .map(UserReportPermissionsDTO.SeminarHallOptionDTO::getHallId)
@@ -365,9 +359,35 @@ public class ReportService {
         return false;
     }
 
-    private boolean shouldIncludeService(String selectedService, String targetService) {
+    private boolean shouldIncludeService(ReportFilterRequest filter, String targetService) {
+        if (filter.getServices() != null && !filter.getServices().isEmpty()) {
+            if (filter.getServices().contains("ALL") || filter.getServices().size() >= 5) {
+                return true;
+            }
+            return filter.getServices().stream().anyMatch(s -> isServiceMatch(s, targetService));
+        }
+        String selectedService = filter.getService();
         if (selectedService == null || selectedService.equalsIgnoreCase("ALL")) return true;
         return isServiceMatch(selectedService, targetService);
+    }
+
+    private boolean matchDepartment(String recordDept, List<String> filterDepts, String singleDeptFallback) {
+        if (filterDepts != null && !filterDepts.isEmpty()) {
+            if (filterDepts.contains("ALL")) return true;
+            if (recordDept == null) return false;
+            return filterDepts.stream().anyMatch(d -> d.equalsIgnoreCase(recordDept.trim()));
+        }
+        if (singleDeptFallback == null || singleDeptFallback.equalsIgnoreCase("ALL")) return true;
+        return recordDept != null && recordDept.equalsIgnoreCase(singleDeptFallback.trim());
+    }
+
+    private boolean matchStatuses(String actualStatus, List<String> filterStatuses, String singleStatusFallback) {
+        if (filterStatuses != null && !filterStatuses.isEmpty()) {
+            if (filterStatuses.contains("ALL")) return true;
+            if (actualStatus == null) return false;
+            return filterStatuses.stream().anyMatch(st -> matchStatus(actualStatus, st));
+        }
+        return matchStatus(actualStatus, singleStatusFallback);
     }
 
     // --- Record Fetchers with Filtering ---
@@ -377,10 +397,7 @@ public class ReportService {
 
         return all.stream()
                 .filter(b -> !isMyRequestsOnly || UnifiedRequestService.isRequestedByUser(b.getRequestedBy(), user))
-                .filter(b -> {
-                    if (filter.getDepartment().equalsIgnoreCase("ALL")) return true;
-                    return b.getDepartment() != null && b.getDepartment().equalsIgnoreCase(filter.getDepartment());
-                })
+                .filter(b -> matchDepartment(b.getDepartment(), filter.getDepartments(), filter.getDepartment()))
                 .filter(b -> {
                     if (filter.getHallId().equalsIgnoreCase("ALL")) {
                         if (user.hasRole("SEMINAR_COORDINATOR") && !user.hasRole("SEMINAR_ADMIN") && !perm.isAOAdmin()) {
@@ -390,7 +407,7 @@ public class ReportService {
                     }
                     return b.getHallId() != null && b.getHallId().equalsIgnoreCase(filter.getHallId());
                 })
-                .filter(b -> matchStatus(b.getStatus(), filter.getStatus()))
+                .filter(b -> matchStatuses(b.getStatus(), filter.getStatuses(), filter.getStatus()))
                 .filter(b -> matchDate(b.getDate() != null ? b.getDate() : b.getStartDate(), range))
                 .collect(Collectors.toList());
     }
@@ -401,11 +418,8 @@ public class ReportService {
 
         return all.stream()
                 .filter(a -> !isMyRequestsOnly || UnifiedRequestService.isRequestedByUser(a.getRequestedBy(), user))
-                .filter(a -> {
-                    if (filter.getDepartment().equalsIgnoreCase("ALL")) return true;
-                    return a.getDepartment() != null && a.getDepartment().equalsIgnoreCase(filter.getDepartment());
-                })
-                .filter(a -> matchStatus(a.getStatus(), filter.getStatus()))
+                .filter(a -> matchDepartment(a.getDepartment(), filter.getDepartments(), filter.getDepartment()))
+                .filter(a -> matchStatuses(a.getStatus(), filter.getStatuses(), filter.getStatus()))
                 .filter(a -> matchDate(a.getCheckInDate(), range))
                 .collect(Collectors.toList());
     }
@@ -416,11 +430,8 @@ public class ReportService {
 
         return all.stream()
                 .filter(t -> !isMyRequestsOnly || UnifiedRequestService.isRequestedByUser(t.getRequestedBy(), user))
-                .filter(t -> {
-                    if (filter.getDepartment().equalsIgnoreCase("ALL")) return true;
-                    return t.getDepartment() != null && t.getDepartment().equalsIgnoreCase(filter.getDepartment());
-                })
-                .filter(t -> matchStatus(t.getStatus(), filter.getStatus()))
+                .filter(t -> matchDepartment(t.getDepartment(), filter.getDepartments(), filter.getDepartment()))
+                .filter(t -> matchStatuses(t.getStatus(), filter.getStatuses(), filter.getStatus()))
                 .filter(t -> matchDate(t.getTripDate(), range))
                 .collect(Collectors.toList());
     }
@@ -431,11 +442,8 @@ public class ReportService {
 
         return all.stream()
                 .filter(s -> !isMyRequestsOnly || UnifiedRequestService.isRequestedByUser(s.getRequestedBy(), user))
-                .filter(s -> {
-                    if (filter.getDepartment().equalsIgnoreCase("ALL")) return true;
-                    return s.getDepartment() != null && s.getDepartment().equalsIgnoreCase(filter.getDepartment());
-                })
-                .filter(s -> matchStatus(s.getStatus(), filter.getStatus()))
+                .filter(s -> matchDepartment(s.getDepartment(), filter.getDepartments(), filter.getDepartment()))
+                .filter(s -> matchStatuses(s.getStatus(), filter.getStatuses(), filter.getStatus()))
                 .filter(s -> {
                     String d = s.getCreatedAt() != null ? s.getCreatedAt().toLocalDate().toString() : null;
                     return matchDate(d, range);
@@ -449,11 +457,8 @@ public class ReportService {
 
         return all.stream()
                 .filter(m -> !isMyRequestsOnly || UnifiedRequestService.isRequestedByUser(m.getRequestedBy(), user))
-                .filter(m -> {
-                    if (filter.getDepartment().equalsIgnoreCase("ALL")) return true;
-                    return m.getDepartment() != null && m.getDepartment().equalsIgnoreCase(filter.getDepartment());
-                })
-                .filter(m -> matchStatus(m.getStatus(), filter.getStatus()))
+                .filter(m -> matchDepartment(m.getDepartment(), filter.getDepartments(), filter.getDepartment()))
+                .filter(m -> matchStatuses(m.getStatus(), filter.getStatuses(), filter.getStatus()))
                 .filter(m -> matchDate(m.getDate() != null ? m.getDate() : m.getEventDate(), range))
                 .collect(Collectors.toList());
     }
@@ -461,11 +466,33 @@ public class ReportService {
     private boolean matchStatus(String actualStatus, String filterStatus) {
         if (filterStatus == null || filterStatus.equalsIgnoreCase("ALL")) return true;
         if (actualStatus == null) return false;
-        if (filterStatus.equalsIgnoreCase("APPROVED")) {
-            return actualStatus.equalsIgnoreCase("APPROVED") || actualStatus.equalsIgnoreCase("BOOKED")
-                    || actualStatus.equalsIgnoreCase("COLLECTED") || actualStatus.equalsIgnoreCase("READY_FOR_COLLECTION");
+        String act = actualStatus.trim().toUpperCase();
+        String flt = filterStatus.trim().toUpperCase();
+
+        if (act.equals(flt)) return true;
+
+        if (flt.equals("APPROVED")) {
+            return act.equals("APPROVED") || act.equals("BOOKED") || act.equals("COLLECTED")
+                    || act.equals("READY_FOR_COLLECTION") || act.equals("AO_DIRECT_APPROVED")
+                    || act.equals("COMPLETED");
         }
-        return actualStatus.equalsIgnoreCase(filterStatus);
+        if (flt.equals("PENDING")) {
+            return act.equals("PENDING") || act.equals("PENDING_AO_APPROVAL") || act.equals("AO_APPROVED")
+                    || act.equals("FORWARDED_TO_BOYS_ADMIN") || act.equals("FORWARDED_TO_GIRLS_ADMIN");
+        }
+        if (flt.equals("UNDER_REVIEW")) {
+            return act.equals("UNDER_REVIEW") || act.equals("REVIEW");
+        }
+        if (flt.equals("REJECTED")) {
+            return act.equals("REJECTED") || act.equals("AO_REJECTED");
+        }
+        if (flt.equals("CANCELLED")) {
+            return act.equals("CANCELLED") || act.equals("CANCELLATION_REQUESTED");
+        }
+        if (flt.equals("COMPLETED")) {
+            return act.equals("COMPLETED") || act.equals("COLLECTED");
+        }
+        return false;
     }
 
     private boolean matchDate(String recordDateStr, DateRange range) {
@@ -896,12 +923,20 @@ public class ReportService {
             return (user.getDepartment() != null ? user.getDepartment() : "DEPARTMENT") + " USAGE REPORT";
         }
 
-        if (filter.getDepartment() != null && !filter.getDepartment().equalsIgnoreCase("ALL")) {
+        if (filter.getDepartments() != null && !filter.getDepartments().isEmpty() && !filter.getDepartments().contains("ALL")) {
+            if (filter.getDepartments().size() == 1) {
+                sb.append(filter.getDepartments().get(0)).append(" DEPARTMENT ");
+            } else {
+                sb.append(String.join(", ", filter.getDepartments())).append(" DEPARTMENTS ");
+            }
+        } else if (filter.getDepartment() != null && !filter.getDepartment().equalsIgnoreCase("ALL")) {
             sb.append(filter.getDepartment()).append(" DEPARTMENT ");
         }
 
         if (filter.getHallId() != null && !filter.getHallId().equalsIgnoreCase("ALL")) {
             sb.append(filter.getHallId()).append(" ");
+        } else if (filter.getServices() != null && !filter.getServices().isEmpty() && !filter.getServices().contains("ALL") && filter.getServices().size() < 5) {
+            sb.append(String.join(", ", filter.getServices())).append(" ");
         } else if (filter.getService() != null && !filter.getService().equalsIgnoreCase("ALL")) {
             sb.append(filter.getService()).append(" ");
         } else {
