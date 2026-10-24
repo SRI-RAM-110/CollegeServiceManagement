@@ -746,6 +746,12 @@ public class AccommodationService {
             throw new AccessDeniedException("Only AO Admin / Super Admin can perform Level 1 AO Direct Approval.");
         }
 
+        // Self-approval guard: Requester cannot approve their own request
+        if (user != null && (UnifiedRequestService.isRequestedByUser(req.getRequestedBy(), user) ||
+                (req.getRequesterUserId() != null && req.getRequesterUserId().equalsIgnoreCase(user.getUserId())))) {
+            throw new BadRequestException("Self-approval is not permitted. Requesters cannot approve their own requests.");
+        }
+
         String currentStatus = req.getStatus() != null ? req.getStatus().toUpperCase().trim() : "";
         if (!currentStatus.equals("PENDING_AO_APPROVAL") && !currentStatus.equals("PENDING")) {
             throw new BadRequestException("Request is not awaiting AO approval. Current status: " + currentStatus);
@@ -965,12 +971,20 @@ public class AccommodationService {
             try { user = authService.getCurrentUser(); } catch (Exception ignored) {}
         }
 
+        // Self-approval guard: Requester cannot approve their own request
+        if (user != null && (UnifiedRequestService.isRequestedByUser(req.getRequestedBy(), user) ||
+                (req.getRequesterUserId() != null && req.getRequesterUserId().equalsIgnoreCase(user.getUserId())))) {
+            throw new BadRequestException("Self-approval is not permitted. Requesters cannot approve their own requests.");
+        }
+
         String currentStatus = req.getStatus() != null ? req.getStatus().toUpperCase().trim() : "";
 
         // If in PENDING_AO_APPROVAL:
         if (currentStatus.equals("PENDING_AO_APPROVAL")) {
             if (isSuperAdmin(user)) {
                 return aoDirectApproveRequest(id, "Directly approved by AO Admin", user);
+            } else if ("ADMIN".equalsIgnoreCase(req.getDepartment()) || (req.getRequesterUserId() != null && req.getRequesterUserId().startsWith("AO"))) {
+                // Personal request submitted by AO Admin: can be reviewed and approved directly by authorized Hostel Admin
             } else {
                 throw new BadRequestException("This accommodation request must first be processed by AO Admin before Hostel Admin review.");
             }

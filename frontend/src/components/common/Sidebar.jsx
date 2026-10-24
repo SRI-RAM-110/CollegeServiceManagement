@@ -21,6 +21,7 @@ import {
   UtensilsCrossed,
   Layers,
   X,
+  PlusCircle,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getUserRoles } from '../../utils/authUtils';
@@ -34,6 +35,8 @@ export const Sidebar = ({ isOpen, onClose }) => {
     if (userRoles.includes('CREATOR') || userRoles.includes('AO_ADMIN')) {
       return [
         { name: 'Dashboard', path: '/admin/ao', icon: LayoutDashboard },
+        { name: 'Create Request', path: '/admin/create-request', icon: PlusCircle },
+        { name: 'My Requests', path: '/admin/my-requests', icon: ListOrdered },
         { name: 'User Management', path: '/admin/users', icon: Users },
         { name: 'Seminar Hall', path: '/admin/seminar', icon: CalendarDays },
         { name: 'Accommodation', path: '/admin/accommodation', icon: BedDouble },

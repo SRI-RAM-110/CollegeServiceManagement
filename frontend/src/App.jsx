@@ -20,6 +20,7 @@ import MyRequests from './pages/department/MyRequests';
 
 // Admin Pages
 import AOAdminDashboard from './pages/admin/AOAdminDashboard';
+import AOCreateRequest from './pages/admin/AOCreateRequest';
 import UserManagement from './pages/admin/UserManagement';
 import SeminarAdmin from './pages/admin/SeminarAdmin';
 import AccommodationAdmin from './pages/admin/AccommodationAdmin';
@@ -71,7 +72,7 @@ export default function App() {
               <Route
                 path="/seminar-booking"
                 element={
-                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER', 'DEPARTMENT_HOD']}>
+                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER', 'DEPARTMENT_HOD', 'AO_ADMIN', 'CREATOR']}>
                     <SeminarBooking />
                   </ProtectedRoute>
                 }
@@ -79,7 +80,7 @@ export default function App() {
               <Route
                 path="/accommodation"
                 element={
-                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER', 'DEPARTMENT_HOD']}>
+                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER', 'DEPARTMENT_HOD', 'AO_ADMIN', 'CREATOR']}>
                     <Accommodation />
                   </ProtectedRoute>
                 }
@@ -87,7 +88,7 @@ export default function App() {
               <Route
                 path="/transport"
                 element={
-                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER', 'DEPARTMENT_HOD']}>
+                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER', 'DEPARTMENT_HOD', 'AO_ADMIN', 'CREATOR']}>
                     <Transport />
                   </ProtectedRoute>
                 }
@@ -95,7 +96,7 @@ export default function App() {
               <Route
                 path="/stationery"
                 element={
-                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER', 'DEPARTMENT_HOD']}>
+                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER', 'DEPARTMENT_HOD', 'AO_ADMIN', 'CREATOR']}>
                     <Stationery />
                   </ProtectedRoute>
                 }
@@ -103,7 +104,7 @@ export default function App() {
               <Route
                 path="/snacks-meals"
                 element={
-                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER', 'DEPARTMENT_HOD']}>
+                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER', 'DEPARTMENT_HOD', 'AO_ADMIN', 'CREATOR']}>
                     <SnacksMeals />
                   </ProtectedRoute>
                 }
@@ -111,7 +112,25 @@ export default function App() {
               <Route
                 path="/my-requests"
                 element={
-                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER', 'DEPARTMENT_HOD']}>
+                  <ProtectedRoute allowedRoles={['DEPARTMENT_USER', 'DEPARTMENT_HOD', 'AO_ADMIN', 'CREATOR']}>
+                    <MyRequests />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* AO Admin Personal Requesting & Personal Tracker */}
+              <Route
+                path="/admin/create-request"
+                element={
+                  <ProtectedRoute allowedRoles={['CREATOR', 'AO_ADMIN']}>
+                    <AOCreateRequest />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/my-requests"
+                element={
+                  <ProtectedRoute allowedRoles={['CREATOR', 'AO_ADMIN']}>
                     <MyRequests />
                   </ProtectedRoute>
                 }

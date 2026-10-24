@@ -187,13 +187,20 @@ public class StationeryService {
     public StationeryRequest approveRequest(String id, String comments) {
         StationeryRequest req = getRequestById(id);
 
-        req.setStatus("APPROVED");
+        User current = null;
         try {
-            User current = authService.getCurrentUser();
-            if (current != null) {
-                req.setApprovedBy(current.getName() != null ? current.getName() : current.getUserId());
-            }
+            current = authService.getCurrentUser();
         } catch (Exception ignored) {}
+
+        if (current != null && (UnifiedRequestService.isRequestedByUser(req.getRequestedBy(), current) ||
+                (req.getRequesterUserId() != null && req.getRequesterUserId().equalsIgnoreCase(current.getUserId())))) {
+            throw new BadRequestException("Self-approval is not permitted. Requesters cannot approve their own requests.");
+        }
+
+        req.setStatus("APPROVED");
+        if (current != null) {
+            req.setApprovedBy(current.getName() != null ? current.getName() : current.getUserId());
+        }
         req.setApprovedAt(LocalDateTime.now());
         if (comments != null && !comments.isBlank()) {
             req.setAdminComments(comments);

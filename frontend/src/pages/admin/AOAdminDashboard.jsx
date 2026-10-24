@@ -22,11 +22,14 @@ import {
   ChevronRight,
   Sparkles,
   Plus,
+  PlusCircle,
+  ListOrdered,
   Megaphone,
   Ban
 } from 'lucide-react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { COLLEGE_LOGO } from '../../constants/branding';
+import { useAuth } from '../../context/AuthContext';
 import StatCard from '../../components/common/StatCard';
 import StatusBadge from '../../components/common/StatusBadge';
 import Modal from '../../components/common/Modal';
@@ -50,6 +53,7 @@ import { getTodayStr } from '../../utils/dateUtils';
 export default function AOAdminDashboard() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { user } = useAuth();
   const { addToast } = useNotifications();
   const [dashboardData, setDashboardData] = useState(null);
   const [allRequests, setAllRequests] = useState([]);
@@ -58,6 +62,7 @@ export default function AOAdminDashboard() {
   const [calendarDate, setCalendarDate] = useState(getTodayStr());
   const [distributionTab, setDistributionTab] = useState('SERVICE');
   const [upcomingServiceFilter, setUpcomingServiceFilter] = useState('ALL');
+  const [registerView, setRegisterView] = useState('ALL'); // 'ALL' or 'PERSONAL'
 
   // Announcement modal & state
   const [announcementModalOpen, setAnnouncementModalOpen] = useState(false);
@@ -256,6 +261,21 @@ export default function AOAdminDashboard() {
     }
   };
 
+  const isSelfRequest = (req) => {
+    if (!req || !user) return false;
+    const reqUserId = req.requesterUserId || req.userId;
+    if (reqUserId && user.userId && reqUserId.toString().toLowerCase() === user.userId.toString().toLowerCase()) {
+      return true;
+    }
+    const reqByName = req.requestedBy || req.userName;
+    if (reqByName && user.name && reqByName.toString().toLowerCase() === user.name.toString().toLowerCase()) {
+      return true;
+    }
+    return false;
+  };
+
+  const myPersonalRequestsCount = allRequests.filter(isSelfRequest).length;
+
   const filteredRequests = allRequests.filter(req => {
     const q = searchQuery.toLowerCase().trim();
     const matchesSearch = 
@@ -275,8 +295,9 @@ export default function AOAdminDashboard() {
     const submissionDate = req.createdAt ? req.createdAt.substring(0, 10) : '';
     const eventDate = req.date || '';
     const matchesDate = !dateFilter || submissionDate === dateFilter || eventDate === dateFilter;
+    const matchesRegisterView = registerView === 'ALL' || isSelfRequest(req);
 
-    return matchesSearch && matchesService && matchesStatus && matchesDepartment && matchesDate;
+    return matchesRegisterView && matchesSearch && matchesService && matchesStatus && matchesDepartment && matchesDate;
   });
 
   const getServiceIcon = (service) => {
@@ -473,14 +494,32 @@ const sortEventsChronological = (a, b) => {
             </p>
           </div>
         </div>
-        <button
-          onClick={fetchAOData}
-          disabled={refreshing}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 text-sm border border-slate-700/60 transition"
-        >
-          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-blue-400' : ''}`} />
-          <span>Refresh</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link
+            to="/admin/create-request"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-primary hover:bg-primary-dark text-white text-sm font-semibold shadow-md shadow-primary/25 transition"
+            id="ao-btn-create-request"
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span>Create Request</span>
+          </Link>
+          <Link
+            to="/admin/my-requests"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 text-sm font-medium border border-slate-700/60 transition"
+            id="ao-btn-my-requests"
+          >
+            <ListOrdered className="w-4 h-4" />
+            <span>My Requests</span>
+          </Link>
+          <button
+            onClick={fetchAOData}
+            disabled={refreshing}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 text-sm border border-slate-700/60 transition"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-blue-400' : ''}`} />
+            <span>Refresh</span>
+          </button>
+        </div>
       </div>
 
       {/* Primary KPI Stats */}
@@ -870,8 +909,45 @@ const sortEventsChronological = (a, b) => {
       <div id="master-requests-register" className="card-panel p-5 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 className="text-base font-semibold text-white">Master Requests Register</h2>
-            <p className="text-xs text-slate-400">Universal log of all faculty requests with direct Super Admin override authority</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="text-base font-semibold text-white">Master Requests Register</h2>
+              <div className="flex items-center rounded-lg bg-slate-900/90 p-0.5 border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setRegisterView('ALL')}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition ${
+                    registerView === 'ALL'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                  id="tab-all-requests"
+                >
+                  All College Requests
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRegisterView('PERSONAL')}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition flex items-center gap-1.5 ${
+                    registerView === 'PERSONAL'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                  id="tab-my-personal-requests"
+                >
+                  <span>My Personal Requests</span>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                    registerView === 'PERSONAL' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-300'
+                  }`}>
+                    {myPersonalRequestsCount}
+                  </span>
+                </button>
+              </div>
+            </div>
+            <p className="text-xs text-slate-400 mt-1">
+              {registerView === 'ALL'
+                ? 'Universal log of all faculty requests with direct Super Admin override authority'
+                : 'Service requests submitted personally by you as AO Admin across all 5 facilities'}
+            </p>
           </div>
 
           {/* Filter Bar */}
@@ -984,7 +1060,14 @@ const sortEventsChronological = (a, b) => {
                         </span>
                       </td>
                       <td className="py-3 px-4 font-medium text-slate-200">
-                        {req.requestedBy || req.requesterUserId || 'Faculty'}
+                        <div className="flex items-center gap-1.5">
+                          <span>{req.requestedBy || req.requesterUserId || 'Faculty'}</span>
+                          {isSelfRequest(req) && (
+                            <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30">
+                              You
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-4 font-semibold text-white">
                         {req.department}
@@ -1010,24 +1093,36 @@ const sortEventsChronological = (a, b) => {
 
                           {req.status === 'PENDING' && (
                             <>
-                              <button
-                                onClick={() => handleApprove(req)}
-                                disabled={actionLoading}
-                                className="btn btn-success btn-sm flex items-center gap-1"
-                                title="Approve Request"
-                              >
-                                <Check className="w-3 h-3" />
-                                <span>Approve</span>
-                              </button>
-                              <button
-                                onClick={() => handleOpenReject(req)}
-                                disabled={actionLoading}
-                                className="btn btn-danger btn-sm flex items-center gap-1"
-                                title="Reject Request"
-                              >
-                                <X className="w-3 h-3" />
-                                <span>Reject</span>
-                              </button>
+                              {isSelfRequest(req) ? (
+                                <span
+                                  className="px-2 py-1 rounded bg-slate-800 text-slate-400 text-xs border border-slate-700/80 cursor-not-allowed inline-flex items-center gap-1"
+                                  title="Self-approval is not permitted. Respective service administrator must approve personal requests."
+                                >
+                                  <AlertCircle className="w-3 h-3 text-amber-400" />
+                                  <span>Personal Request</span>
+                                </span>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => handleApprove(req)}
+                                    disabled={actionLoading}
+                                    className="btn btn-success btn-sm flex items-center gap-1"
+                                    title="Approve Request"
+                                  >
+                                    <Check className="w-3 h-3" />
+                                    <span>Approve</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleOpenReject(req)}
+                                    disabled={actionLoading}
+                                    className="btn btn-danger btn-sm flex items-center gap-1"
+                                    title="Reject Request"
+                                  >
+                                    <X className="w-3 h-3" />
+                                    <span>Reject</span>
+                                  </button>
+                                </>
+                              )}
                             </>
                           )}
 
@@ -1093,22 +1188,31 @@ const sortEventsChronological = (a, b) => {
             </div>
 
             {selectedRequest.status === 'PENDING' && (
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
-                <button
-                  onClick={() => handleOpenReject(selectedRequest)}
-                  disabled={actionLoading}
-                  className="px-3.5 py-1.5 rounded-lg bg-rose-600/90 hover:bg-rose-500 text-white text-xs font-medium transition"
-                >
-                  Reject Request
-                </button>
-                <button
-                  onClick={() => handleApprove(selectedRequest)}
-                  disabled={actionLoading}
-                  className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition shadow-md"
-                >
-                  Approve as AO Super Admin
-                </button>
-              </div>
+              isSelfRequest(selectedRequest) ? (
+                <div className="pt-3 border-t border-slate-800">
+                  <div className="flex items-center gap-2.5 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0 text-amber-400" />
+                    <span>This is your personal service request. In accordance with institutional policy, self-approval is not permitted. The respective service administrator will review and process this requisition.</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+                  <button
+                    onClick={() => handleOpenReject(selectedRequest)}
+                    disabled={actionLoading}
+                    className="px-3.5 py-1.5 rounded-lg bg-rose-600/90 hover:bg-rose-500 text-white text-xs font-medium transition"
+                  >
+                    Reject Request
+                  </button>
+                  <button
+                    onClick={() => handleApprove(selectedRequest)}
+                    disabled={actionLoading}
+                    className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition shadow-md"
+                  >
+                    Approve as AO Super Admin
+                  </button>
+                </div>
+              )
             )}
 
             {isCancellable(selectedRequest.status) && (

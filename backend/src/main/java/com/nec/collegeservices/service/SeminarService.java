@@ -843,6 +843,12 @@ public class SeminarService {
         }
         validateHallAuthorization(user, booking.getHallId(), "approve booking");
 
+        // Self-approval guard: Requester cannot approve their own request
+        if (user != null && (UnifiedRequestService.isRequestedByUser(booking.getRequestedBy(), user) ||
+                (booking.getRequesterUserId() != null && booking.getRequesterUserId().equalsIgnoreCase(user.getUserId())))) {
+            throw new BadRequestException("Self-approval is not permitted. Requesters cannot approve their own requests.");
+        }
+
         // State validation guards (Cannot double-approve, cannot approve rejected or cancelled booking)
         String currentStatus = booking.getStatus() != null ? booking.getStatus().toUpperCase().trim() : "";
         if (currentStatus.equals("APPROVED") || currentStatus.equals("BOOKED")) {

@@ -180,8 +180,19 @@ export const MyRequests = () => {
 
     const reqId = cancelRequestItem?.requestId || cancelRequestItem?.id;
     const isAccommodation = cancelRequestItem?.service === 'Accommodation';
+    const isApprovedStatus = cancelRequestItem?.status === 'APPROVED' || cancelRequestItem?.status === 'CONFIRMED' || cancelRequestItem?.status === 'BOOKED' || cancelRequestItem?.status === 'READY_FOR_COLLECTION';
+
     setActionLoading(true);
     try {
+      if (user?.role === 'AO_ADMIN' && isApprovedStatus) {
+        await requestsApi.cancelApproved(reqId, cancelReason.trim());
+        showToast('Approved request cancelled successfully.', 'success');
+        setCancelModalOpen(false);
+        setCancelRequestItem(null);
+        loadRequests();
+        return;
+      }
+
       const res = isAccommodation
         ? await accommodationApi.cancelRequest(reqId, { reason: cancelReason.trim() })
         : await seminarApi.cancelRequest(reqId, {
@@ -315,9 +326,13 @@ export const MyRequests = () => {
       {/* Banner */}
       <div className="welcome-banner">
         <div>
-          <h1 className="page-banner-title">My Department Requests</h1>
+          <h1 className="page-banner-title">
+            {user?.role === 'AO_ADMIN' ? 'My Personal Requisitions' : 'My Department Requests'}
+          </h1>
           <p className="page-banner-subtitle">
-            Track status, request cancellations, reschedule approved reservations, and view official documents.
+            {user?.role === 'AO_ADMIN'
+              ? 'Track personal service requests, manage approved reservations, and review status records.'
+              : 'Track status, request cancellations, reschedule approved reservations, and view official documents.'}
           </p>
         </div>
         <div className="banner-tagline">Real-time Institutional Workflow</div>
@@ -342,7 +357,9 @@ export const MyRequests = () => {
           {/* Header with Count and Refresh */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-800">
             <div className="flex items-center gap-2">
-              <span className="card-title">Department Requisitions</span>
+              <span className="card-title">
+                {user?.role === 'AO_ADMIN' ? 'Personal Requisitions' : 'Department Requisitions'}
+              </span>
               <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/30">
                 {requests.length} Total
               </span>
@@ -473,12 +490,15 @@ export const MyRequests = () => {
 
                     // Allowed action permissions (Section 25)
                     const isAccommodation = r.service === 'Accommodation';
+                    const isApprovedLike = r.status === 'APPROVED' || r.status === 'CONFIRMED' || r.status === 'BOOKED' || r.status === 'READY_FOR_COLLECTION';
                     const canCancel =
-                      (isSeminar || isAccommodation) &&
-                      (r.status === 'PENDING' ||
-                        r.status === 'UNDER_REVIEW' ||
-                        r.status === 'APPROVED' ||
-                        r.status === 'BOOKED');
+                      user?.role === 'AO_ADMIN'
+                        ? (isApprovedLike || ((isSeminar || isAccommodation) && (r.status === 'PENDING' || r.status === 'UNDER_REVIEW')))
+                        : ((isSeminar || isAccommodation) &&
+                          (r.status === 'PENDING' ||
+                            r.status === 'UNDER_REVIEW' ||
+                            r.status === 'APPROVED' ||
+                            r.status === 'BOOKED'));
 
                     const canReschedule =
                       (isSeminar || isAccommodation) &&
