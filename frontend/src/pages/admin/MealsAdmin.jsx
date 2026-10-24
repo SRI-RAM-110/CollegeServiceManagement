@@ -20,19 +20,23 @@ import {
   User as UserIcon,
   Mail,
   Users,
-  ShieldAlert
+  ShieldAlert,
+  Ban
 } from 'lucide-react';
 import StatCard from '../../components/common/StatCard';
 import StatusBadge from '../../components/common/StatusBadge';
 import QuickCalendar from '../../components/calendar/QuickCalendar';
 import Modal from '../../components/common/Modal';
 import { RequestDetailsModal } from '../../components/common/RequestDetailsModal';
+import { CancelApprovedModal } from '../../components/common/CancelApprovedModal';
 import { mealsApi } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
+import { useAuth } from '../../context/AuthContext';
 import { getTodayStr } from '../../utils/dateUtils';
 
 export default function MealsAdmin() {
   const { addToast } = useNotifications();
+  const { isAOAdmin } = useAuth();
   const [searchParams] = useSearchParams();
   const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0 });
   const [requests, setRequests] = useState([]);
@@ -58,6 +62,21 @@ export default function MealsAdmin() {
   const [rejectId, setRejectId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Cancellation modal for AO Admin
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState(null);
+
+  const handleOpenCancel = (req) => {
+    setCancelTarget({
+      ...req,
+      requestId: req.requestId || req.id,
+      service: 'Snacks & Meals',
+      serviceCategory: 'MEALS',
+      details: `${req.eventName || req.eventTitle || 'Meal Order'} - ${req.mealTypes?.join(', ') || 'Catering'} for ${req.totalGuests || 'N/A'} guests`,
+    });
+    setCancelModalOpen(true);
+  };
 
   // Edit State
   const [isEditing, setIsEditing] = useState(false);
@@ -723,6 +742,36 @@ export default function MealsAdmin() {
                             </button>
                           </>
                         )}
+
+                        {/* APPROVED: Actions for AO Admin and PDF Document */}
+                        {req.status === 'APPROVED' && (
+                          <>
+                            {isAOAdmin && (
+                              <button
+                                onClick={() => handleOpenCancel(req)}
+                                disabled={actionLoading}
+                                className="btn btn-danger btn-sm flex items-center gap-1 whitespace-nowrap"
+                                title="AO Admin: Cancel Approved Catering Request"
+                              >
+                                <Ban className="w-3 h-3" />
+                                <span>Cancel Request</span>
+                              </button>
+                            )}
+                            <button
+                              onClick={() => {
+                                setDocModalRequest({
+                                  ...req,
+                                  service: 'Snacks & Meals',
+                                  serviceCategory: 'MEALS',
+                                });
+                              }}
+                              className="p-1.5 rounded hover:bg-slate-800 text-blue-400 hover:text-blue-300 transition"
+                              title="Official PDF Document"
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -928,18 +977,39 @@ export default function MealsAdmin() {
                   )}
 
                   {selectedRequest.status === 'APPROVED' && (
-                    <button
-                      onClick={() => {
-                        const req = selectedRequest;
-                        setSelectedRequest(null);
-                        setDocModalRequest(req);
-                      }}
-                      className="px-4 py-2 rounded-lg bg-blue-600/90 hover:bg-blue-500 text-white text-xs font-medium flex items-center gap-1.5 transition shadow-sm"
-                      id="btn-view-official-doc-meals"
-                    >
-                      <FileText className="w-3.5 h-3.5" />
-                      <span>View Official Document & PDF</span>
-                    </button>
+                    <>
+                      {isAOAdmin && (
+                        <button
+                          onClick={() => {
+                            const req = selectedRequest;
+                            setSelectedRequest(null);
+                            handleOpenCancel(req);
+                          }}
+                          disabled={actionLoading}
+                          className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+                          title="AO Admin: Cancel Approved Catering Request"
+                        >
+                          <Ban className="w-3.5 h-3.5" />
+                          <span>Cancel Approved Request</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          const req = selectedRequest;
+                          setSelectedRequest(null);
+                          setDocModalRequest({
+                            ...req,
+                            service: 'Snacks & Meals',
+                            serviceCategory: 'MEALS',
+                          });
+                        }}
+                        className="px-4 py-2 rounded-lg bg-blue-600/90 hover:bg-blue-500 text-white text-xs font-medium flex items-center gap-1.5 transition shadow-sm"
+                        id="btn-view-official-doc-meals"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>View Official Document & PDF</span>
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -1237,12 +1307,26 @@ export default function MealsAdmin() {
         </Modal>
       )}
 
+      {/* Cancel Approved Catering Modal for AO Admin */}
+      {cancelModalOpen && (
+        <CancelApprovedModal
+          isOpen={true}
+          onClose={() => setCancelModalOpen(false)}
+          targetRequest={cancelTarget}
+          onSuccess={() => {
+            setSelectedRequest(null);
+            fetchData();
+          }}
+        />
+      )}
+
       {/* Official Request Details Modal with PDF Preview & Download */}
       {docModalRequest && (
         <RequestDetailsModal
           isOpen={!!docModalRequest}
           onClose={() => setDocModalRequest(null)}
           request={docModalRequest}
+          onRefresh={fetchData}
         />
       )}
     </div>

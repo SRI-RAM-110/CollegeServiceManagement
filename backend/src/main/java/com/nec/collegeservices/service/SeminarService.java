@@ -87,6 +87,8 @@ public class SeminarService {
         if (hallId == null) return Optional.empty();
         Optional<SeminarHall> opt = hallRepository.findByHallId(hallId);
         if (opt.isPresent()) return opt;
+        opt = hallRepository.findById(hallId);
+        if (opt.isPresent()) return opt;
         if ("SH-5".equalsIgnoreCase(hallId) || "5".equals(hallId)) {
             return hallRepository.findByHallId("TECH-HUB");
         }
@@ -295,7 +297,9 @@ public class SeminarService {
         SeminarHall hall = hallRepository.findByHallId(hallId)
                 .orElseThrow(() -> new ResourceNotFoundException("Seminar Hall not found: " + hallId));
 
-        boolean isMaintenance = hall.getStatus() != null && !hall.getStatus().equalsIgnoreCase("Available");
+        boolean isMaintenance = hall.getStatus() != null && 
+                                !hall.getStatus().equalsIgnoreCase("Available") && 
+                                !hall.getStatus().equalsIgnoreCase("Functional");
         String maintenanceReason = isMaintenance
                 ? "Seminar Hall " + (hall.getName() != null ? hall.getName() : hallId) + " is currently under maintenance."
                 : null;
@@ -431,8 +435,13 @@ public class SeminarService {
                 .orElseThrow(() -> new ResourceNotFoundException("Seminar Hall not found: " + hallId));
 
         // 1. Hall Maintenance Validation (Section 11)
-        if (hall.getStatus() != null && !hall.getStatus().equalsIgnoreCase("Available")) {
-            throw new BadRequestException("Seminar Hall " + hall.getName() + " is currently unavailable for booking (" + hall.getStatus() + ").");
+        boolean isOperational = hall.getStatus() == null || 
+                                hall.getStatus().isBlank() || 
+                                hall.getStatus().equalsIgnoreCase("Available") || 
+                                hall.getStatus().equalsIgnoreCase("Functional");
+        if (!isOperational) {
+            String statusDesc = hall.getStatus().equalsIgnoreCase("Maintenance") ? "Maintenance" : hall.getStatus();
+            throw new BadRequestException("Seminar Hall " + hall.getName() + " is currently under maintenance and unavailable for booking (" + statusDesc + ").");
         }
 
         // 2. Capacity Validation (Section 10)

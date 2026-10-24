@@ -22,12 +22,14 @@ import {
   Wrench,
   MapPin,
   ArrowRight,
+  Ban,
 } from 'lucide-react';
 import StatCard from '../../components/common/StatCard';
 import StatusBadge from '../../components/common/StatusBadge';
 import QuickCalendar from '../../components/calendar/QuickCalendar';
 import Modal from '../../components/common/Modal';
 import { RequestDetailsModal } from '../../components/common/RequestDetailsModal';
+import { CancelApprovedModal } from '../../components/common/CancelApprovedModal';
 import { accommodationApi } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
@@ -69,6 +71,21 @@ export default function AccommodationAdmin() {
   // Modals & Action States
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [docModalRequest, setDocModalRequest] = useState(null);
+
+  // Cancellation modal for AO Admin
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState(null);
+
+  const handleOpenCancel = (req) => {
+    setCancelTarget({
+      ...req,
+      requestId: req.requestId || req.id,
+      service: 'Accommodation',
+      serviceCategory: 'ACCOMMODATION',
+      details: `${req.guestName || 'Guest'} (${req.hostel || 'Hostel'} - Room ${req.roomNumber || 'N/A'})`,
+    });
+    setCancelModalOpen(true);
+  };
   
   // Reject Modal
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
@@ -809,21 +826,34 @@ export default function AccommodationAdmin() {
                           </>
                         )}
 
-                        {/* APPROVED: View Official PDF Document */}
-                        {(req.status === 'APPROVED' || req.status === 'BOOKED') && (
-                          <button
-                            onClick={() => {
-                              setDocModalRequest({
-                                ...req,
-                                service: 'Accommodation',
-                                serviceCategory: 'ACCOMMODATION',
-                              });
-                            }}
-                            className="p-1.5 rounded hover:bg-slate-800 text-blue-400 hover:text-blue-300 transition"
-                            title="Official PDF Document"
-                          >
-                            <FileText className="w-3.5 h-3.5" />
-                          </button>
+                        {/* APPROVED: Actions for AO Admin and PDF Document */}
+                        {(req.status === 'APPROVED' || req.status === 'BOOKED' || req.status === 'AO_APPROVED' || req.status === 'AO_DIRECT_APPROVED') && (
+                          <>
+                            {isAoAdmin && (
+                              <button
+                                onClick={() => handleOpenCancel(req)}
+                                disabled={actionLoading}
+                                className="btn btn-danger btn-sm flex items-center gap-1 whitespace-nowrap"
+                                title="AO Admin: Cancel Approved Accommodation"
+                              >
+                                <Ban className="w-3 h-3" />
+                                <span>Cancel Request</span>
+                              </button>
+                            )}
+                            <button
+                              onClick={() => {
+                                setDocModalRequest({
+                                  ...req,
+                                  service: 'Accommodation',
+                                  serviceCategory: 'ACCOMMODATION',
+                                });
+                              }}
+                              className="p-1.5 rounded hover:bg-slate-800 text-blue-400 hover:text-blue-300 transition"
+                              title="Official PDF Document"
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
@@ -1025,8 +1055,23 @@ export default function AccommodationAdmin() {
               </div>
             )}
 
-            {(selectedRequest.status === 'APPROVED' || selectedRequest.status === 'BOOKED') && (
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+            {(selectedRequest.status === 'APPROVED' || selectedRequest.status === 'BOOKED' || selectedRequest.status === 'AO_APPROVED' || selectedRequest.status === 'AO_DIRECT_APPROVED') && (
+              <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-800">
+                {isAoAdmin && (
+                  <button
+                    onClick={() => {
+                      const req = selectedRequest;
+                      setSelectedRequest(null);
+                      handleOpenCancel(req);
+                    }}
+                    disabled={actionLoading}
+                    className="btn btn-danger btn-sm flex items-center gap-1.5"
+                    title="AO Admin: Cancel Approved Accommodation"
+                  >
+                    <Ban className="w-3.5 h-3.5" />
+                    <span>Cancel Approved Request</span>
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     const req = selectedRequest;
@@ -1037,7 +1082,7 @@ export default function AccommodationAdmin() {
                       serviceCategory: 'ACCOMMODATION',
                     });
                   }}
-                  className="px-4 py-2 rounded-lg bg-blue-600/90 hover:bg-blue-500 text-white text-xs font-medium flex items-center gap-1.5 transition shadow-sm"
+                  className="px-4 py-2 rounded-lg bg-blue-600/90 hover:bg-blue-500 text-white text-xs font-medium flex items-center gap-1.5 transition shadow-sm ml-auto"
                   id="btn-view-official-doc-acc"
                 >
                   <FileText className="w-3.5 h-3.5" />
@@ -1172,12 +1217,26 @@ export default function AccommodationAdmin() {
         </Modal>
       )}
 
+      {/* Cancel Approved Accommodation Modal for AO Admin */}
+      {cancelModalOpen && (
+        <CancelApprovedModal
+          isOpen={true}
+          onClose={() => setCancelModalOpen(false)}
+          targetRequest={cancelTarget}
+          onSuccess={() => {
+            setSelectedRequest(null);
+            fetchData();
+          }}
+        />
+      )}
+
       {/* Official Request Details Modal with PDF Preview & Download */}
       {docModalRequest && (
         <RequestDetailsModal
           isOpen={!!docModalRequest}
           onClose={() => setDocModalRequest(null)}
           request={docModalRequest}
+          onRefresh={fetchData}
         />
       )}
     </div>

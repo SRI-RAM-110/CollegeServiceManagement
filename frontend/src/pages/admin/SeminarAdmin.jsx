@@ -19,12 +19,14 @@ import {
   RotateCcw,
   CalendarRange,
   ShieldCheck,
+  Ban,
 } from 'lucide-react';
 import StatCard from '../../components/common/StatCard';
 import StatusBadge from '../../components/common/StatusBadge';
 import QuickCalendar from '../../components/calendar/QuickCalendar';
 import Modal from '../../components/common/Modal';
 import { RequestDetailsModal } from '../../components/common/RequestDetailsModal';
+import { CancelApprovedModal } from '../../components/common/CancelApprovedModal';
 import { seminarApi } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
@@ -67,6 +69,21 @@ export default function SeminarAdmin() {
   const [rejectId, setRejectId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Cancellation modal for AO Admin
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState(null);
+
+  const handleOpenCancel = (req) => {
+    setCancelTarget({
+      ...req,
+      requestId: req.bookingId || req.requestId || req.id,
+      service: 'Seminar Hall',
+      serviceCategory: 'SEMINAR',
+      details: `${req.hallName} (${req.slot}) - ${req.eventTitle}`,
+    });
+    setCancelModalOpen(true);
+  };
 
   const isHallAssignedToUser = (h) => {
     if (!isCoordinatorOnly) return true;
@@ -420,17 +437,17 @@ export default function SeminarAdmin() {
                     <div className="flex items-center gap-1.5">
                       {isAOAdmin ? (
                         <select
-                          value={hall.status || 'Available'}
-                          onChange={(e) => handleStatusChange(hall.id, e.target.value)}
+                          value={(!hall.status || hall.status.toLowerCase() === 'available' || hall.status.toLowerCase() === 'functional') ? 'Functional' : (hall.status.toLowerCase() === 'maintenance' || hall.status.toLowerCase() === 'under_maintenance' ? 'Maintenance' : hall.status)}
+                          onChange={(e) => handleStatusChange(hall.hallId || hall.id, e.target.value)}
                           className="text-[10px] font-bold bg-slate-950 border border-slate-700 text-slate-200 rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500"
                           title="Super Admin: Update Hall Status"
                         >
-                          <option value="Available">Available</option>
-                          <option value="MAINTENANCE">Maintenance</option>
+                          <option value="Functional">Functional</option>
+                          <option value="Maintenance">Maintenance</option>
                           <option value="Disabled">Disabled</option>
                         </select>
                       ) : (
-                        hall.status && hall.status !== 'Available' && (
+                        hall.status && hall.status !== 'Available' && hall.status !== 'Functional' && (
                           <span className="text-[10px] font-bold text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/30">
                             {hall.status}
                           </span>
@@ -756,6 +773,19 @@ export default function SeminarAdmin() {
                               </button>
                             </>
                           )}
+
+                          {/* APPROVED: Cancel Action for AO Admin */}
+                          {isAOAdmin && (req.status === 'APPROVED' || req.status === 'BOOKED') && (
+                            <button
+                              onClick={() => handleOpenCancel(req)}
+                              disabled={actionLoading}
+                              className="btn btn-danger btn-sm flex items-center gap-1 whitespace-nowrap"
+                              title="AO Admin: Cancel Approved Booking"
+                            >
+                              <Ban className="w-3 h-3" />
+                              <span>Cancel Request</span>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -986,14 +1016,29 @@ export default function SeminarAdmin() {
             )}
 
             {(selectedRequest.status === 'APPROVED' || selectedRequest.status === 'BOOKED') && (
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+              <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-800">
+                {isAOAdmin && (
+                  <button
+                    onClick={() => {
+                      const req = selectedRequest;
+                      setSelectedRequest(null);
+                      handleOpenCancel(req);
+                    }}
+                    disabled={actionLoading}
+                    className="btn btn-danger btn-sm flex items-center gap-1.5"
+                    title="AO Admin: Cancel Approved Booking"
+                  >
+                    <Ban className="w-3.5 h-3.5" />
+                    <span>Cancel Approved Request</span>
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     const req = selectedRequest;
                     setSelectedRequest(null);
                     setDocModalRequest(req);
                   }}
-                  className="px-4 py-2 rounded-lg bg-blue-600/90 hover:bg-blue-500 text-white text-xs font-medium flex items-center gap-1.5 transition shadow-sm"
+                  className="px-4 py-2 rounded-lg bg-blue-600/90 hover:bg-blue-500 text-white text-xs font-medium flex items-center gap-1.5 transition shadow-sm ml-auto"
                   id="btn-view-official-doc-seminar"
                 >
                   <FileText className="w-3.5 h-3.5" />
@@ -1055,12 +1100,26 @@ export default function SeminarAdmin() {
         </Modal>
       )}
 
+      {/* Cancel Approved Booking Modal for AO Admin */}
+      {cancelModalOpen && (
+        <CancelApprovedModal
+          isOpen={true}
+          onClose={() => setCancelModalOpen(false)}
+          targetRequest={cancelTarget}
+          onSuccess={() => {
+            setSelectedRequest(null);
+            fetchData();
+          }}
+        />
+      )}
+
       {/* Official Request Details Modal with PDF Preview & Download */}
       {docModalRequest && (
         <RequestDetailsModal
           isOpen={!!docModalRequest}
           onClose={() => setDocModalRequest(null)}
           request={docModalRequest}
+          onRefresh={fetchData}
         />
       )}
     </div>

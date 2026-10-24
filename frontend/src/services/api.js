@@ -204,6 +204,7 @@ export const requestsApi = {
   getMyRequests: (params = {}) => api.get('/requests/my', { params }),
   getAllRequests: (params = {}) => api.get('/requests/all', { params }),
   getRequestDetails: (id) => api.get(`/requests/${id}`),
+  cancelApproved: (id, reason) => api.post(`/requests/${id}/cancel`, { reason }),
   getRequestPdfBlob: (id) =>
     api.get(`/requests/${id}/pdf`, {
       responseType: 'blob',

@@ -14,15 +14,18 @@ import {
   Layers,
   Send,
   MessageSquare,
-  AlertCircle
+  AlertCircle,
+  Ban
 } from 'lucide-react';
 import StatCard from '../../components/common/StatCard';
 import StatusBadge from '../../components/common/StatusBadge';
 import Modal from '../../components/common/Modal';
 import QuickCalendar from '../../components/calendar/QuickCalendar';
 import { RequestDetailsModal } from '../../components/common/RequestDetailsModal';
+import { CancelApprovedModal } from '../../components/common/CancelApprovedModal';
 import { stationeryApi } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
+import { useAuth } from '../../context/AuthContext';
 import { getTodayStr } from '../../utils/dateUtils';
 
 const formatDateDisplay = (dateVal) => {
@@ -38,6 +41,7 @@ const formatDateDisplay = (dateVal) => {
 export default function StationeryAdmin() {
   const [searchParams] = useSearchParams();
   const { addToast } = useNotifications();
+  const { isAOAdmin } = useAuth();
   const [stats, setStats] = useState({ total: 0, pending: 0, ready: 0, collected: 0, approved: 0 });
   const [requests, setRequests] = useState([]);
   const [items, setItems] = useState([]);
@@ -66,6 +70,21 @@ export default function StationeryAdmin() {
   const [rejectReason, setRejectReason] = useState('');
 
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Cancellation modal for AO Admin
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState(null);
+
+  const handleOpenCancel = (req) => {
+    setCancelTarget({
+      ...req,
+      requestId: req.requestId || req.id,
+      service: 'Stationery',
+      serviceCategory: 'STATIONERY',
+      details: req.items?.map(i => `${i.itemName || i.name} (${i.quantity || i.count})`).join(', ') || req.purpose || 'Stationery Request',
+    });
+    setCancelModalOpen(true);
+  };
 
   const fetchData = async () => {
     try {
@@ -503,6 +522,19 @@ export default function StationeryAdmin() {
                               <span>Collected</span>
                             </button>
                           )}
+
+                          {/* APPROVED: Cancel Action for AO Admin */}
+                          {isAOAdmin && (req.status === 'APPROVED' || req.status === 'READY_FOR_COLLECTION' || req.status === 'READY') && (
+                            <button
+                              onClick={() => handleOpenCancel(req)}
+                              disabled={actionLoading}
+                              className="btn btn-danger btn-sm flex items-center gap-1 whitespace-nowrap"
+                              title="AO Admin: Cancel Approved Stationery Request"
+                            >
+                              <Ban className="w-3 h-3" />
+                              <span>Cancel Request</span>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -670,6 +702,22 @@ export default function StationeryAdmin() {
                 </button>
               )}
 
+              {isAOAdmin && (selectedRequest.status === 'APPROVED' || selectedRequest.status === 'READY_FOR_COLLECTION' || selectedRequest.status === 'READY') && (
+                <button
+                  onClick={() => {
+                    const req = selectedRequest;
+                    setSelectedRequest(null);
+                    handleOpenCancel(req);
+                  }}
+                  disabled={actionLoading}
+                  className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+                  title="AO Admin: Cancel Approved Request"
+                >
+                  <Ban className="w-3.5 h-3.5" />
+                  <span>Cancel Approved Request</span>
+                </button>
+              )}
+
               {(selectedRequest.status === 'APPROVED' || selectedRequest.status === 'READY_FOR_COLLECTION' || selectedRequest.status === 'COLLECTED') && (
                 <button
                   onClick={() => {
@@ -729,12 +777,26 @@ export default function StationeryAdmin() {
         </Modal>
       )}
 
+      {/* Cancel Approved Stationery Modal for AO Admin */}
+      {cancelModalOpen && (
+        <CancelApprovedModal
+          isOpen={true}
+          onClose={() => setCancelModalOpen(false)}
+          targetRequest={cancelTarget}
+          onSuccess={() => {
+            setSelectedRequest(null);
+            fetchData();
+          }}
+        />
+      )}
+
       {/* Official Request Details Modal with PDF Preview & Download */}
       {docModalRequest && (
         <RequestDetailsModal
           isOpen={!!docModalRequest}
           onClose={() => setDocModalRequest(null)}
           request={docModalRequest}
+          onRefresh={fetchData}
         />
       )}
     </div>

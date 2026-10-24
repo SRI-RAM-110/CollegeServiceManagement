@@ -1,21 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Download, X, FileText, CheckCircle2, Clock, AlertCircle, Loader2 } from 'lucide-react';
+import { Eye, Download, X, FileText, CheckCircle2, Clock, AlertCircle, Loader2, Ban } from 'lucide-react';
 import { COLLEGE_LOGO } from '../../constants/branding';
 import { requestsApi } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import { StatusBadge } from './StatusBadge';
 import { PdfPreviewModal } from './PdfPreviewModal';
+import { CancelApprovedModal } from './CancelApprovedModal';
 
 export const RequestDetailsModal = ({
   isOpen,
   onClose,
   request,
   onRefresh = null,
+  onCancelRequest = null,
 }) => {
+  const { isAOAdmin } = useAuth();
   const [details, setDetails] = useState(request);
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [cachedPdfBlob, setCachedPdfBlob] = useState(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelling, setCancelling] = useState(false);
 
   const reqId = request?.requestId || request?.bookingId || request?.id;
 
@@ -52,12 +59,51 @@ export const RequestDetailsModal = ({
 
   if (!isOpen || !details) return null;
 
-  const status = details.status ? details.status.toUpperCase() : 'PENDING';
-  const isApproved =
-    status === 'APPROVED' ||
-    status === 'BOOKED' ||
-    status === 'READY_FOR_COLLECTION' ||
-    status === 'COLLECTED';
+  const rawStatus = details.status || '';
+  const normStatus = String(rawStatus).trim().toUpperCase().replace(/[\s-]+/g, '_');
+  const isApproved = [
+    'APPROVED',
+    'AO_APPROVED',
+    'AO_DIRECT_APPROVED',
+    'BOOKED',
+    'CONFIRMED',
+    'SCHEDULED',
+    'READY_FOR_COLLECTION',
+    'COLLECTED',
+    'READY'
+  ].includes(normStatus);
+
+  const isCancellable = [
+    'APPROVED',
+    'AO_APPROVED',
+    'AO_DIRECT_APPROVED',
+    'BOOKED',
+    'CONFIRMED',
+    'SCHEDULED',
+    'READY',
+    'READY_FOR_COLLECTION',
+    'CANCELLATION_REQUESTED'
+  ].includes(normStatus);
+
+  const status = rawStatus ? rawStatus.toUpperCase() : 'PENDING';
+
+  const handleExecuteCancel = async () => {
+    try {
+      setCancelling(true);
+      await requestsApi.cancelApproved(reqId, cancelReason);
+      setDetails(prev => ({
+        ...prev,
+        status: 'CANCELLED',
+        cancellationReason: cancelReason
+      }));
+      setShowCancelModal(false);
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      alert(err.response?.data?.message || err.message || 'Error cancelling request');
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   const service = details.service || 'Service';
   const raw = details.rawObject || details;
@@ -635,6 +681,25 @@ export const RequestDetailsModal = ({
             </div>
 
             <div className="flex items-center gap-2">
+              {isCancellable && (isAOAdmin || !!onCancelRequest) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onCancelRequest) {
+                      onCancelRequest(details);
+                    } else {
+                      setShowCancelModal(true);
+                    }
+                  }}
+                  className="btn btn-danger flex items-center gap-1.5"
+                  id="btn-cancel-approved-details"
+                  title="Cancel Approved Request (AO Admin)"
+                >
+                  <Ban size={15} />
+                  <span>Cancel Request</span>
+                </button>
+              )}
+
               {isApproved && (
                 <>
                   <button
@@ -674,6 +739,24 @@ export const RequestDetailsModal = ({
           </div>
         </div>
       </div>
+
+      {/* Cancel Confirmation Dialog */}
+      {showCancelModal && (
+        <CancelApprovedModal
+          isOpen={true}
+          onClose={() => setShowCancelModal(false)}
+          targetRequest={details}
+          onSuccess={(updated) => {
+            setDetails(prev => ({
+              ...prev,
+              status: 'CANCELLED',
+              cancellationReason: updated?.cancellationReason || 'Cancelled by AO Administrator'
+            }));
+            setShowCancelModal(false);
+            if (onRefresh) onRefresh();
+          }}
+        />
+      )}
 
       {/* Actual PDF Preview Modal */}
       {showPreviewModal && (

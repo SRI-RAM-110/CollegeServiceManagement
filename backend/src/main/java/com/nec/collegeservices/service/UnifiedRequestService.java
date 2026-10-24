@@ -1,5 +1,7 @@
 package com.nec.collegeservices.service;
 
+import com.nec.collegeservices.exception.BadRequestException;
+import com.nec.collegeservices.exception.ResourceNotFoundException;
 import com.nec.collegeservices.model.*;
 import com.nec.collegeservices.repository.*;
 import lombok.AllArgsConstructor;
@@ -9,6 +11,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -31,6 +34,15 @@ public class UnifiedRequestService {
 
     @Autowired
     private MealRequestRepository mealRequestRepository;
+
+    @Autowired
+    private NotificationService notificationService;
+
+    @Autowired
+    private RequesterResolver requesterResolver;
+
+    @Autowired
+    private VehicleRepository vehicleRepository;
 
     @Data
     @Builder
@@ -151,41 +163,51 @@ public class UnifiedRequestService {
     }
 
     public List<UnifiedRequestItem> getAllRequests(String serviceFilter, String departmentFilter, String statusFilter, String search) {
+        return getAllRequests(serviceFilter, departmentFilter, statusFilter, null, search);
+    }
+
+    public List<UnifiedRequestItem> getAllRequests(String serviceFilter, String departmentFilter, String statusFilter, String dateFilter, String search) {
         List<UnifiedRequestItem> list = new ArrayList<>();
 
-        if (serviceFilter == null || serviceFilter.isBlank() || serviceFilter.equalsIgnoreCase("ALL") || serviceFilter.equalsIgnoreCase("Seminar Hall")) {
+        if (serviceFilter == null || serviceFilter.isBlank() || serviceFilter.equalsIgnoreCase("ALL") || serviceFilter.equalsIgnoreCase("Seminar Hall") || serviceFilter.equalsIgnoreCase("SEMINAR")) {
             for (SeminarBooking b : seminarBookingRepository.findAll()) {
                 list.add(fromSeminar(b));
             }
         }
 
-        if (serviceFilter == null || serviceFilter.isBlank() || serviceFilter.equalsIgnoreCase("ALL") || serviceFilter.equalsIgnoreCase("Accommodation")) {
+        if (serviceFilter == null || serviceFilter.isBlank() || serviceFilter.equalsIgnoreCase("ALL") || serviceFilter.equalsIgnoreCase("Accommodation") || serviceFilter.equalsIgnoreCase("ACCOMMODATION")) {
             for (AccommodationRequest a : accommodationRequestRepository.findAll()) {
                 list.add(fromAccommodation(a));
             }
         }
 
-        if (serviceFilter == null || serviceFilter.isBlank() || serviceFilter.equalsIgnoreCase("ALL") || serviceFilter.equalsIgnoreCase("Transport")) {
+        if (serviceFilter == null || serviceFilter.isBlank() || serviceFilter.equalsIgnoreCase("ALL") || serviceFilter.equalsIgnoreCase("Transport") || serviceFilter.equalsIgnoreCase("TRANSPORT")) {
             for (TransportRequest t : transportRequestRepository.findAll()) {
                 list.add(fromTransport(t));
             }
         }
 
-        if (serviceFilter == null || serviceFilter.isBlank() || serviceFilter.equalsIgnoreCase("ALL") || serviceFilter.equalsIgnoreCase("Stationery")) {
+        if (serviceFilter == null || serviceFilter.isBlank() || serviceFilter.equalsIgnoreCase("ALL") || serviceFilter.equalsIgnoreCase("Stationery") || serviceFilter.equalsIgnoreCase("STATIONERY")) {
             for (StationeryRequest s : stationeryRequestRepository.findAll()) {
                 list.add(fromStationery(s));
             }
         }
 
-        if (serviceFilter == null || serviceFilter.isBlank() || serviceFilter.equalsIgnoreCase("ALL") || serviceFilter.equalsIgnoreCase("Snacks & Meals")) {
+        if (serviceFilter == null || serviceFilter.isBlank() || serviceFilter.equalsIgnoreCase("ALL") || serviceFilter.equalsIgnoreCase("Snacks & Meals") || serviceFilter.equalsIgnoreCase("MEALS") || serviceFilter.equalsIgnoreCase("SNACKS_MEALS")) {
             for (MealRequest m : mealRequestRepository.findAll()) {
                 list.add(fromMeal(m));
             }
         }
 
         return list.stream()
-                .filter(item -> departmentFilter == null || departmentFilter.isBlank() || departmentFilter.equalsIgnoreCase("ALL") || item.getDepartment().equalsIgnoreCase(departmentFilter))
-                .filter(item -> statusFilter == null || statusFilter.isBlank() || statusFilter.equalsIgnoreCase("ALL") || item.getStatus().equalsIgnoreCase(statusFilter))
+                .filter(item -> departmentFilter == null || departmentFilter.isBlank() || departmentFilter.equalsIgnoreCase("ALL") || (item.getDepartment() != null && item.getDepartment().equalsIgnoreCase(departmentFilter)))
+                .filter(item -> statusFilter == null || statusFilter.isBlank() || statusFilter.equalsIgnoreCase("ALL") || (item.getStatus() != null && item.getStatus().equalsIgnoreCase(statusFilter)))
+                .filter(item -> {
+                    if (dateFilter == null || dateFilter.isBlank() || dateFilter.equalsIgnoreCase("ALL")) return true;
+                    if (item.getDate() != null && item.getDate().startsWith(dateFilter)) return true;
+                    if (item.getCreatedAt() != null && item.getCreatedAt().toLocalDate().toString().equals(dateFilter)) return true;
+                    return false;
+                })
                 .filter(item -> {
                     if (search == null || search.isBlank()) return true;
                     String q = search.trim().toLowerCase();
@@ -333,5 +355,251 @@ public class UnifiedRequestService {
                 .adminRemarks(m.getAdminRemarks())
                 .rawObject(m)
                 .build();
+    }
+
+    /**
+     * Requirement (Part C): AO Admin Cancel Approved Request across all services.
+     */
+    public UnifiedRequestItem cancelApprovedRequest(String id, String reason, User user) {
+        if (id == null || id.isBlank()) {
+            throw new BadRequestException("Request ID is required.");
+        }
+        if (reason == null || reason.trim().isBlank()) {
+            throw new BadRequestException("Cancellation reason is required.");
+        }
+        String actor = user != null ? (user.getName() != null ? user.getName() : user.getUserId()) : "AO Admin";
+        String cleanReason = reason.trim();
+
+        // 1. Check Seminar Booking
+        var seminarOpt = seminarBookingRepository.findById(id).or(() -> seminarBookingRepository.findByBookingId(id));
+        if (seminarOpt.isPresent()) {
+            SeminarBooking b = seminarOpt.get();
+            String st = b.getStatus() != null ? b.getStatus().toUpperCase() : "";
+            if ("CANCELLED".equals(st)) {
+                throw new BadRequestException("Booking " + b.getBookingId() + " is already cancelled.");
+            }
+            if ("REJECTED".equals(st)) {
+                throw new BadRequestException("Cannot cancel booking: booking is in REJECTED state.");
+            }
+            if (!"APPROVED".equals(st) && !"BOOKED".equals(st) && !"CANCELLATION_REQUESTED".equals(st)) {
+                throw new BadRequestException("Only approved requests can be cancelled. Current status is " + st + ".");
+            }
+
+            b.setStatus("CANCELLED");
+            b.setCancellationReason(cleanReason);
+            b.setCancellationReviewedBy(actor);
+            b.setCancellationReviewedAt(LocalDateTime.now());
+            b.setUpdatedAt(LocalDateTime.now());
+
+            if (b.getStatusHistory() == null) {
+                b.setStatusHistory(new ArrayList<>());
+            }
+            b.getStatusHistory().add(SeminarBooking.StatusHistoryEntry.builder()
+                    .status("CANCELLED")
+                    .actor(actor)
+                    .timestamp(LocalDateTime.now())
+                    .comment("Approved booking cancelled by AO Admin: " + cleanReason)
+                    .build());
+
+            SeminarBooking saved = seminarBookingRepository.save(b);
+
+            // Notify requester
+            String reqId = requesterResolver.resolveRequesterUserId(saved.getRequesterUserId(), saved.getRequestedBy(), saved.getDepartment());
+            notificationService.sendNotification(
+                    "DEPARTMENT_USER",
+                    saved.getDepartment(),
+                    reqId,
+                    "Seminar Hall Booking Cancelled by AO Admin",
+                    "Your approved booking for " + saved.getHallName() + " on " + saved.getDate() + " was cancelled by AO Admin. Reason: " + cleanReason,
+                    "Seminar Hall",
+                    "WARNING",
+                    saved.getBookingId()
+            );
+
+            return fromSeminar(saved);
+        }
+
+        // 2. Check Accommodation
+        var accOpt = accommodationRequestRepository.findById(id).or(() -> accommodationRequestRepository.findByRequestId(id));
+        if (accOpt.isPresent()) {
+            AccommodationRequest a = accOpt.get();
+            String st = a.getStatus() != null ? a.getStatus().toUpperCase() : "";
+            if ("CANCELLED".equals(st)) {
+                throw new BadRequestException("Request " + a.getRequestId() + " is already cancelled.");
+            }
+            if ("REJECTED".equals(st)) {
+                throw new BadRequestException("Cannot cancel request: request is in REJECTED state.");
+            }
+            boolean isApproved = "APPROVED".equals(st) || "AO_APPROVED".equals(st) || "AO_DIRECT_APPROVED".equals(st) || "BOOKED".equals(st) || "CANCELLATION_REQUESTED".equals(st);
+            if (!isApproved) {
+                throw new BadRequestException("Only approved requests can be cancelled. Current status is " + st + ".");
+            }
+
+            a.setStatus("CANCELLED");
+            a.setCancellationReason(cleanReason);
+            a.setCancellationReviewedBy(actor);
+            a.setCancellationReviewedAt(LocalDateTime.now());
+            a.setUpdatedAt(LocalDateTime.now());
+
+            if (a.getStatusHistory() == null) {
+                a.setStatusHistory(new ArrayList<>());
+            }
+            a.getStatusHistory().add(AccommodationRequest.StatusHistoryEntry.builder()
+                    .status("CANCELLED")
+                    .actor(actor)
+                    .timestamp(LocalDateTime.now())
+                    .comment("Approved accommodation cancelled by AO Admin: " + cleanReason)
+                    .build());
+
+            AccommodationRequest saved = accommodationRequestRepository.save(a);
+
+            String reqId = requesterResolver.resolveRequesterUserId(saved.getRequesterUserId(), saved.getRequestedBy(), saved.getDepartment());
+            notificationService.sendNotification(
+                    "DEPARTMENT_USER",
+                    saved.getDepartment(),
+                    reqId,
+                    "Accommodation Request Cancelled by AO Admin",
+                    "Your approved accommodation request (" + saved.getRequestId() + ") was cancelled by AO Admin. Reason: " + cleanReason,
+                    "Accommodation",
+                    "WARNING",
+                    saved.getRequestId()
+            );
+
+            return fromAccommodation(saved);
+        }
+
+        // 3. Check Transport
+        var transOpt = transportRequestRepository.findById(id).or(() -> transportRequestRepository.findByRequestId(id));
+        if (transOpt.isPresent()) {
+            TransportRequest t = transOpt.get();
+            String st = t.getStatus() != null ? t.getStatus().toUpperCase() : "";
+            if ("CANCELLED".equals(st)) {
+                throw new BadRequestException("Request " + t.getRequestId() + " is already cancelled.");
+            }
+            if ("REJECTED".equals(st)) {
+                throw new BadRequestException("Cannot cancel request: request is in REJECTED state.");
+            }
+            boolean isApproved = "APPROVED".equals(st) || "SCHEDULED".equals(st);
+            if (!isApproved) {
+                throw new BadRequestException("Only approved requests can be cancelled. Current status is " + st + ".");
+            }
+
+            t.setStatus("CANCELLED");
+            t.setAdminRemarks("Cancelled by AO Admin: " + cleanReason);
+            t.setUpdatedAt(LocalDateTime.now());
+
+            // Check if vehicle was ON_TRIP for today and release if no other trips
+            if (t.getVehicleId() != null && !t.getVehicleId().isBlank()) {
+                String today = LocalDate.now().toString();
+                if (today.equals(t.getTripDate())) {
+                    List<TransportRequest> otherActive = transportRequestRepository.findByTripDateAndStatusIn(
+                            today, List.of("APPROVED", "SCHEDULED", "ON_TRIP"));
+                    boolean otherBusy = otherActive.stream().anyMatch(r -> !r.getRequestId().equals(t.getRequestId()) && t.getVehicleId().equals(r.getVehicleId()));
+                    if (!otherBusy) {
+                        vehicleRepository.findByVehicleId(t.getVehicleId()).ifPresent(v -> {
+                            if ("ON_TRIP".equalsIgnoreCase(v.getStatus())) {
+                                v.setStatus("AVAILABLE");
+                                vehicleRepository.save(v);
+                            }
+                        });
+                    }
+                }
+            }
+
+            TransportRequest saved = transportRequestRepository.save(t);
+
+            String reqId = requesterResolver.resolveRequesterUserId(saved.getRequesterUserId(), saved.getRequestedBy(), saved.getDepartment());
+            notificationService.sendNotification(
+                    "DEPARTMENT_USER",
+                    saved.getDepartment(),
+                    reqId,
+                    "Transport Request Cancelled by AO Admin",
+                    "Your approved transport request (" + saved.getRequestId() + ") to " + saved.getDestination() + " was cancelled by AO Admin. Reason: " + cleanReason,
+                    "Transport",
+                    "WARNING",
+                    saved.getRequestId()
+            );
+
+            return fromTransport(saved);
+        }
+
+        // 4. Check Stationery
+        var statOpt = stationeryRequestRepository.findById(id).or(() -> stationeryRequestRepository.findByRequestId(id));
+        if (statOpt.isPresent()) {
+            StationeryRequest s = statOpt.get();
+            String st = s.getStatus() != null ? s.getStatus().toUpperCase() : "";
+            if ("CANCELLED".equals(st)) {
+                throw new BadRequestException("Request " + s.getRequestId() + " is already cancelled.");
+            }
+            if ("REJECTED".equals(st)) {
+                throw new BadRequestException("Cannot cancel request: request is in REJECTED state.");
+            }
+            if ("COLLECTED".equals(st)) {
+                throw new BadRequestException("Cannot cancel request: items have already been collected.");
+            }
+            boolean isApproved = "APPROVED".equals(st) || "READY_FOR_COLLECTION".equals(st) || "READY".equals(st);
+            if (!isApproved) {
+                throw new BadRequestException("Only approved requests can be cancelled. Current status is " + st + ".");
+            }
+
+            s.setStatus("CANCELLED");
+            s.setAdminComments("Cancelled by AO Admin: " + cleanReason);
+            s.setAdminRemarks("Cancelled by AO Admin: " + cleanReason);
+            s.setUpdatedAt(LocalDateTime.now());
+
+            StationeryRequest saved = stationeryRequestRepository.save(s);
+
+            String reqId = requesterResolver.resolveRequesterUserId(saved.getRequesterUserId(), saved.getRequestedBy(), saved.getDepartment());
+            notificationService.sendNotification(
+                    "DEPARTMENT_USER",
+                    saved.getDepartment(),
+                    reqId,
+                    "Stationery Request Cancelled by AO Admin",
+                    "Your approved stationery request (" + saved.getRequestId() + ") was cancelled by AO Admin. Reason: " + cleanReason,
+                    "Stationery",
+                    "WARNING",
+                    saved.getRequestId()
+            );
+
+            return fromStationery(saved);
+        }
+
+        // 5. Check Snacks & Meals
+        var mealOpt = mealRequestRepository.findById(id).or(() -> mealRequestRepository.findByRequestId(id));
+        if (mealOpt.isPresent()) {
+            MealRequest m = mealOpt.get();
+            String st = m.getStatus() != null ? m.getStatus().toUpperCase() : "";
+            if ("CANCELLED".equals(st)) {
+                throw new BadRequestException("Request " + m.getRequestId() + " is already cancelled.");
+            }
+            if ("REJECTED".equals(st)) {
+                throw new BadRequestException("Cannot cancel request: request is in REJECTED state.");
+            }
+            if (!"APPROVED".equals(st)) {
+                throw new BadRequestException("Only approved requests can be cancelled. Current status is " + st + ".");
+            }
+
+            m.setStatus("CANCELLED");
+            m.setAdminRemarks("Cancelled by AO Admin: " + cleanReason);
+            m.setUpdatedAt(LocalDateTime.now());
+
+            MealRequest saved = mealRequestRepository.save(m);
+
+            String reqId = requesterResolver.resolveRequesterUserId(saved.getRequesterUserId(), saved.getRequestedBy(), saved.getDepartment());
+            notificationService.sendNotification(
+                    "DEPARTMENT_USER",
+                    saved.getDepartment(),
+                    reqId,
+                    "Meals Request Cancelled by AO Admin",
+                    "Your approved snacks & meals request (" + saved.getRequestId() + ") for " + saved.getDate() + " was cancelled by AO Admin. Reason: " + cleanReason,
+                    "Snacks & Meals",
+                    "WARNING",
+                    saved.getRequestId()
+            );
+
+            return fromMeal(saved);
+        }
+
+        throw new ResourceNotFoundException("Request not found: " + id);
     }
 }

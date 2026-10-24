@@ -55,10 +55,31 @@ public class RequestController {
             @RequestParam(required = false) String service,
             @RequestParam(required = false) String department,
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String date,
             @RequestParam(required = false) String search) {
         List<UnifiedRequestService.UnifiedRequestItem> list =
-                unifiedRequestService.getAllRequests(service, department, status, search);
+                unifiedRequestService.getAllRequests(service, department, status, date, search);
         return ResponseEntity.ok(ApiResponse.ok("All service requests across college", list));
+    }
+
+    /**
+     * Requirement (Part C): AO Admin Cancel Approved Request across any service.
+     */
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN')")
+    public ResponseEntity<ApiResponse<UnifiedRequestService.UnifiedRequestItem>> cancelApprovedRequest(
+            @PathVariable String id,
+            @RequestBody(required = false) java.util.Map<String, String> body) {
+        User user = authService.getCurrentUser();
+        if (user == null || (!user.hasRole("CREATOR") && !user.hasRole("AO_ADMIN"))) {
+            throw new AccessDeniedException("Only AO Admin can cancel approved requests.");
+        }
+        String reason = body != null ? body.get("reason") : null;
+        if (reason == null || reason.trim().isBlank()) {
+            throw new BadRequestException("Cancellation reason is required.");
+        }
+        UnifiedRequestService.UnifiedRequestItem updated = unifiedRequestService.cancelApprovedRequest(id, reason.trim(), user);
+        return ResponseEntity.ok(ApiResponse.ok("Approved request cancelled successfully", updated));
     }
 
     /**

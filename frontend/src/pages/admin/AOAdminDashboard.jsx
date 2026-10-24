@@ -22,7 +22,8 @@ import {
   ChevronRight,
   Sparkles,
   Plus,
-  Megaphone
+  Megaphone,
+  Ban
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { COLLEGE_LOGO } from '../../constants/branding';
@@ -32,6 +33,7 @@ import Modal from '../../components/common/Modal';
 import QuickCalendar from '../../components/calendar/QuickCalendar';
 import AnnouncementsCard from '../../components/common/AnnouncementsCard';
 import { RequestDetailsModal } from '../../components/common/RequestDetailsModal';
+import { CancelApprovedModal } from '../../components/common/CancelApprovedModal';
 import { 
   dashboardApi, 
   requestsApi, 
@@ -73,6 +75,8 @@ export default function AOAdminDashboard() {
   // Filters
   const [serviceFilter, setServiceFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [departmentFilter, setDepartmentFilter] = useState('ALL');
+  const [dateFilter, setDateFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
 
   useEffect(() => {
@@ -88,6 +92,9 @@ export default function AOAdminDashboard() {
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectTarget, setRejectTarget] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
   const fetchAOData = async () => {
@@ -211,6 +218,44 @@ export default function AOAdminDashboard() {
     }
   };
 
+  const isCancellable = (status) => {
+    if (!status) return false;
+    const s = String(status).trim().toUpperCase().replace(/[\s-]+/g, '_');
+    return [
+      'APPROVED',
+      'AO_APPROVED',
+      'AO_DIRECT_APPROVED',
+      'BOOKED',
+      'CONFIRMED',
+      'SCHEDULED',
+      'READY',
+      'READY_FOR_COLLECTION',
+      'CANCELLATION_REQUESTED'
+    ].includes(s);
+  };
+
+  const handleOpenCancel = (req) => {
+    setCancelTarget(req);
+    setCancelReason('');
+    setCancelModalOpen(true);
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancelTarget) return;
+    try {
+      setActionLoading(true);
+      await requestsApi.cancelApproved(cancelTarget.id || cancelTarget.requestId, cancelReason);
+      addToast(`${cancelTarget.service} request ${cancelTarget.requestId} cancelled successfully`, 'info');
+      setCancelModalOpen(false);
+      setSelectedRequest(null);
+      fetchAOData();
+    } catch (err) {
+      addToast(err.response?.data?.message || err.message || 'Error cancelling request', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const filteredRequests = allRequests.filter(req => {
     const q = searchQuery.toLowerCase().trim();
     const matchesSearch = 
@@ -224,9 +269,14 @@ export default function AOAdminDashboard() {
       (req.status?.toLowerCase() || '').includes(q);
 
     const matchesService = serviceFilter === 'ALL' || req.service === serviceFilter;
-    const matchesStatus = statusFilter === 'ALL' || req.status === statusFilter;
+    const matchesStatus = statusFilter === 'ALL' || 
+      (statusFilter === 'APPROVED' ? isCancellable(req.status) : (req.status && String(req.status).trim().toUpperCase() === statusFilter));
+    const matchesDepartment = departmentFilter === 'ALL' || req.department === departmentFilter;
+    const submissionDate = req.createdAt ? req.createdAt.substring(0, 10) : '';
+    const eventDate = req.date || '';
+    const matchesDate = !dateFilter || submissionDate === dateFilter || eventDate === dateFilter;
 
-    return matchesSearch && matchesService && matchesStatus;
+    return matchesSearch && matchesService && matchesStatus && matchesDepartment && matchesDate;
   });
 
   const getServiceIcon = (service) => {
@@ -752,14 +802,27 @@ const sortEventsChronological = (a, b) => {
                         <td className="py-2.5 px-3 text-slate-300">{item.department}</td>
                         <td className="py-2.5 px-3 text-slate-300 truncate max-w-[200px]">{item.details}</td>
                         <td className="py-2.5 px-3"><StatusBadge status={item.status} /></td>
-                        <td className="py-2.5 px-3 text-right">
-                          <button
-                            onClick={() => setSelectedRequest(item)}
-                            className="btn btn-secondary btn-sm p-1"
-                            title="View Details"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
+                        <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => setSelectedRequest(item)}
+                              className="btn btn-secondary btn-sm p-1"
+                              title="View Details"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                            {isCancellable(item.status) && (
+                              <button
+                                onClick={() => handleOpenCancel(item)}
+                                disabled={actionLoading}
+                                className="px-2 py-1 rounded bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-semibold flex items-center gap-1 transition shadow-sm"
+                                title="Cancel Approved Request"
+                              >
+                                <Ban className="w-3 h-3" />
+                                <span>Cancel</span>
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -820,7 +883,7 @@ const sortEventsChronological = (a, b) => {
                 placeholder="Search ID, dept, details..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="admin-filter-input pl-8 w-48"
+                className="admin-filter-input pl-8 w-44"
               />
             </div>
 
@@ -844,9 +907,41 @@ const sortEventsChronological = (a, b) => {
             >
               <option value="ALL">All Status</option>
               <option value="PENDING">Pending</option>
-              <option value="APPROVED">Approved</option>
+              <option value="APPROVED">Approved / Confirmed</option>
               <option value="REJECTED">Rejected</option>
+              <option value="CANCELLED">Cancelled</option>
             </select>
+
+            <select
+              value={departmentFilter}
+              onChange={(e) => setDepartmentFilter(e.target.value)}
+              className="admin-filter-input"
+            >
+              <option value="ALL">All Departments</option>
+              {DEPARTMENTS.map(d => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+
+            <div className="flex items-center gap-1">
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="admin-filter-input text-xs"
+                title="Filter by submission or event date"
+              />
+              {dateFilter && (
+                <button
+                  type="button"
+                  onClick={() => setDateFilter('')}
+                  className="text-xs text-slate-400 hover:text-white px-1.5 py-1 rounded bg-slate-800"
+                  title="Clear date filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -857,9 +952,10 @@ const sortEventsChronological = (a, b) => {
               <tr>
                 <th className="py-3 px-4">Request ID</th>
                 <th className="py-3 px-4">Service</th>
+                <th className="py-3 px-4">Requester</th>
                 <th className="py-3 px-4">Department</th>
-                <th className="py-3 px-4">Details / Event</th>
-                <th className="py-3 px-4">Date</th>
+                <th className="py-3 px-4">Details / Specification</th>
+                <th className="py-3 px-4">Submission Date</th>
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4 text-right">Super Admin Actions</th>
               </tr>
@@ -867,13 +963,15 @@ const sortEventsChronological = (a, b) => {
             <tbody>
               {filteredRequests.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="py-8 text-center text-slate-500">
+                  <td colSpan="8" className="py-8 text-center text-slate-500">
                     No requests found matching the current filters.
                   </td>
                 </tr>
               ) : (
                 filteredRequests.map((req) => {
                   const SvcIcon = getServiceIcon(req.service);
+                  const submissionDate = req.createdAt ? req.createdAt.substring(0, 10) : (req.date || '—');
+                  const cancellable = isCancellable(req.status);
                   return (
                     <tr key={req.id || req.requestId} className="hover:bg-slate-800/40 transition">
                       <td className="py-3 px-4 font-mono font-medium text-slate-300">
@@ -885,19 +983,22 @@ const sortEventsChronological = (a, b) => {
                           {req.service}
                         </span>
                       </td>
+                      <td className="py-3 px-4 font-medium text-slate-200">
+                        {req.requestedBy || req.requesterUserId || 'Faculty'}
+                      </td>
                       <td className="py-3 px-4 font-semibold text-white">
                         {req.department}
                       </td>
-                      <td className="py-3 px-4 text-slate-200 max-w-[220px] truncate">
+                      <td className="py-3 px-4 text-slate-200 max-w-[200px] truncate" title={req.details}>
                         {req.details || 'No details provided'}
                       </td>
-                      <td className="py-3 px-4 text-slate-300">
-                        {req.date || req.createdAt?.split('T')[0] || '—'}
+                      <td className="py-3 px-4 text-slate-300 font-mono">
+                        {submissionDate}
                       </td>
                       <td className="py-3 px-4">
                         <StatusBadge status={req.status} />
                       </td>
-                      <td className="py-3 px-4 text-right">
+                      <td className="py-3 px-4 text-right whitespace-nowrap min-w-[150px]">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => setSelectedRequest(req)}
@@ -928,6 +1029,18 @@ const sortEventsChronological = (a, b) => {
                                 <span>Reject</span>
                               </button>
                             </>
+                          )}
+
+                          {cancellable && (
+                            <button
+                              onClick={() => handleOpenCancel(req)}
+                              disabled={actionLoading}
+                              className="px-2.5 py-1 rounded bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold flex items-center gap-1 transition shadow-sm"
+                              title="AO Admin: Cancel Approved Request"
+                            >
+                              <Ban className="w-3.5 h-3.5" />
+                              <span>Cancel Request</span>
+                            </button>
                           )}
                         </div>
                       </td>
@@ -998,7 +1111,31 @@ const sortEventsChronological = (a, b) => {
               </div>
             )}
 
-            {(selectedRequest.status === 'APPROVED' || selectedRequest.status === 'BOOKED' || selectedRequest.status === 'READY_FOR_COLLECTION' || selectedRequest.status === 'COLLECTED') && (
+            {isCancellable(selectedRequest.status) && (
+              <div className="flex items-center justify-between pt-3 border-t border-slate-800">
+                <button
+                  onClick={() => handleOpenCancel(selectedRequest)}
+                  disabled={actionLoading}
+                  className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+                >
+                  <Ban className="w-3.5 h-3.5" />
+                  <span>Cancel Approved Request</span>
+                </button>
+                <button
+                  onClick={() => {
+                    const req = selectedRequest;
+                    setSelectedRequest(null);
+                    setDocModalRequest(req);
+                  }}
+                  className="px-4 py-2 rounded-lg bg-blue-600/90 hover:bg-blue-500 text-white text-xs font-medium flex items-center gap-1.5 transition shadow-sm"
+                  id="btn-view-official-doc-ao"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>View Official Document & PDF</span>
+                </button>
+              </div>
+            )}
+            {!isCancellable(selectedRequest.status) && (selectedRequest.status === 'COLLECTED') && (
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
                 <button
                   onClick={() => {
@@ -1016,6 +1153,19 @@ const sortEventsChronological = (a, b) => {
             )}
           </div>
         </Modal>
+      )}
+
+      {/* Cancel Approved Request Modal */}
+      {cancelModalOpen && (
+        <CancelApprovedModal
+          isOpen={true}
+          onClose={() => setCancelModalOpen(false)}
+          targetRequest={cancelTarget}
+          onSuccess={() => {
+            setSelectedRequest(null);
+            fetchAOData();
+          }}
+        />
       )}
 
       {/* Reject Modal */}
@@ -1175,6 +1325,11 @@ const sortEventsChronological = (a, b) => {
           isOpen={!!docModalRequest}
           onClose={() => setDocModalRequest(null)}
           request={docModalRequest}
+          onCancelRequest={(r) => {
+            setDocModalRequest(null);
+            handleOpenCancel(r);
+          }}
+          onRefresh={fetchAOData}
         />
       )}
     </div>

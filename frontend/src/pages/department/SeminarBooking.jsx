@@ -183,7 +183,19 @@ export const SeminarBooking = () => {
   }, [selectedHallId, selectedDate]);
 
   const currentHall = halls.find((h) => h.hallId === selectedHallId) || halls[0] || {};
-  const isHallAvailable = !currentHall.status || currentHall.status.toLowerCase() === 'available';
+  const operationalStatus = useMemo(() => {
+    const raw = currentHall.status;
+    if (!raw || raw.toLowerCase() === 'available' || raw.toLowerCase() === 'functional') {
+      return 'Functional';
+    }
+    if (raw.toLowerCase() === 'maintenance' || raw.toLowerCase() === 'under_maintenance') {
+      return 'Maintenance';
+    }
+    return raw;
+  }, [currentHall.status]);
+
+  const isHallOperational = operationalStatus === 'Functional';
+  const isHallAvailable = isHallOperational;
 
   const isCapacityExceeded = useMemo(() => {
     if (!currentHall.capacity || !expectedParticipants) return false;
@@ -311,9 +323,9 @@ export const SeminarBooking = () => {
       showToast('End date must be on or after the start date', 'warning');
       return;
     }
-    if (!isHallAvailable) {
+    if (!isHallOperational) {
       showToast(
-        `Seminar Hall ${currentHall.name} is currently unavailable (${currentHall.status}).`,
+        `Seminar Hall ${currentHall.name || currentHall.hallId} is currently under maintenance. New bookings cannot be submitted for this hall.`,
         'error'
       );
       return;
@@ -998,7 +1010,7 @@ export const SeminarBooking = () => {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-slate-400">Status:</span>
-                      <StatusBadge status={isHallAvailable ? 'AVAILABLE' : 'MAINTENANCE'} />
+                      <StatusBadge status={operationalStatus} />
                     </div>
                     {(currentHall.hasProjector || currentHall.hasAc || currentHall.hasAudioSystem || currentHall.hasWifi) && (
                       <div className="pt-1.5 border-t border-slate-800/80">
@@ -1011,6 +1023,19 @@ export const SeminarBooking = () => {
                         </div>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Maintenance Warning Banner */}
+                {!isHallOperational && (
+                  <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2.5">
+                    <AlertTriangle size={16} className="text-rose-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-semibold block text-rose-200">Hall Under Maintenance</span>
+                      <span>
+                        Seminar Hall {currentHall.name || currentHall.hallId} is currently under maintenance. New bookings cannot be submitted for this hall.
+                      </span>
+                    </div>
                   </div>
                 )}
 
@@ -1388,7 +1413,7 @@ export const SeminarBooking = () => {
                     <button
                       type="submit"
                       className="btn btn-primary btn-flex-2 text-xs"
-                      disabled={submitting || !isHallAvailable || isCapacityExceeded}
+                      disabled={submitting || !isHallOperational || isCapacityExceeded}
                     >
                       <Send size={14} /> Review & Submit
                     </button>
