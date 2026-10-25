@@ -1809,9 +1809,29 @@ public class SeminarService {
     // SUPER ADMIN HALL MANAGEMENT (Section 37)
     // ==========================================
 
+    public static final java.util.regex.Pattern EMAIL_PATTERN =
+            java.util.regex.Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+
+    public List<String> sanitizeAndValidateCcEmails(List<String> emails) {
+        if (emails == null || emails.isEmpty()) {
+            return new ArrayList<>();
+        }
+        Set<String> validCleanEmails = new LinkedHashSet<>();
+        for (String email : emails) {
+            if (email == null) continue;
+            String clean = email.trim().replaceAll("^[\"']|[\"']$", "").toLowerCase();
+            if (clean.isEmpty()) continue;
+            if (!EMAIL_PATTERN.matcher(clean).matches()) {
+                throw new BadRequestException("Invalid CC email address format: '" + email + "'. Please enter valid email addresses.");
+            }
+            validCleanEmails.add(clean);
+        }
+        return new ArrayList<>(validCleanEmails);
+    }
+
     public SeminarHall updateHall(String hallId, SeminarHall updatedHall, User user) {
-        if (!isSuperAdmin(user)) {
-            throw new AccessDeniedException("Only Super Admin can update seminar halls.");
+        if (!isSuperAdmin(user) && (user == null || !user.hasRole("SEMINAR_ADMIN"))) {
+            throw new AccessDeniedException("Only authorized administrators can update seminar halls.");
         }
         SeminarHall hall = getHallById(hallId)
                 .orElseThrow(() -> new ResourceNotFoundException("Seminar Hall not found: " + hallId));
@@ -1824,7 +1844,22 @@ public class SeminarService {
         if (updatedHall.getFacilities() != null) hall.setFacilities(updatedHall.getFacilities());
         if (updatedHall.getStatus() != null) hall.setStatus(updatedHall.getStatus());
         if (updatedHall.getCoordinatorUserIds() != null) hall.setCoordinatorUserIds(updatedHall.getCoordinatorUserIds());
+        if (updatedHall.getCcEmails() != null) {
+            hall.setCcEmails(sanitizeAndValidateCcEmails(updatedHall.getCcEmails()));
+        }
 
+        return hallRepository.save(hall);
+    }
+
+    public SeminarHall updateHallCcEmails(String hallId, List<String> ccEmails, User user) {
+        if (!isSuperAdmin(user) && (user == null || !user.hasRole("SEMINAR_ADMIN"))) {
+            throw new AccessDeniedException("Only authorized administrators can configure hall CC emails.");
+        }
+        SeminarHall hall = getHallById(hallId)
+                .orElseThrow(() -> new ResourceNotFoundException("Seminar Hall not found: " + hallId));
+
+        List<String> validated = sanitizeAndValidateCcEmails(ccEmails);
+        hall.setCcEmails(validated);
         return hallRepository.save(hall);
     }
 

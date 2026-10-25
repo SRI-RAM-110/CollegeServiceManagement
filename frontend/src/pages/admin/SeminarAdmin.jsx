@@ -20,6 +20,8 @@ import {
   CalendarRange,
   ShieldCheck,
   Ban,
+  Mail,
+  Plus,
 } from 'lucide-react';
 import StatCard from '../../components/common/StatCard';
 import StatusBadge from '../../components/common/StatusBadge';
@@ -35,9 +37,17 @@ import { getTodayStr, formatDateDisplay } from '../../utils/dateUtils';
 export default function SeminarAdmin() {
   const [searchParams] = useSearchParams();
   const { addToast } = useNotifications();
-  const { user, isSeminarCoordinator, isAOAdmin } = useAuth();
+  const { user, isSeminarCoordinator, isAOAdmin, isSeminarAdmin } = useAuth();
   const assignedHallIds = user?.assignedHallIds || [];
   const isCoordinatorOnly = isSeminarCoordinator && !isAOAdmin;
+
+  // CC Emails Management for Halls (Requirement 2)
+  const [ccModalHall, setCcModalHall] = useState(null);
+  const [ccEmailsList, setCcEmailsList] = useState([]);
+  const [newCcInput, setNewCcInput] = useState('');
+  const [ccError, setCcError] = useState('');
+  const [savingCc, setSavingCc] = useState(false);
+  const canManageHallCc = isAOAdmin || isSeminarAdmin || user?.roles?.includes('CREATOR') || user?.role === 'CREATOR';
 
   const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0, cancellationRequested: 0, rescheduleRequested: 0 });
   const [requests, setRequests] = useState([]);
@@ -217,6 +227,57 @@ export default function SeminarAdmin() {
       addToast(err.message || 'Failed to update hall status', 'error');
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleOpenCcModal = (hall) => {
+    setCcModalHall(hall);
+    setCcEmailsList(Array.isArray(hall.ccEmails) ? [...hall.ccEmails] : []);
+    setNewCcInput('');
+    setCcError('');
+  };
+
+  const handleAddCcEmail = (e) => {
+    if (e) e.preventDefault();
+    const email = newCcInput.trim().toLowerCase();
+    if (!email) return;
+    const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+    if (!emailRegex.test(email)) {
+      setCcError('Please enter a valid email address (e.g., coordinator@nrtec.in)');
+      return;
+    }
+    if (ccEmailsList.includes(email)) {
+      setCcError('This email address is already added to this hall.');
+      return;
+    }
+    setCcEmailsList([...ccEmailsList, email]);
+    setNewCcInput('');
+    setCcError('');
+  };
+
+  const handleRemoveCcEmail = (emailToRemove) => {
+    setCcEmailsList(ccEmailsList.filter((em) => em !== emailToRemove));
+    setCcError('');
+  };
+
+  const handleSaveCcEmails = async () => {
+    if (!ccModalHall) return;
+    try {
+      setSavingCc(true);
+      setCcError('');
+      const hallId = ccModalHall.hallId || ccModalHall.id;
+      const res = await seminarApi.updateHallCcEmails(hallId, ccEmailsList);
+      addToast(`Updated CC emails for ${ccModalHall.name}`, 'success');
+      const updatedList = res.data?.ccEmails || ccEmailsList;
+      setHalls((prev) =>
+        prev.map((h) => ((h.hallId === hallId || h.id === hallId) ? { ...h, ccEmails: updatedList } : h))
+      );
+      setCcModalHall(null);
+    } catch (err) {
+      setCcError(err.message || 'Failed to update CC emails');
+      addToast(err.message || 'Failed to update CC emails', 'error');
+    } finally {
+      setSavingCc(false);
     }
   };
 
@@ -456,6 +517,17 @@ export default function SeminarAdmin() {
                       <span className="text-xs font-medium text-slate-300 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700/50">
                         Cap: {hall.capacity}
                       </span>
+                      {canManageHallCc && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenCcModal(hall)}
+                          className="flex items-center gap-1 text-[11px] font-medium text-blue-400 hover:text-blue-300 bg-blue-950/60 hover:bg-blue-900/60 border border-blue-800/60 rounded px-2 py-0.5 transition"
+                          title="Configure CC Email Recipients for this Hall"
+                        >
+                          <Mail className="w-3 h-3" />
+                          <span>CC ({hall.ccEmails?.length || 0})</span>
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -1121,6 +1193,106 @@ export default function SeminarAdmin() {
           request={docModalRequest}
           onRefresh={fetchData}
         />
+      )}
+
+      {/* CC Email Recipients Modal */}
+      {ccModalHall && (
+        <Modal
+          isOpen={!!ccModalHall}
+          onClose={() => setCcModalHall(null)}
+          title={`Configure CC Emails: ${ccModalHall.name} (${ccModalHall.hallId || ccModalHall.id})`}
+        >
+          <div className="space-y-4 text-slate-200">
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Notification emails (submission, approval, rejection, cancellation) for bookings in this seminar hall will be automatically CC'd to these addresses.
+            </p>
+
+            {/* Currently Configured CC List */}
+            <div>
+              <label className="text-xs font-semibold text-slate-300 block mb-2">
+                Active CC Recipients ({ccEmailsList.length})
+              </label>
+              {ccEmailsList.length === 0 ? (
+                <div className="text-xs text-slate-500 italic p-3 bg-slate-900/50 rounded-lg border border-slate-800 text-center">
+                  No CC emails configured. Notifications for this hall will be sent directly to the requester without CC.
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto p-2 bg-slate-900/60 rounded-lg border border-slate-800">
+                  {ccEmailsList.map((email) => (
+                    <span
+                      key={email}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-950 text-blue-300 border border-blue-800/70"
+                    >
+                      <Mail className="w-3 h-3 text-blue-400" />
+                      <span>{email}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCcEmail(email)}
+                        className="text-slate-400 hover:text-rose-400 p-0.5 rounded-full hover:bg-rose-950/50 transition"
+                        title="Remove recipient"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Add New Email */}
+            <form onSubmit={handleAddCcEmail} className="space-y-1.5 pt-2 border-t border-slate-800">
+              <label className="text-xs font-medium text-slate-300 block">
+                Add CC Email Address
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  placeholder="e.g. coordinator@nrtec.in"
+                  value={newCcInput}
+                  onChange={(e) => {
+                    setNewCcInput(e.target.value);
+                    if (ccError) setCcError('');
+                  }}
+                  className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+                />
+                <button
+                  type="submit"
+                  className="btn btn-secondary text-xs px-3 py-1.5 flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-white rounded-lg border border-slate-700"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add
+                </button>
+              </div>
+              {ccError && (
+                <p className="text-xs text-rose-400 font-medium flex items-center gap-1 mt-1">
+                  <AlertTriangle className="w-3 h-3" />
+                  {ccError}
+                </p>
+              )}
+            </form>
+
+            {/* Modal Actions */}
+            <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setCcModalHall(null)}
+                disabled={savingCc}
+                className="btn btn-secondary text-xs px-3 py-1.5"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveCcEmails}
+                disabled={savingCc}
+                className="btn btn-primary text-xs px-4 py-1.5 flex items-center gap-1.5"
+              >
+                {savingCc && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                Save CC Recipients
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

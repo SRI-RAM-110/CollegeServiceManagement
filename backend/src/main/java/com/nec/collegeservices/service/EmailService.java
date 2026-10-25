@@ -2,8 +2,12 @@ package com.nec.collegeservices.service;
 
 import com.nec.collegeservices.model.EmailLog;
 import com.nec.collegeservices.model.Notification;
+import com.nec.collegeservices.model.SeminarBooking;
+import com.nec.collegeservices.model.SeminarHall;
 import com.nec.collegeservices.model.User;
 import com.nec.collegeservices.repository.EmailLogRepository;
+import com.nec.collegeservices.repository.SeminarBookingRepository;
+import com.nec.collegeservices.repository.SeminarHallRepository;
 import com.nec.collegeservices.repository.UserRepository;
 import jakarta.annotation.PostConstruct;
 import jakarta.mail.internet.InternetAddress;
@@ -32,6 +36,12 @@ public class EmailService {
 
     @Autowired
     private EmailLogRepository emailLogRepository;
+
+    @Autowired(required = false)
+    private SeminarBookingRepository seminarBookingRepository;
+
+    @Autowired(required = false)
+    private SeminarHallRepository seminarHallRepository;
 
     @Value("${spring.mail.host:smtp.gmail.com}")
     private String mailHost;
@@ -181,7 +191,7 @@ public class EmailService {
             return;
         }
 
-        List<String> ccRecipients = resolveCcRecipients(eventCategory);
+        List<String> ccRecipients = resolveCcRecipients(notification, eventCategory);
 
         for (String primaryRecipient : primaryRecipients) {
             sendSingleEmail(notification, eventCategory, primaryRecipient, ccRecipients);
@@ -226,11 +236,131 @@ public class EmailService {
     }
 
     public List<String> resolveCcRecipients(String eventCategory) {
+        return resolveCcRecipients(null, eventCategory);
+    }
+
+    public List<String> resolveCcRecipients(Notification notification, String eventCategory) {
+        if (isSeminarNotification(notification)) {
+            return resolveSeminarHallCcRecipients(notification);
+        }
+
+        // Global CC behavior preserved for non-seminar services (Requirement 8)
         Set<String> configuredEvents = getCcEventsSet();
         if (configuredEvents.contains(eventCategory)) {
             return getCcEmailsList();
         }
         return Collections.emptyList();
+    }
+
+    public boolean isSeminarNotification(Notification notification) {
+        if (notification == null) return false;
+        String service = notification.getService();
+        if (service != null && (service.equalsIgnoreCase("Seminar Hall") || service.equalsIgnoreCase("Seminar"))) {
+            return true;
+        }
+        String title = notification.getTitle();
+        if (title != null && title.toLowerCase().contains("seminar")) {
+            return true;
+        }
+        String refId = notification.getReferenceId();
+        if (refId != null && (refId.contains("-SEM-") || refId.startsWith("SEM-"))) {
+            return true;
+        }
+        if (refId != null && seminarBookingRepository != null) {
+            try {
+                if (seminarBookingRepository.findByBookingId(refId).isPresent()) return true;
+                if (seminarBookingRepository.findById(refId).isPresent()) return true;
+                List<SeminarBooking> series = seminarBookingRepository.findBySeriesId(refId);
+                if (series != null && !series.isEmpty()) return true;
+            } catch (Exception ignored) {}
+        }
+        return false;
+    }
+
+    public List<String> resolveSeminarHallCcRecipients(Notification notification) {
+        if (notification == null || seminarBookingRepository == null || seminarHallRepository == null) {
+            return Collections.emptyList();
+        }
+
+        String refId = notification.getReferenceId();
+        if (refId == null || refId.isBlank()) {
+            return Collections.emptyList();
+        }
+
+        SeminarBooking booking = null;
+        try {
+            // 1. Try find by bookingId
+            var byBookingId = seminarBookingRepository.findByBookingId(refId);
+            if (byBookingId.isPresent()) {
+                booking = byBookingId.get();
+            } else {
+                // 2. Try find by MongoDB document ID
+                var byId = seminarBookingRepository.findById(refId);
+                if (byId.isPresent()) {
+                    booking = byId.get();
+                } else {
+                    // 3. Try find by recurring seriesId
+                    List<SeminarBooking> seriesBookings = seminarBookingRepository.findBySeriesId(refId);
+                    if (seriesBookings != null && !seriesBookings.isEmpty()) {
+                        booking = seriesBookings.get(0);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Error looking up booking for seminar notification {}: {}", refId, e.getMessage());
+        }
+
+        if (booking == null) {
+            log.info("Seminar notification reference '{}' did not resolve to a booking record. Sending without CC.", refId);
+            return Collections.emptyList();
+        }
+
+        // Identify the hall from the actual booking record
+        String hallId = booking.getHallId();
+        String hallName = booking.getHallName();
+
+        SeminarHall hall = null;
+        try {
+            if (hallId != null && !hallId.isBlank()) {
+                hall = seminarHallRepository.findByHallId(hallId).orElse(null);
+                if (hall == null) {
+                    hall = seminarHallRepository.findById(hallId).orElse(null);
+                }
+            }
+            if (hall == null && hallName != null && !hallName.isBlank()) {
+                hall = seminarHallRepository.findAll().stream()
+                        .filter(h -> h.getName() != null && h.getName().equalsIgnoreCase(hallName))
+                        .findFirst()
+                        .orElse(null);
+            }
+        } catch (Exception e) {
+            log.warn("Error looking up seminar hall for booking {}: {}", booking.getBookingId(), e.getMessage());
+        }
+
+        if (hall == null) {
+            log.info("Seminar booking '{}' refers to hallId '{}' / hallName '{}' not found in database. Sending without CC.",
+                    booking.getBookingId(), hallId, hallName);
+            return Collections.emptyList();
+        }
+
+        List<String> rawCcEmails = hall.getCcEmails();
+        if (rawCcEmails == null || rawCcEmails.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Set<String> validCcEmails = new LinkedHashSet<>();
+        for (String email : rawCcEmails) {
+            if (email == null) continue;
+            String clean = email.trim().replaceAll("^[\"']|[\"']$", "").toLowerCase();
+            if (clean.isEmpty()) continue;
+            if (clean.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
+                validCcEmails.add(clean);
+            } else {
+                log.warn("Ignored invalid CC email '{}' in hall '{}' configuration.", email, hall.getHallId());
+            }
+        }
+
+        return new ArrayList<>(validCcEmails);
     }
 
     private void sendSingleEmail(Notification notification, String eventCategory,

@@ -128,6 +128,7 @@ export const seminarApi = {
   rejectReschedule: (id, reason) => api.put(`/seminar/requests/${id}/reject-reschedule`, { reason }),
   updateHallStatus: (hallId, status) => api.put(`/seminar/halls/${hallId}/status`, { status }),
   updateHall: (hallId, data) => api.put(`/seminar/halls/${hallId}`, data),
+  updateHallCcEmails: (hallId, ccEmails) => api.put(`/seminar/halls/${hallId}/cc-emails`, { ccEmails }),
   assignCoordinators: (hallId, coordinators) => api.post(`/seminar/halls/${hallId}/coordinators`, { coordinators }),
 };
 

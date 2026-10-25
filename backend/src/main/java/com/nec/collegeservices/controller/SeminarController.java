@@ -221,13 +221,24 @@ public class SeminarController {
     }
 
     @PutMapping("/halls/{hallId}")
-    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN')")
+    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN')")
     public ResponseEntity<ApiResponse<SeminarHall>> updateHall(
             @PathVariable String hallId,
             @RequestBody SeminarHall hall) {
         User user = authService.getCurrentUser();
         SeminarHall updated = seminarService.updateHall(hallId, hall, user);
         return ResponseEntity.ok(ApiResponse.ok("Seminar hall updated", updated));
+    }
+
+    @PutMapping("/halls/{hallId}/cc-emails")
+    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN')")
+    public ResponseEntity<ApiResponse<SeminarHall>> updateHallCcEmails(
+            @PathVariable String hallId,
+            @RequestBody Map<String, List<String>> body) {
+        User user = authService.getCurrentUser();
+        List<String> ccEmails = body != null ? body.get("ccEmails") : List.of();
+        SeminarHall updated = seminarService.updateHallCcEmails(hallId, ccEmails, user);
+        return ResponseEntity.ok(ApiResponse.ok("Seminar hall CC emails updated successfully", updated));
     }
 
     @PostMapping("/halls/{hallId}/coordinators")
