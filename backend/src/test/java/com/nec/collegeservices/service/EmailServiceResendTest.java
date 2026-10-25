@@ -264,4 +264,35 @@ public class EmailServiceResendTest {
         assertEquals("target@nrtec.in", result.get("primaryRecipient"));
         assertTrue(result.get("message").toString().contains("Resend"));
     }
+
+    @Test
+    @DisplayName("7. Gmail sender address falls back to onboarding@resend.dev for Resend authorization")
+    void testGmailSenderFallsBackToResendAuthorizedSender() {
+        ReflectionTestUtils.setField(emailService, "mailFrom", "collegeservice2026@gmail.com");
+        ReflectionTestUtils.setField(emailService, "mailFromName", "NEC Service Management");
+
+        String formatted = emailService.getFormattedFrom();
+        assertEquals("NEC Service Management <onboarding@resend.dev>", formatted);
+    }
+
+    @Test
+    @DisplayName("8. Quoted env values are safely normalized and do not trigger SMTP")
+    void testQuotedEnvironmentValuesNormalized() {
+        ReflectionTestUtils.setField(emailService, "emailProvider", "\"resend\"");
+        ReflectionTestUtils.setField(emailService, "resendApiKey", "\"re_sample_with_quotes_123\"");
+
+        assertEquals("resend", emailService.getActiveProvider());
+        assertTrue(emailService.isResendConfigured());
+        assertEquals("re_sample_with_quotes_123", emailService.getCleanResendApiKey());
+    }
+
+    @Test
+    @DisplayName("9. Active provider defaults to Resend when RESEND_API_KEY is present without EMAIL_PROVIDER")
+    void testProviderDefaultsToResendWhenApiKeyPresent() {
+        ReflectionTestUtils.setField(emailService, "emailProvider", "");
+        ReflectionTestUtils.setField(emailService, "resendApiKey", "re_active_key_test");
+
+        assertEquals("resend", emailService.getActiveProvider());
+        assertTrue(emailService.isProviderConfigured());
+    }
 }
