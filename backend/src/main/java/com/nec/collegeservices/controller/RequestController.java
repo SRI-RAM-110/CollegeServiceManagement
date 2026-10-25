@@ -110,13 +110,6 @@ public class RequestController {
         }
         checkAccess(user, item);
 
-        String status = item.getStatus() != null ? item.getStatus().toUpperCase() : "";
-        boolean isApproved = "APPROVED".equals(status) || "BOOKED".equals(status) ||
-                             "READY_FOR_COLLECTION".equals(status) || "COLLECTED".equals(status);
-        if (!isApproved) {
-            throw new BadRequestException("This request is not approved yet. Official PDF document is only available for approved requests.");
-        }
-
         byte[] pdfBytes = pdfGenerationService.generateRequestPdf(item);
 
         // Sanitize service name and request ID for filename

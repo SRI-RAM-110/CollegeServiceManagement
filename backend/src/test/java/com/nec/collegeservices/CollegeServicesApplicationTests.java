@@ -15,14 +15,18 @@ import com.nec.collegeservices.service.SeminarService;
 import com.nec.collegeservices.service.StationeryService;
 import com.nec.collegeservices.dto.AccommodationDualRequestDTO;
 import com.nec.collegeservices.dto.AccommodationRequestDTO;
+import com.nec.collegeservices.dto.UserDTO;
 import com.nec.collegeservices.model.AccommodationRequest;
 import com.nec.collegeservices.model.AccommodationRoom;
 import com.nec.collegeservices.repository.AccommodationRequestRepository;
 import com.nec.collegeservices.repository.AccommodationRoomRepository;
 import com.nec.collegeservices.service.AccommodationService;
 import com.nec.collegeservices.service.AdminUserService;
-import com.nec.collegeservices.dto.UserDTO;
+import com.nec.collegeservices.exception.BadRequestException;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.TemporalAdjusters;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -173,8 +177,8 @@ public class CollegeServicesApplicationTests {
     void testSeminarSlotConflictPrevention() {
         User cseUser = userRepository.findByUserId("CSE001").orElseThrow();
 
-        // 1. Create a Forenoon booking on a test date
-        String testDate = "2026-10-15";
+        // 1. Create a Forenoon booking on a future test date
+        String testDate = LocalDate.now(SeminarService.COLLEGE_ZONE).plusDays(10).toString();
         seminarBookingRepository.findByHallIdAndDate("SH-1", testDate).forEach(seminarBookingRepository::delete);
 
         SeminarBookingRequestDTO forenoonDto = SeminarBookingRequestDTO.builder()
@@ -204,6 +208,282 @@ public class CollegeServicesApplicationTests {
 
         // Clean up test booking
         seminarBookingRepository.delete(forenoonBooking);
+    }
+
+    @Test
+    void testSeminarBookingPastDateRejected() {
+        User cseUser = userRepository.findByUserId("CSE001").orElseThrow();
+        String pastDate = LocalDate.now(SeminarService.COLLEGE_ZONE).minusDays(1).toString();
+
+        SeminarBookingRequestDTO pastDto = SeminarBookingRequestDTO.builder()
+                .hallId("SH-1")
+                .date(pastDate)
+                .slot("FORENOON")
+                .eventTitle("Past Event")
+                .purpose("Historical attempt")
+                .expectedParticipants(50)
+                .build();
+
+        BadRequestException ex = assertThrows(BadRequestException.class,
+                () -> seminarService.createBooking(pastDto, cseUser));
+        assertTrue(ex.getMessage().contains("already passed"));
+    }
+
+    @Test
+    void testSeminarBookingPastSlotTodayRejected() {
+        User cseUser = userRepository.findByUserId("CSE001").orElseThrow();
+        String todayDate = LocalDate.now(SeminarService.COLLEGE_ZONE).toString();
+
+        // If after 09:00, FORENOON has passed; if after 12:00, AFTERNOON has also passed
+        SeminarBookingRequestDTO passedSlotDto = SeminarBookingRequestDTO.builder()
+                .hallId("SH-1")
+                .date(todayDate)
+                .slot("FORENOON")
+                .eventTitle("Morning Event Today")
+                .purpose("Same-day attempt")
+                .expectedParticipants(50)
+                .build();
+
+        // Either current time is >= 09:00 (so FORENOON throws BadRequestException), or before 09:00
+        if (!java.time.LocalTime.now(SeminarService.COLLEGE_ZONE).isBefore(java.time.LocalTime.of(9, 0))) {
+            BadRequestException ex = assertThrows(BadRequestException.class,
+                    () -> seminarService.createBooking(passedSlotDto, cseUser));
+            assertTrue(ex.getMessage().contains("already passed"));
+        }
+    }
+
+    @Test
+    void testSeminarBookingFutureDateAccepted() {
+        User cseUser = userRepository.findByUserId("CSE001").orElseThrow();
+        String futureDate = LocalDate.now(SeminarService.COLLEGE_ZONE).plusDays(14).toString();
+        seminarBookingRepository.findByHallIdAndDate("SH-1", futureDate).forEach(seminarBookingRepository::delete);
+
+        SeminarBookingRequestDTO futureDto = SeminarBookingRequestDTO.builder()
+                .hallId("SH-1")
+                .date(futureDate)
+                .slot("AFTERNOON")
+                .eventTitle("Future Symposium")
+                .purpose("Annual technical symposium")
+                .expectedParticipants(80)
+                .build();
+
+        SeminarBooking saved = seminarService.createBooking(futureDto, cseUser);
+        assertNotNull(saved);
+        assertNotNull(saved.getBookingId());
+        assertEquals("AFTERNOON", saved.getSlot());
+        assertEquals(futureDate, saved.getDate());
+
+        // Clean up
+        seminarBookingRepository.delete(saved);
+    }
+
+    @Test
+    void testSeminarBookingRecurringWithPastOccurrenceRejected() {
+        User cseUser = userRepository.findByUserId("CSE001").orElseThrow();
+        String pastStart = LocalDate.now(SeminarService.COLLEGE_ZONE).minusDays(7).toString();
+        String futureEnd = LocalDate.now(SeminarService.COLLEGE_ZONE).plusDays(7).toString();
+
+        SeminarBookingRequestDTO recurringDto = SeminarBookingRequestDTO.builder()
+                .hallId("SH-1")
+                .bookingType("RECURRING")
+                .startDate(pastStart)
+                .endDate(futureEnd)
+                .recurrenceDays(List.of("MONDAY", "WEDNESDAY"))
+                .slot("FORENOON")
+                .eventTitle("Recurring Series with Past Date")
+                .purpose("Weekly meeting")
+                .expectedParticipants(60)
+                .build();
+
+        BadRequestException ex = assertThrows(BadRequestException.class,
+                () -> seminarService.createBooking(recurringDto, cseUser));
+        assertTrue(ex.getMessage().contains("past") || ex.getMessage().contains("already passed"));
+    }
+
+    @Test
+    void testSeminarBookingEndTimeNotAfterStartTimeRejected() {
+        User cseUser = userRepository.findByUserId("CSE001").orElseThrow();
+        String futureDate = LocalDate.now(SeminarService.COLLEGE_ZONE).plusDays(20).toString();
+
+        SeminarBookingRequestDTO invalidTimeDto = SeminarBookingRequestDTO.builder()
+                .hallId("SH-1")
+                .date(futureDate)
+                .slot("FORENOON")
+                .startTime("14:00")
+                .endTime("13:00") // end time earlier than start time
+                .eventTitle("Invalid Time Event")
+                .purpose("Timing edge case")
+                .expectedParticipants(50)
+                .build();
+
+        BadRequestException ex = assertThrows(BadRequestException.class,
+                () -> seminarService.createBooking(invalidTimeDto, cseUser));
+        assertTrue(ex.getMessage().contains("must be after start time"));
+    }
+
+    @Test
+    void testRecurringBookingAllWeekdaysValidAccepted() {
+        User cseUser = userRepository.findByUserId("CSE001").orElseThrow();
+        LocalDate nextMon = LocalDate.now(SeminarService.COLLEGE_ZONE).plusWeeks(2).with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
+        String startDate = nextMon.toString();
+        String endDate = nextMon.plusDays(4).toString(); // Monday to Friday (5-day range, < 7 days)
+
+        // Clear any bookings on this hall and range
+        for (int i = 0; i <= 4; i++) {
+            seminarBookingRepository.findByHallIdAndDate("SH-1", nextMon.plusDays(i).toString())
+                    .forEach(seminarBookingRepository::delete);
+        }
+
+        SeminarBookingRequestDTO recurringDto = SeminarBookingRequestDTO.builder()
+                .hallId("SH-1")
+                .bookingType("RECURRING")
+                .startDate(startDate)
+                .endDate(endDate)
+                .recurrenceDays(List.of("MONDAY", "WEDNESDAY", "FRIDAY"))
+                .slot("AFTERNOON")
+                .eventTitle("Bi-Weekly Research Colloquium")
+                .purpose("Department project reviews")
+                .expectedParticipants(75)
+                .build();
+
+        SeminarBooking primaryBooking = seminarService.createBooking(recurringDto, cseUser);
+        assertNotNull(primaryBooking);
+        assertNotNull(primaryBooking.getSeriesId());
+
+        // Verify occurrences in repository
+        List<SeminarBooking> seriesOccurrences = seminarBookingRepository.findBySeriesId(primaryBooking.getSeriesId());
+        assertEquals(3, seriesOccurrences.size());
+        for (SeminarBooking occ : seriesOccurrences) {
+            assertTrue(occ.getDate().compareTo(startDate) >= 0 && occ.getDate().compareTo(endDate) <= 0);
+            seminarBookingRepository.delete(occ);
+        }
+    }
+
+    @Test
+    void testRecurringBookingMissingWeekdayRejected() {
+        User cseUser = userRepository.findByUserId("CSE001").orElseThrow();
+        LocalDate nextMon = LocalDate.now(SeminarService.COLLEGE_ZONE).plusWeeks(2).with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
+        String startDate = nextMon.toString();
+        String endDate = nextMon.plusDays(2).toString(); // Monday to Wednesday (3-day range)
+
+        SeminarBookingRequestDTO missingDayDto = SeminarBookingRequestDTO.builder()
+                .hallId("SH-1")
+                .bookingType("RECURRING")
+                .startDate(startDate)
+                .endDate(endDate)
+                .recurrenceDays(List.of("MONDAY", "WEDNESDAY", "THURSDAY")) // Thursday not in range!
+                .slot("AFTERNOON")
+                .eventTitle("Short Range Missing Day")
+                .purpose("Testing missing weekday validation")
+                .expectedParticipants(50)
+                .build();
+
+        BadRequestException ex = assertThrows(BadRequestException.class,
+                () -> seminarService.createBooking(missingDayDto, cseUser));
+        assertTrue(ex.getMessage().toUpperCase().contains("THURSDAY"));
+        assertTrue(ex.getMessage().contains("do not occur within the date range"));
+    }
+
+    @Test
+    void testRecurringBookingReversedDateRangeRejected() {
+        User cseUser = userRepository.findByUserId("CSE001").orElseThrow();
+        LocalDate futureDate = LocalDate.now(SeminarService.COLLEGE_ZONE).plusWeeks(2);
+        String startDate = futureDate.plusDays(5).toString();
+        String endDate = futureDate.toString(); // endDate < startDate
+
+        SeminarBookingRequestDTO reversedDto = SeminarBookingRequestDTO.builder()
+                .hallId("SH-1")
+                .bookingType("RECURRING")
+                .startDate(startDate)
+                .endDate(endDate)
+                .recurrenceDays(List.of("MONDAY"))
+                .slot("FORENOON")
+                .eventTitle("Reversed Date Range")
+                .purpose("Testing reversed range rejection")
+                .expectedParticipants(50)
+                .build();
+
+        BadRequestException ex = assertThrows(BadRequestException.class,
+                () -> seminarService.createBooking(reversedDto, cseUser));
+        assertTrue(ex.getMessage().contains("cannot be earlier than start date"));
+    }
+
+    @Test
+    void testRecurringBookingOccurrenceOutsideRangeRejected() {
+        User cseUser = userRepository.findByUserId("CSE001").orElseThrow();
+        LocalDate nextMon = LocalDate.now(SeminarService.COLLEGE_ZONE).plusWeeks(2).with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
+        String startDate = nextMon.toString();
+        String endDate = nextMon.plusDays(4).toString();
+
+        SeminarBookingRequestDTO outsideDto = SeminarBookingRequestDTO.builder()
+                .hallId("SH-1")
+                .bookingType("RECURRING")
+                .startDate(startDate)
+                .endDate(endDate)
+                .recurrenceDays(List.of("MONDAY", "WEDNESDAY"))
+                .dates(List.of(nextMon.toString(), nextMon.plusDays(10).toString())) // Explicit occurrence outside range!
+                .slot("FORENOON")
+                .eventTitle("Outside Occurrence Attempt")
+                .purpose("Testing outside range rejection")
+                .expectedParticipants(50)
+                .build();
+
+        BadRequestException ex = assertThrows(BadRequestException.class,
+                () -> seminarService.createBooking(outsideDto, cseUser));
+        assertTrue(ex.getMessage().contains("falls outside the allowed date range"));
+    }
+
+    @Test
+    void testRecurringBookingMonthBoundarySpanning() {
+        User cseUser = userRepository.findByUserId("CSE001").orElseThrow();
+        // Pick a range spanning the end of next month
+        LocalDate startMonthEnd = LocalDate.now(SeminarService.COLLEGE_ZONE).plusMonths(1).with(TemporalAdjusters.lastDayOfMonth()).minusDays(2);
+        LocalDate endNextMonth = startMonthEnd.plusDays(5);
+
+        // Find weekdays that occur in this 6-day span
+        List<String> occurringWeekdays = new java.util.ArrayList<>();
+        LocalDate cur = startMonthEnd;
+        while (!cur.isAfter(endNextMonth)) {
+            String dayName = cur.getDayOfWeek().name();
+            if (!occurringWeekdays.contains(dayName)) {
+                occurringWeekdays.add(dayName);
+            }
+            cur = cur.plusDays(1);
+        }
+
+        // Use the first two occurring weekdays
+        List<String> chosenDays = occurringWeekdays.subList(0, Math.min(2, occurringWeekdays.size()));
+
+        // Clear any bookings on this hall and range
+        cur = startMonthEnd;
+        while (!cur.isAfter(endNextMonth)) {
+            seminarBookingRepository.findByHallIdAndDate("SH-1", cur.toString())
+                    .forEach(seminarBookingRepository::delete);
+            cur = cur.plusDays(1);
+        }
+
+        SeminarBookingRequestDTO monthBoundaryDto = SeminarBookingRequestDTO.builder()
+                .hallId("SH-1")
+                .bookingType("RECURRING")
+                .startDate(startMonthEnd.toString())
+                .endDate(endNextMonth.toString())
+                .recurrenceDays(chosenDays)
+                .slot("AFTERNOON")
+                .eventTitle("Month Boundary Colloquium")
+                .purpose("Crossing month boundaries seamlessly")
+                .expectedParticipants(60)
+                .build();
+
+        SeminarBooking primaryBooking = seminarService.createBooking(monthBoundaryDto, cseUser);
+        assertNotNull(primaryBooking);
+
+        List<SeminarBooking> seriesOccurrences = seminarBookingRepository.findBySeriesId(primaryBooking.getSeriesId());
+        assertFalse(seriesOccurrences.isEmpty());
+        for (SeminarBooking occ : seriesOccurrences) {
+            assertTrue(occ.getDate().compareTo(startMonthEnd.toString()) >= 0);
+            assertTrue(occ.getDate().compareTo(endNextMonth.toString()) <= 0);
+            seminarBookingRepository.delete(occ);
+        }
     }
 
     @Test

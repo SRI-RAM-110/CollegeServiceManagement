@@ -6,8 +6,10 @@ import { NotificationProvider } from './context/NotificationContext';
 import { MainLayout } from './layouts/MainLayout';
 import { ProtectedRoute } from './routes/ProtectedRoute';
 
-// Auth Page
+// Auth Pages
 import LoginPage from './pages/auth/LoginPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 
 // Department Pages
 import DepartmentDashboard from './pages/department/DepartmentDashboard';
@@ -46,8 +48,10 @@ export default function App() {
           <NotificationProvider>
           <ForcedPasswordChangeModal />
           <Routes>
-            {/* Public Auth Route */}
+            {/* Public Auth Routes */}
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
 
             {/* Root path dynamic redirection based on role */}
             <Route path="/" element={<RootRedirect />} />

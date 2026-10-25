@@ -42,6 +42,9 @@ public class TransportService {
     @Autowired
     private AuthService authService;
 
+    @Autowired
+    private RequestIdService requestIdService;
+
     public List<Vehicle> getAllVehicles() {
         return vehicleRepository.findAll();
     }
@@ -403,7 +406,7 @@ public class TransportService {
         String requesterName = user.getName() != null && !user.getName().isBlank() ? user.getName() : user.getUserId();
         int totalOccurrences = targetDates.size();
         boolean isSeries = totalOccurrences > 1;
-        String seriesId = isSeries ? generateSeriesId() : null;
+        String seriesId = isSeries ? generateSeriesId(user, user.getDepartment()) : null;
         List<TransportRequest> createdList = new ArrayList<>();
         int occurrenceIndex = 1;
 
@@ -413,9 +416,7 @@ public class TransportService {
 
         for (LocalDate d : targetDates) {
             String dateIso = d.toString();
-            String reqId = isSeries
-                    ? generateRequestId(occurrenceIndex)
-                    : generateRequestId(0);
+            String reqId = generateRequestId(user, user.getDepartment());
 
             TransportRequest request = TransportRequest.builder()
                     .requestId(reqId)
@@ -485,17 +486,12 @@ public class TransportService {
         return primary;
     }
 
-    private String generateRequestId(int index) {
-        long seq = ID_COUNTER.incrementAndGet() % 10000;
-        if (index > 0) {
-            return String.format("TR-%04d-%d", seq, index);
-        }
-        return String.format("TR-%04d", seq);
+    private String generateRequestId(User user, String dept) {
+        return requestIdService.generateRequestId("TRN", user, dept);
     }
 
-    private String generateSeriesId() {
-        long seq = ID_COUNTER.incrementAndGet() % 10000;
-        return String.format("TR-SERIES-%04d", seq);
+    private String generateSeriesId(User user, String dept) {
+        return requestIdService.generateSeriesId("TRN", user, dept);
     }
 
     public List<TransportRequest> getAllRequests(String status, String tripType, String date, String department) {

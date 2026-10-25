@@ -204,6 +204,9 @@ public class UnifiedRequestService {
                 .filter(item -> statusFilter == null || statusFilter.isBlank() || statusFilter.equalsIgnoreCase("ALL") || (item.getStatus() != null && item.getStatus().equalsIgnoreCase(statusFilter)))
                 .filter(item -> {
                     if (dateFilter == null || dateFilter.isBlank() || dateFilter.equalsIgnoreCase("ALL")) return true;
+                    if (item.getRawObject() instanceof SeminarBooking sb && sb.getDates() != null && !sb.getDates().isEmpty()) {
+                        if (sb.getDates().stream().anyMatch(d -> d.startsWith(dateFilter))) return true;
+                    }
                     if (item.getDate() != null && item.getDate().startsWith(dateFilter)) return true;
                     if (item.getCreatedAt() != null && item.getCreatedAt().toLocalDate().toString().equals(dateFilter)) return true;
                     return false;
@@ -246,7 +249,9 @@ public class UnifiedRequestService {
 
     public UnifiedRequestItem fromSeminar(SeminarBooking b) {
         String detailText = b.getHallName() + " (" + b.getSlot() + ") - " + b.getEventTitle();
-        if (b.getOccurrenceIndex() != null && b.getTotalOccurrences() != null) {
+        if (b.getDates() != null && !b.getDates().isEmpty()) {
+            detailText = b.getHallName() + " (" + b.getSlot() + ") [Recurring: " + b.getDates().size() + " Occurrences] - " + b.getEventTitle();
+        } else if (b.getOccurrenceIndex() != null && b.getTotalOccurrences() != null) {
             detailText = b.getHallName() + " (" + b.getSlot() + ") [Occ " + b.getOccurrenceIndex() + " of " + b.getTotalOccurrences() + "] - " + b.getEventTitle();
         }
 

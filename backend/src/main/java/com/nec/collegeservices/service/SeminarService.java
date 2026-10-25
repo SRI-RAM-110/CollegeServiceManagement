@@ -21,7 +21,10 @@ import org.springframework.stereotype.Service;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -30,6 +33,37 @@ public class SeminarService {
 
     private static final Logger logger = LoggerFactory.getLogger(SeminarService.class);
     private static final AtomicLong ID_COUNTER = new AtomicLong(System.currentTimeMillis() % 1000000);
+
+    public static final ZoneId COLLEGE_ZONE = ZoneId.of("Asia/Kolkata");
+
+    public static LocalTime getSlotStartTime(String slot) {
+        if (slot == null) return null;
+        return switch (slot.toUpperCase().trim()) {
+            case "FORENOON", "FULL_DAY" -> LocalTime.of(9, 0);
+            case "AFTERNOON" -> LocalTime.of(12, 0);
+            default -> null;
+        };
+    }
+
+    public static LocalTime getSlotEndTime(String slot) {
+        if (slot == null) return null;
+        return switch (slot.toUpperCase().trim()) {
+            case "FORENOON" -> LocalTime.of(12, 0);
+            case "AFTERNOON", "FULL_DAY" -> LocalTime.of(16, 0);
+            default -> null;
+        };
+    }
+
+    private LocalDate parseDate(String dateStr, String fieldName) {
+        if (dateStr == null || dateStr.isBlank()) {
+            throw new BadRequestException(fieldName + " is required.");
+        }
+        try {
+            return LocalDate.parse(dateStr.trim());
+        } catch (DateTimeParseException e) {
+            throw new BadRequestException("Invalid " + fieldName + " format (" + dateStr + "). Expected valid date in YYYY-MM-DD format.");
+        }
+    }
 
     @Autowired
     private SeminarHallRepository hallRepository;
@@ -45,6 +79,9 @@ public class SeminarService {
 
     @Autowired
     private AuthService authService;
+
+    @Autowired
+    private RequestIdService requestIdService;
 
     public List<SeminarHall> getAllHalls() {
         return getAllHalls(null, false);
@@ -272,6 +309,29 @@ public class SeminarService {
             slotStatuses.put("FULL_DAY", "AVAILABLE");
         }
 
+        LocalDate today = LocalDate.now(COLLEGE_ZONE);
+        LocalTime now = LocalTime.now(COLLEGE_ZONE);
+        LocalDate parsedDate = null;
+        try {
+            parsedDate = LocalDate.parse(date.trim());
+        } catch (Exception ignored) {}
+
+        if (parsedDate != null) {
+            if (parsedDate.isBefore(today)) {
+                if (!"BOOKED".equals(slotStatuses.get("FORENOON"))) slotStatuses.put("FORENOON", "PASSED");
+                if (!"BOOKED".equals(slotStatuses.get("AFTERNOON"))) slotStatuses.put("AFTERNOON", "PASSED");
+                if (!"BOOKED".equals(slotStatuses.get("FULL_DAY"))) slotStatuses.put("FULL_DAY", "PASSED");
+            } else if (parsedDate.isEqual(today)) {
+                if (!now.isBefore(LocalTime.of(9, 0))) {
+                    if (!"BOOKED".equals(slotStatuses.get("FORENOON"))) slotStatuses.put("FORENOON", "PASSED");
+                    if (!"BOOKED".equals(slotStatuses.get("FULL_DAY"))) slotStatuses.put("FULL_DAY", "PASSED");
+                }
+                if (!now.isBefore(LocalTime.of(12, 0))) {
+                    if (!"BOOKED".equals(slotStatuses.get("AFTERNOON"))) slotStatuses.put("AFTERNOON", "PASSED");
+                }
+            }
+        }
+
         Map<String, Object> result = new HashMap<>();
         result.put("hallId", hallId);
         result.put("hallName", hall != null ? hall.getName() : hallId);
@@ -308,11 +368,16 @@ public class SeminarService {
         List<Map<String, Object>> occurrences = new ArrayList<>();
         int availableCount = 0;
 
+        LocalDate today = LocalDate.now(COLLEGE_ZONE);
+        LocalTime now = LocalTime.now(COLLEGE_ZONE);
+        LocalTime slotStartTime = getSlotStartTime(requestedSlot);
+
         for (String dateStr : dates) {
             String dayOfWeek = "";
+            LocalDate parsedDate = null;
             try {
-                java.time.LocalDate ld = java.time.LocalDate.parse(dateStr);
-                dayOfWeek = ld.getDayOfWeek().getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH);
+                parsedDate = java.time.LocalDate.parse(dateStr.trim());
+                dayOfWeek = parsedDate.getDayOfWeek().getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH);
             } catch (Exception ignored) {
             }
 
@@ -324,6 +389,31 @@ public class SeminarService {
             occ.put("hallLocation", hall.getLocation());
             occ.put("slot", requestedSlot);
             occ.put("bookingType", bookingType);
+
+            boolean isPastDate = parsedDate != null && parsedDate.isBefore(today);
+            boolean isPastTime = parsedDate != null && parsedDate.isEqual(today) && slotStartTime != null && !now.isBefore(slotStartTime);
+
+            if (isPastDate || isPastTime) {
+                String passedReason = "This booking time has already passed. Please select a future date and time.";
+                occ.put("status", "UNAVAILABLE");
+                occ.put("conflictReason", passedReason);
+                occ.put("isPast", true);
+
+                Map<String, Object> c = new HashMap<>();
+                c.put("date", dateStr);
+                c.put("day", dayOfWeek);
+                c.put("hallId", hallId);
+                c.put("hallName", hall.getName());
+                c.put("hallLocation", hall.getLocation());
+                c.put("requestedSlot", requestedSlot);
+                c.put("conflictingSlot", requestedSlot);
+                c.put("status", "PAST");
+                c.put("conflictReason", passedReason);
+                c.put("isPast", true);
+                conflicts.add(c);
+                occurrences.add(occ);
+                continue;
+            }
 
             if (isMaintenance) {
                 occ.put("status", "UNAVAILABLE");
@@ -452,29 +542,48 @@ public class SeminarService {
             }
         }
 
+        // Optional custom times validation
+        LocalTime customStartTime = null;
+        LocalTime customEndTime = null;
+        if (dto.getStartTime() != null && !dto.getStartTime().isBlank()) {
+            try {
+                customStartTime = LocalTime.parse(dto.getStartTime().trim());
+            } catch (DateTimeParseException e) {
+                throw new BadRequestException("Invalid start time format: " + dto.getStartTime());
+            }
+        }
+        if (dto.getEndTime() != null && !dto.getEndTime().isBlank()) {
+            try {
+                customEndTime = LocalTime.parse(dto.getEndTime().trim());
+            } catch (DateTimeParseException e) {
+                throw new BadRequestException("Invalid end time format: " + dto.getEndTime());
+            }
+        }
+        if (customStartTime != null && customEndTime != null && !customEndTime.isAfter(customStartTime)) {
+            throw new BadRequestException("End time (" + dto.getEndTime() + ") must be after start time (" + dto.getStartTime() + ").");
+        }
+        LocalTime effectiveStartTime = customStartTime != null ? customStartTime : getSlotStartTime(requestedSlot);
+
         // Determine list of dates to book
         List<LocalDate> targetDates = new ArrayList<>();
         String startDateStr;
         String endDateStr;
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(COLLEGE_ZONE);
+        LocalTime now = LocalTime.now(COLLEGE_ZONE);
 
         if (bookingType.equals("RECURRING")) {
             // Weekly Recurring
             startDateStr = dto.getStartDate() != null ? dto.getStartDate() : dto.getDate();
             endDateStr = dto.getEndDate() != null ? dto.getEndDate() : startDateStr;
 
-            if (startDateStr == null || endDateStr == null || startDateStr.isBlank() || endDateStr.isBlank()) {
-                throw new BadRequestException("Both start date and end date are required for recurring events.");
-            }
-
-            LocalDate start = LocalDate.parse(startDateStr);
-            LocalDate end = LocalDate.parse(endDateStr);
+            LocalDate start = parseDate(startDateStr, "Start date");
+            LocalDate end = parseDate(endDateStr, "End date");
 
             if (end.isBefore(start)) {
                 throw new BadRequestException("End date (" + endDateStr + ") cannot be earlier than start date (" + startDateStr + ").");
             }
             if (start.isBefore(today)) {
-                throw new BadRequestException("Start date cannot be in the past (" + startDateStr + ").");
+                throw new BadRequestException("Start date cannot be in the past (" + startDateStr + "). Please select a future date and time.");
             }
 
             List<String> repeatDays = dto.getRecurrenceDays();
@@ -482,7 +591,7 @@ public class SeminarService {
                 throw new BadRequestException("Select at least one weekday for recurring event.");
             }
 
-            Set<DayOfWeek> targetDays = new HashSet<>();
+            Set<DayOfWeek> targetDays = new LinkedHashSet<>();
             for (String day : repeatDays) {
                 try {
                     targetDays.add(DayOfWeek.valueOf(day.toUpperCase().trim()));
@@ -491,16 +600,52 @@ public class SeminarService {
                 }
             }
 
+            Set<DayOfWeek> matchedDays = new HashSet<>();
             LocalDate curr = start;
             while (!curr.isAfter(end)) {
                 if (targetDays.contains(curr.getDayOfWeek())) {
                     targetDates.add(curr);
+                    matchedDays.add(curr.getDayOfWeek());
                 }
                 curr = curr.plusDays(1);
             }
 
+            // Check if any selected weekday does not occur within the date range
+            List<String> missingDays = new ArrayList<>();
+            for (String day : repeatDays) {
+                DayOfWeek dow = DayOfWeek.valueOf(day.toUpperCase().trim());
+                if (!matchedDays.contains(dow)) {
+                    String displayName = dow.name().substring(0, 1).toUpperCase() + dow.name().substring(1).toLowerCase();
+                    if (!missingDays.contains(displayName)) {
+                        missingDays.add(displayName);
+                    }
+                }
+            }
+            if (!missingDays.isEmpty()) {
+                throw new BadRequestException("The selected weekday(s) [" + String.join(", ", missingDays) +
+                        "] do not occur within the date range (" + startDateStr + " to " + endDateStr +
+                        "). Please extend the date range or adjust your weekday selection.");
+            }
+
             if (targetDates.isEmpty()) {
                 throw new BadRequestException("No dates match the selected weekdays between " + startDateStr + " and " + endDateStr + ".");
+            }
+
+            // Check if explicit occurrences were passed and whether any falls outside the allowed range
+            if (dto.getDates() != null && !dto.getDates().isEmpty()) {
+                for (String dStr : dto.getDates()) {
+                    LocalDate d = parseDate(dStr, "Occurrence date");
+                    if (d.isBefore(start) || d.isAfter(end)) {
+                        throw new BadRequestException("Occurrence date (" + dStr + ") falls outside the allowed date range (" + startDateStr + " to " + endDateStr + ").");
+                    }
+                }
+            }
+
+            // Verify generated occurrences strictly fall within [start, end]
+            for (LocalDate d : targetDates) {
+                if (d.isBefore(start) || d.isAfter(end)) {
+                    throw new BadRequestException("Occurrence date (" + d + ") falls outside the allowed date range (" + startDateStr + " to " + endDateStr + ").");
+                }
             }
 
             if (targetDates.size() > 52) {
@@ -512,18 +657,24 @@ public class SeminarService {
             startDateStr = dto.getStartDate() != null ? dto.getStartDate() : dto.getDate();
             endDateStr = dto.getEndDate() != null ? dto.getEndDate() : startDateStr;
 
-            if (startDateStr == null || endDateStr == null || startDateStr.isBlank() || endDateStr.isBlank()) {
-                throw new BadRequestException("Both start date and end date are required for multi-day booking.");
-            }
-
-            LocalDate start = LocalDate.parse(startDateStr);
-            LocalDate end = LocalDate.parse(endDateStr);
+            LocalDate start = parseDate(startDateStr, "Start date");
+            LocalDate end = parseDate(endDateStr, "End date");
 
             if (end.isBefore(start)) {
                 throw new BadRequestException("End date (" + endDateStr + ") cannot be earlier than start date (" + startDateStr + ").");
             }
             if (start.isBefore(today)) {
-                throw new BadRequestException("Start date cannot be in the past (" + startDateStr + ").");
+                throw new BadRequestException("Start date cannot be in the past (" + startDateStr + "). Please select a future date and time.");
+            }
+
+            // Check if explicit occurrences were passed and whether any falls outside the allowed range
+            if (dto.getDates() != null && !dto.getDates().isEmpty()) {
+                for (String dStr : dto.getDates()) {
+                    LocalDate d = parseDate(dStr, "Occurrence date");
+                    if (d.isBefore(start) || d.isAfter(end)) {
+                        throw new BadRequestException("Occurrence date (" + dStr + ") falls outside the allowed date range (" + startDateStr + " to " + endDateStr + ").");
+                    }
+                }
             }
 
             LocalDate curr = start;
@@ -531,18 +682,40 @@ public class SeminarService {
                 targetDates.add(curr);
                 curr = curr.plusDays(1);
             }
+
+            for (LocalDate d : targetDates) {
+                if (d.isBefore(start) || d.isAfter(end)) {
+                    throw new BadRequestException("Occurrence date (" + d + ") falls outside the allowed date range (" + startDateStr + " to " + endDateStr + ").");
+                }
+            }
         } else {
             // ONE_TIME
             startDateStr = dto.getDate() != null && !dto.getDate().isBlank() ? dto.getDate() : dto.getStartDate();
-            if (startDateStr == null || startDateStr.isBlank()) {
-                throw new BadRequestException("Booking date is required.");
-            }
-            LocalDate start = LocalDate.parse(startDateStr);
+            LocalDate start = parseDate(startDateStr, "Booking date");
             if (start.isBefore(today)) {
-                throw new BadRequestException("Booking date cannot be in the past (" + startDateStr + ").");
+                throw new BadRequestException("This booking time has already passed. Please select a future date and time.");
+            }
+            if (start.isEqual(today) && effectiveStartTime != null && !now.isBefore(effectiveStartTime)) {
+                throw new BadRequestException("This booking time has already passed. Please select a future date and time.");
             }
             endDateStr = startDateStr;
             targetDates.add(start);
+        }
+
+        // Validate each occurrence date and time
+        for (LocalDate d : targetDates) {
+            if (d.isBefore(today)) {
+                String msg = targetDates.size() > 1
+                        ? "Occurrence on " + d + ": This booking date has already passed. Please select a future date and time."
+                        : "This booking time has already passed. Please select a future date and time.";
+                throw new BadRequestException(msg);
+            }
+            if (d.isEqual(today) && effectiveStartTime != null && !now.isBefore(effectiveStartTime)) {
+                String msg = targetDates.size() > 1
+                        ? "Occurrence on " + d + " (" + requestedSlot + "): This booking time has already passed. Please select a future date and time."
+                        : "This booking time has already passed. Please select a future date and time.";
+                throw new BadRequestException(msg);
+            }
         }
 
         // 3. Conflict Detection across ALL target dates (Section 6, 8)
@@ -569,46 +742,67 @@ public class SeminarService {
         // 4. Create and Save Bookings
         int totalOccurrences = targetDates.size();
         boolean isSeries = totalOccurrences > 1;
-        String seriesId = isSeries ? generateSeriesId() : null;
+        String seriesId = isSeries ? generateSeriesId(user, user.getDepartment()) : null;
 
         List<SeminarBooking> createdList = new ArrayList<>();
-        int occurrenceIndex = 1;
 
-        for (LocalDate d : targetDates) {
-            String dateIso = d.toString();
-            String bookingId = isSeries
-                    ? generateBookingId(occurrenceIndex)
-                    : generateBookingId(0);
+        if (bookingType.equals("RECURRING")) {
+            // Task 7: A single recurring submission creates ONE parent request with ONE stable request ID
+            String parentBookingId = generateBookingId(user, user.getDepartment());
+            List<String> dateStrings = new ArrayList<>();
+            List<SeminarBooking.Occurrence> occurrences = new ArrayList<>();
+            int occIdx = 1;
+
+            for (LocalDate d : targetDates) {
+                String dateIso = d.toString();
+                dateStrings.add(dateIso);
+                occurrences.add(SeminarBooking.Occurrence.builder()
+                        .index(occIdx++)
+                        .date(dateIso)
+                        .dayOfWeek(d.getDayOfWeek().toString())
+                        .hallId(hallId)
+                        .hallName(hall.getName())
+                        .hallLocation(hall.getLocation())
+                        .slot(requestedSlot)
+                        .startTime(dto.getStartTime() != null ? dto.getStartTime() : (getSlotStartTime(requestedSlot) != null ? getSlotStartTime(requestedSlot).toString() : null))
+                        .endTime(dto.getEndTime() != null ? dto.getEndTime() : (getSlotEndTime(requestedSlot) != null ? getSlotEndTime(requestedSlot).toString() : null))
+                        .status("PENDING")
+                        .build());
+            }
 
             SeminarBooking.StatusHistoryEntry initialHistory = SeminarBooking.StatusHistoryEntry.builder()
                     .status("PENDING")
                     .actor(user.getName() != null ? user.getName() : user.getUserId())
                     .timestamp(LocalDateTime.now())
-                    .comment("Booking request submitted by " + user.getDepartment() + " Department")
+                    .comment("Recurring booking request submitted by " + user.getDepartment() + " Department (" + totalOccurrences + " occurrences)")
                     .build();
 
-            SeminarBooking booking = SeminarBooking.builder()
-                    .bookingId(bookingId)
+            SeminarBooking parentBooking = SeminarBooking.builder()
+                    .bookingId(parentBookingId)
                     .department(user.getDepartment())
                     .eventTitle(dto.getEventTitle())
                     .purpose(dto.getPurpose())
                     .expectedParticipants(dto.getExpectedParticipants())
                     .additionalRequirements(dto.getAdditionalRequirements())
-                    .date(dateIso)
+                    .date(targetDates.get(0).toString()) // Primary/first occurrence date
                     .startDate(startDateStr)
                     .endDate(endDateStr)
+                    .dates(dateStrings)
+                    .occurrences(occurrences)
                     .hallId(hallId)
                     .hallName(hall.getName())
                     .hallLocation(hall.getLocation())
                     .slot(requestedSlot)
+                    .startTime(dto.getStartTime() != null ? dto.getStartTime() : (getSlotStartTime(requestedSlot) != null ? getSlotStartTime(requestedSlot).toString() : null))
+                    .endTime(dto.getEndTime() != null ? dto.getEndTime() : (getSlotEndTime(requestedSlot) != null ? getSlotEndTime(requestedSlot).toString() : null))
                     .status("PENDING")
-                    .bookingType(bookingType)
-                    .isRecurring(bookingType.equals("RECURRING"))
+                    .bookingType("RECURRING")
+                    .isRecurring(true)
                     .seriesId(seriesId)
-                    .recurrencePattern(bookingType.equals("RECURRING") ? dto.getRecurrencePattern() : null)
-                    .recurrenceDays(bookingType.equals("RECURRING") ? dto.getRecurrenceDays() : null)
-                    .occurrenceIndex(isSeries ? occurrenceIndex : null)
-                    .totalOccurrences(isSeries ? totalOccurrences : null)
+                    .recurrencePattern(dto.getRecurrencePattern() != null ? dto.getRecurrencePattern() : "WEEKLY")
+                    .recurrenceDays(dto.getRecurrenceDays())
+                    .occurrenceIndex(1)
+                    .totalOccurrences(totalOccurrences)
                     .requestedBy(user.getName() != null && !user.getName().isBlank() ? user.getName() : user.getUserId())
                     .requesterUserId(user.getUserId())
                     .statusHistory(new ArrayList<>(List.of(initialHistory)))
@@ -616,14 +810,61 @@ public class SeminarService {
                     .updatedAt(LocalDateTime.now())
                     .build();
 
-            createdList.add(bookingRepository.save(booking));
-            occurrenceIndex++;
+            createdList.add(bookingRepository.save(parentBooking));
+        } else {
+            // ONE_TIME and MULTI_DAY continue as before
+            int occurrenceIndex = 1;
+            for (LocalDate d : targetDates) {
+                String dateIso = d.toString();
+                String bookingId = generateBookingId(user, user.getDepartment());
+
+                SeminarBooking.StatusHistoryEntry initialHistory = SeminarBooking.StatusHistoryEntry.builder()
+                        .status("PENDING")
+                        .actor(user.getName() != null ? user.getName() : user.getUserId())
+                        .timestamp(LocalDateTime.now())
+                        .comment("Booking request submitted by " + user.getDepartment() + " Department")
+                        .build();
+
+                SeminarBooking booking = SeminarBooking.builder()
+                        .bookingId(bookingId)
+                        .department(user.getDepartment())
+                        .eventTitle(dto.getEventTitle())
+                        .purpose(dto.getPurpose())
+                        .expectedParticipants(dto.getExpectedParticipants())
+                        .additionalRequirements(dto.getAdditionalRequirements())
+                        .date(dateIso)
+                        .startDate(startDateStr)
+                        .endDate(endDateStr)
+                        .hallId(hallId)
+                        .hallName(hall.getName())
+                        .hallLocation(hall.getLocation())
+                        .slot(requestedSlot)
+                        .startTime(dto.getStartTime() != null ? dto.getStartTime() : (getSlotStartTime(requestedSlot) != null ? getSlotStartTime(requestedSlot).toString() : null))
+                        .endTime(dto.getEndTime() != null ? dto.getEndTime() : (getSlotEndTime(requestedSlot) != null ? getSlotEndTime(requestedSlot).toString() : null))
+                        .status("PENDING")
+                        .bookingType(bookingType)
+                        .isRecurring(false)
+                        .seriesId(seriesId)
+                        .occurrenceIndex(isSeries ? occurrenceIndex : null)
+                        .totalOccurrences(isSeries ? totalOccurrences : null)
+                        .requestedBy(user.getName() != null && !user.getName().isBlank() ? user.getName() : user.getUserId())
+                        .requesterUserId(user.getUserId())
+                        .statusHistory(new ArrayList<>(List.of(initialHistory)))
+                        .createdAt(LocalDateTime.now())
+                        .updatedAt(LocalDateTime.now())
+                        .build();
+
+                createdList.add(bookingRepository.save(booking));
+                occurrenceIndex++;
+            }
         }
 
         SeminarBooking primary = createdList.get(0);
 
         // 5. Notify Administrators
-        String notificationSummary = isSeries
+        String notificationSummary = bookingType.equals("RECURRING")
+                ? user.getDepartment() + " requested recurring booking (" + totalOccurrences + " occurrences) for " + hall.getName() + " (" + startDateStr + " to " + endDateStr + ")"
+                : isSeries
                 ? user.getDepartment() + " requested " + totalOccurrences + " bookings for " + hall.getName() + " (" + startDateStr + " to " + endDateStr + ")"
                 : user.getDepartment() + " requested " + hall.getName() + " on " + startDateStr + " (" + requestedSlot + ")";
 
@@ -652,19 +893,12 @@ public class SeminarService {
         return primary;
     }
 
-    private String generateBookingId(int index) {
-        int year = LocalDate.now().getYear();
-        long seq = ID_COUNTER.incrementAndGet() % 1000000;
-        if (index > 0) {
-            return String.format("SEM-%d-%06d-%d", year, seq, index);
-        }
-        return String.format("SEM-%d-%06d", year, seq);
+    private String generateBookingId(User user, String dept) {
+        return requestIdService.generateRequestId("SEM", user, dept);
     }
 
-    private String generateSeriesId() {
-        int year = LocalDate.now().getYear();
-        long seq = ID_COUNTER.incrementAndGet() % 1000000;
-        return String.format("SEM-SERIES-%d-%06d", year, seq);
+    private String generateSeriesId(User user, String dept) {
+        return requestIdService.generateSeriesId("SEM", user, dept);
     }
 
     public List<SeminarBooking> getAllBookings(String hallId, String department, String status, String date) {
@@ -706,9 +940,18 @@ public class SeminarService {
                 .filter(b -> status == null || status.isBlank() || status.equalsIgnoreCase("ALL") || b.getStatus().equalsIgnoreCase(status))
                 .filter(b -> {
                     if (fromDate != null && !fromDate.isBlank() && toDate != null && !toDate.isBlank()) {
-                        return b.getDate().compareTo(fromDate) >= 0 && b.getDate().compareTo(toDate) <= 0;
+                        if (b.getDates() != null && !b.getDates().isEmpty()) {
+                            return b.getDates().stream().anyMatch(d -> d.compareTo(fromDate) >= 0 && d.compareTo(toDate) <= 0);
+                        }
+                        return b.getDate() != null && b.getDate().compareTo(fromDate) >= 0 && b.getDate().compareTo(toDate) <= 0;
                     }
-                    return date == null || date.isBlank() || b.getDate().equals(date);
+                    if (date != null && !date.isBlank()) {
+                        if (b.getDates() != null && !b.getDates().isEmpty()) {
+                            return b.getDates().contains(date);
+                        }
+                        return date.equals(b.getDate());
+                    }
+                    return true;
                 })
                 .sorted((a, b) -> b.getCreatedAt() != null && a.getCreatedAt() != null ? b.getCreatedAt().compareTo(a.getCreatedAt()) : 0)
                 .toList();
@@ -725,12 +968,78 @@ public class SeminarService {
             }
         }
         List<SeminarBooking> all = bookingRepository.findAll();
-        return all.stream()
-                .filter(b -> hallId == null || hallId.isBlank() || hallId.equalsIgnoreCase("ALL") || 
-                             b.getHallId().equalsIgnoreCase(hallId) || 
-                             normalizeHallKey(b.getHallId()).equalsIgnoreCase(normalizeHallKey(hallId)))
-                .filter(b -> fromDate == null || fromDate.isBlank() || b.getDate().compareTo(fromDate) >= 0)
-                .filter(b -> toDate == null || toDate.isBlank() || b.getDate().compareTo(toDate) <= 0)
+        Set<String> hallFilterSet = new HashSet<>();
+        if (hallId != null && !hallId.isBlank() && !hallId.equalsIgnoreCase("ALL")) {
+            for (String h : hallId.split(",")) {
+                String trimmed = h.trim();
+                if (!trimmed.isEmpty() && !trimmed.equalsIgnoreCase("ALL")) {
+                    hallFilterSet.add(trimmed.toUpperCase());
+                    hallFilterSet.add(normalizeHallKey(trimmed).toUpperCase());
+                }
+            }
+        }
+
+        List<SeminarBooking> filteredList = new ArrayList<>();
+        for (SeminarBooking b : all) {
+            if (b.getStatus() != null && b.getStatus().equalsIgnoreCase("CANCELLED")) {
+                continue;
+            }
+            if (!hallFilterSet.isEmpty()) {
+                if (b.getHallId() == null) continue;
+                String hid = b.getHallId().toUpperCase();
+                if (!hallFilterSet.contains(hid) && !hallFilterSet.contains(normalizeHallKey(hid).toUpperCase())) {
+                    continue;
+                }
+            }
+
+            if (b.getDates() != null && !b.getDates().isEmpty()) {
+                for (String dStr : b.getDates()) {
+                    if ((fromDate == null || fromDate.isBlank() || dStr.compareTo(fromDate) >= 0) &&
+                        (toDate == null || toDate.isBlank() || dStr.compareTo(toDate) <= 0)) {
+                        SeminarBooking occView = SeminarBooking.builder()
+                                .id(b.getId() + "_" + dStr)
+                                .bookingId(b.getBookingId())
+                                .department(b.getDepartment())
+                                .eventTitle(b.getEventTitle())
+                                .purpose(b.getPurpose())
+                                .expectedParticipants(b.getExpectedParticipants())
+                                .additionalRequirements(b.getAdditionalRequirements())
+                                .date(dStr)
+                                .startDate(b.getStartDate())
+                                .endDate(b.getEndDate())
+                                .dates(b.getDates())
+                                .occurrences(b.getOccurrences())
+                                .hallId(b.getHallId())
+                                .hallName(b.getHallName())
+                                .hallLocation(b.getHallLocation())
+                                .slot(b.getSlot())
+                                .startTime(b.getStartTime())
+                                .endTime(b.getEndTime())
+                                .status(b.getStatus())
+                                .bookingType(b.getBookingType())
+                                .isRecurring(b.getIsRecurring())
+                                .seriesId(b.getSeriesId())
+                                .recurrencePattern(b.getRecurrencePattern())
+                                .recurrenceDays(b.getRecurrenceDays())
+                                .occurrenceIndex(b.getOccurrenceIndex())
+                                .totalOccurrences(b.getTotalOccurrences())
+                                .requestedBy(b.getRequestedBy())
+                                .requesterUserId(b.getRequesterUserId())
+                                .createdAt(b.getCreatedAt())
+                                .updatedAt(b.getUpdatedAt())
+                                .build();
+                        filteredList.add(occView);
+                    }
+                }
+            } else {
+                if ((fromDate == null || fromDate.isBlank() || b.getDate().compareTo(fromDate) >= 0) &&
+                    (toDate == null || toDate.isBlank() || b.getDate().compareTo(toDate) <= 0)) {
+                    filteredList.add(b);
+                }
+            }
+        }
+
+        return filteredList.stream()
                 .sorted((a, b) -> {
                     int dateCmp = a.getDate().compareTo(b.getDate());
                     if (dateCmp != 0) return dateCmp;
@@ -769,9 +1078,18 @@ public class SeminarService {
                 .filter(b -> status == null || status.isBlank() || status.equalsIgnoreCase("ALL") || b.getStatus().equalsIgnoreCase(status))
                 .filter(b -> {
                     if (fromDate != null && !fromDate.isBlank() && toDate != null && !toDate.isBlank()) {
-                        return b.getDate().compareTo(fromDate) >= 0 && b.getDate().compareTo(toDate) <= 0;
+                        if (b.getDates() != null && !b.getDates().isEmpty()) {
+                            return b.getDates().stream().anyMatch(d -> d.compareTo(fromDate) >= 0 && d.compareTo(toDate) <= 0);
+                        }
+                        return b.getDate() != null && b.getDate().compareTo(fromDate) >= 0 && b.getDate().compareTo(toDate) <= 0;
                     }
-                    return date == null || date.isBlank() || b.getDate().equals(date);
+                    if (date != null && !date.isBlank()) {
+                        if (b.getDates() != null && !b.getDates().isEmpty()) {
+                            return b.getDates().contains(date);
+                        }
+                        return date.equals(b.getDate());
+                    }
+                    return true;
                 })
                 .sorted((a, b) -> b.getCreatedAt() != null && a.getCreatedAt() != null ? b.getCreatedAt().compareTo(a.getCreatedAt()) : 0)
                 .toList();
@@ -862,14 +1180,20 @@ public class SeminarService {
         }
 
         // 1. Fresh Availability Recheck on Approval: conflicts only if another booking is already APPROVED or BOOKED
-        List<SeminarBooking> activeBookings = findActiveBookingsForHallAndDate(booking.getHallId(), booking.getDate());
-        for (SeminarBooking existing : activeBookings) {
-            if (!existing.getId().equals(booking.getId()) && !existing.getBookingId().equals(booking.getBookingId())) {
-                boolean isAlreadyApproved = "APPROVED".equalsIgnoreCase(existing.getStatus()) || "BOOKED".equalsIgnoreCase(existing.getStatus()) || "CANCELLATION_REQUESTED".equalsIgnoreCase(existing.getStatus());
-                if (isAlreadyApproved && isSlotConflicting(booking.getSlot(), existing.getSlot())) {
-                    throw new ConflictException("This seminar hall and slot is no longer available. Conflicting booking " +
-                            existing.getBookingId() + " (" + existing.getSlot() + ") is already " + existing.getStatus() +
-                            " on " + booking.getDate() + " for " + booking.getHallName());
+        List<String> checkDates = (booking.getDates() != null && !booking.getDates().isEmpty())
+                ? booking.getDates()
+                : (booking.getDate() != null ? List.of(booking.getDate()) : List.of());
+
+        for (String chkDate : checkDates) {
+            List<SeminarBooking> activeBookings = findActiveBookingsForHallAndDate(booking.getHallId(), chkDate);
+            for (SeminarBooking existing : activeBookings) {
+                if (!existing.getId().equals(booking.getId()) && !existing.getBookingId().equals(booking.getBookingId())) {
+                    boolean isAlreadyApproved = "APPROVED".equalsIgnoreCase(existing.getStatus()) || "BOOKED".equalsIgnoreCase(existing.getStatus()) || "CANCELLATION_REQUESTED".equalsIgnoreCase(existing.getStatus());
+                    if (isAlreadyApproved && isSlotConflicting(booking.getSlot(), existing.getSlot())) {
+                        throw new ConflictException("This seminar hall and slot is no longer available. Conflicting booking " +
+                                existing.getBookingId() + " (" + existing.getSlot() + ") is already " + existing.getStatus() +
+                                " on " + chkDate + " for " + booking.getHallName());
+                    }
                 }
             }
         }
@@ -880,6 +1204,12 @@ public class SeminarService {
         booking.setApprovedBy(actor);
         booking.setApprovedAt(LocalDateTime.now());
         booking.setUpdatedAt(LocalDateTime.now());
+
+        if (booking.getOccurrences() != null) {
+            for (SeminarBooking.Occurrence occ : booking.getOccurrences()) {
+                occ.setStatus("APPROVED");
+            }
+        }
 
         if (booking.getStatusHistory() == null) {
             booking.setStatusHistory(new ArrayList<>());
@@ -944,6 +1274,12 @@ public class SeminarService {
         booking.setStatus("REJECTED");
         booking.setRejectionReason(comment);
         booking.setUpdatedAt(LocalDateTime.now());
+
+        if (booking.getOccurrences() != null) {
+            for (SeminarBooking.Occurrence occ : booking.getOccurrences()) {
+                occ.setStatus("REJECTED");
+            }
+        }
 
         if (booking.getStatusHistory() == null) {
             booking.setStatusHistory(new ArrayList<>());
@@ -1034,6 +1370,12 @@ public class SeminarService {
             b.setCancellationRequestedBy(user.getName() != null ? user.getName() : user.getUserId());
             b.setUpdatedAt(LocalDateTime.now());
 
+            if (b.getOccurrences() != null) {
+                for (SeminarBooking.Occurrence occ : b.getOccurrences()) {
+                    occ.setStatus(newStatus);
+                }
+            }
+
             if (b.getStatusHistory() == null) {
                 b.setStatusHistory(new ArrayList<>());
             }
@@ -1060,7 +1402,7 @@ public class SeminarService {
             );
         }
 
-        return booking;
+        return bookingRepository.findById(booking.getId()).orElse(booking);
     }
 
     /**
@@ -1104,6 +1446,12 @@ public class SeminarService {
             b.setCancellationReviewedBy(actor);
             b.setUpdatedAt(LocalDateTime.now());
 
+            if (b.getOccurrences() != null) {
+                for (SeminarBooking.Occurrence occ : b.getOccurrences()) {
+                    occ.setStatus("CANCELLED");
+                }
+            }
+
             if (b.getStatusHistory() == null) {
                 b.setStatusHistory(new ArrayList<>());
             }
@@ -1129,7 +1477,7 @@ public class SeminarService {
                 booking.getBookingId()
         );
 
-        return booking;
+        return bookingRepository.findById(booking.getId()).orElse(booking);
     }
 
     /**
@@ -1215,9 +1563,14 @@ public class SeminarService {
             throw new BadRequestException("Reschedule reason is required.");
         }
 
-        LocalDate targetDate = LocalDate.parse(newDate);
-        if (targetDate.isBefore(LocalDate.now())) {
-            throw new BadRequestException("Cannot reschedule to a past date (" + newDate + ").");
+        LocalDate targetDate = parseDate(newDate, "Rescheduled date");
+        LocalDate today = LocalDate.now(COLLEGE_ZONE);
+        if (targetDate.isBefore(today)) {
+            throw new BadRequestException("Cannot reschedule to a past date (" + newDate + "). Please select a future date and time.");
+        }
+        LocalTime newSlotStartTime = getSlotStartTime(newSlot);
+        if (targetDate.isEqual(today) && newSlotStartTime != null && !LocalTime.now(COLLEGE_ZONE).isBefore(newSlotStartTime)) {
+            throw new BadRequestException("This booking time has already passed. Please select a future date and time.");
         }
 
         SeminarHall newHall = getHallById(newHallId)
@@ -1328,7 +1681,7 @@ public class SeminarService {
         String actor = user != null ? (user.getName() != null ? user.getName() : user.getUserId()) : "Admin";
 
         // 1. Create the NEW approved booking
-        String newBookingId = generateBookingId(0);
+        String newBookingId = generateBookingId(user, original.getDepartment());
         SeminarBooking newBooking = SeminarBooking.builder()
                 .bookingId(newBookingId)
                 .department(original.getDepartment())
@@ -1512,7 +1865,7 @@ public class SeminarService {
         SeminarHall hall = getHallById(hallId)
                 .orElseThrow(() -> new ResourceNotFoundException("Seminar Hall not found: " + hallId));
 
-        String bookingId = generateBookingId(0);
+        String bookingId = generateBookingId(user, user != null ? user.getDepartment() : "CSE");
         SeminarBooking booking = SeminarBooking.builder()
                 .bookingId(bookingId)
                 .department(dto.getEventTitle() != null && dto.getEventTitle().contains("ECE") ? "ECE" : "CSE")

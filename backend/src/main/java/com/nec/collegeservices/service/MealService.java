@@ -35,6 +35,9 @@ public class MealService {
     private AuthService authService;
 
     @Autowired
+    private RequestIdService requestIdService;
+
+    @Autowired
     private com.nec.collegeservices.repository.UserRepository userRepository;
 
     /**
@@ -235,7 +238,7 @@ public class MealService {
 
         int totalOccurrences = targetDates.size();
         boolean isSeries = totalOccurrences > 1;
-        String seriesId = isSeries ? generateSeriesId() : null;
+        String seriesId = isSeries ? generateSeriesId(user, user.getDepartment()) : null;
         List<MealRequest> createdList = new ArrayList<>();
         int occurrenceIndex = 1;
 
@@ -245,9 +248,7 @@ public class MealService {
 
         for (LocalDate d : targetDates) {
             String dateIso = d.toString();
-            String reqId = isSeries
-                    ? generateRequestId(occurrenceIndex)
-                    : generateRequestId(0);
+            String reqId = generateRequestId(user, user.getDepartment());
 
             MealRequest request = MealRequest.builder()
                     .requestId(reqId)
@@ -315,17 +316,12 @@ public class MealService {
         return primary;
     }
 
-    private String generateRequestId(int index) {
-        long seq = ID_COUNTER.incrementAndGet() % 10000;
-        if (index > 0) {
-            return String.format("SM-%04d-%d", seq, index);
-        }
-        return String.format("SM-%04d", seq);
+    private String generateRequestId(User user, String dept) {
+        return requestIdService.generateRequestId("MEAL", user, dept);
     }
 
-    private String generateSeriesId() {
-        long seq = ID_COUNTER.incrementAndGet() % 10000;
-        return String.format("SM-SERIES-%04d", seq);
+    private String generateSeriesId(User user, String dept) {
+        return requestIdService.generateSeriesId("MEAL", user, dept);
     }
 
     public List<MealRequest> getAllRequests(String status, String mealType, String date, String department) {

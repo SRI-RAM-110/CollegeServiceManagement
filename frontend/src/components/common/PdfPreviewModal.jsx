@@ -141,7 +141,7 @@ export const PdfPreviewModal = ({
             <div className="pdf-preview-loading">
               <Loader2 className="animate-spin" size={36} color="var(--arctic-blue)" />
               <p className="pdf-loading-text">Preparing PDF preview...</p>
-              <span className="text-xs text-muted">Retrieving official approved service document</span>
+              <span className="text-xs text-muted">Retrieving official service request document</span>
             </div>
           )}
 

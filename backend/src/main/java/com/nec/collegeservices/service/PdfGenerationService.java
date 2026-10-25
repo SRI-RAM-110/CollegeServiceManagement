@@ -163,10 +163,45 @@ public class PdfGenerationService {
         titleCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
         banner.addCell(titleCell);
 
-        String statusText = item.getStatus() != null ? item.getStatus().toUpperCase() : "APPROVED";
-        PdfPCell statusCell = new PdfPCell(new Phrase("STATUS: " + statusText, FONT_STATUS_APPROVED));
-        statusCell.setBackgroundColor(new Color(240, 253, 244)); // light green
-        statusCell.setBorderColor(new Color(187, 247, 208));
+        String rawSt = item.getStatus() != null ? item.getStatus().toUpperCase() : "";
+        boolean isApproved = "APPROVED".equals(rawSt) || "BOOKED".equals(rawSt) ||
+                             "READY_FOR_COLLECTION".equals(rawSt) || "COLLECTED".equals(rawSt) ||
+                             "AO_DIRECT_APPROVED".equals(rawSt) || "COMPLETED".equals(rawSt);
+        boolean isRejected = "REJECTED".equals(rawSt) || "AO_REJECTED".equals(rawSt);
+        boolean isCancelled = "CANCELLED".equals(rawSt) || "CANCELED".equals(rawSt);
+
+        String statusText;
+        Color statusBg;
+        Color statusBorder;
+        Color statusTextColor;
+
+        if (isApproved) {
+            statusText = "APPROVED";
+            statusBg = new Color(240, 253, 244); // light green
+            statusBorder = new Color(187, 247, 208);
+            statusTextColor = ACCENT_GREEN;
+        } else if (isRejected) {
+            statusText = "REJECTED";
+            statusBg = new Color(254, 242, 242); // light red
+            statusBorder = new Color(254, 202, 202);
+            statusTextColor = new Color(185, 28, 28);
+        } else if (isCancelled) {
+            statusText = "CANCELLED";
+            statusBg = new Color(243, 244, 246); // light gray
+            statusBorder = new Color(209, 213, 219);
+            statusTextColor = new Color(107, 114, 128);
+        } else {
+            // When request has been successfully submitted and is awaiting approval
+            statusText = "SUBMITTED";
+            statusBg = new Color(254, 243, 199); // light amber
+            statusBorder = new Color(253, 230, 138);
+            statusTextColor = new Color(180, 83, 9);
+        }
+
+        Font fontStatus = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9.5f, statusTextColor);
+        PdfPCell statusCell = new PdfPCell(new Phrase("STATUS: " + statusText, fontStatus));
+        statusCell.setBackgroundColor(statusBg);
+        statusCell.setBorderColor(statusBorder);
         statusCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
         statusCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
         statusCell.setPadding(6);
@@ -187,7 +222,7 @@ public class PdfGenerationService {
 
         addGridRow(table, "Request ID", item.getRequestId(), "Service Category", item.getService());
         addGridRow(table, "Department", item.getDepartment(), "Requested By", item.getRequestedBy() != null ? item.getRequestedBy() : item.getDepartment() + " Department");
-        addGridRow(table, "Submitted Date", submittedDate, "Approval Status", item.getStatus());
+        addGridRow(table, "Submitted Date", submittedDate, "Submission Status", "Submitted");
 
         document.add(table);
     }
@@ -243,7 +278,9 @@ public class PdfGenerationService {
         addGridRow(table, "Booking Type", bookingTypeDisplay, "Service Status", b.getStatus());
 
         if (b.getSeriesId() != null || Boolean.TRUE.equals(b.getIsRecurring())) {
-            String occStr = (b.getOccurrenceIndex() != null && b.getTotalOccurrences() != null)
+            String occStr = (b.getDates() != null && !b.getDates().isEmpty())
+                    ? ("All " + b.getDates().size() + " Occurrences")
+                    : (b.getOccurrenceIndex() != null && b.getTotalOccurrences() != null)
                     ? (b.getOccurrenceIndex() + " of " + b.getTotalOccurrences())
                     : "Series Booking";
             addGridRow(table, "Series ID", b.getSeriesId() != null ? b.getSeriesId() : "N/A", "Occurrence", occStr);
@@ -255,6 +292,10 @@ public class PdfGenerationService {
                     ? String.join(", ", b.getRecurrenceDays())
                     : "Weekly";
             addGridRow(table, "Date Range", rangeStr, "Repeat On", repeatDays);
+
+            if (b.getDates() != null && !b.getDates().isEmpty()) {
+                addGridRowSpan(table, "Scheduled Occurrence Dates", String.join(", ", b.getDates()));
+            }
         }
 
         addGridRowSpan(table, "Event Title", b.getEventTitle());
@@ -428,26 +469,40 @@ public class PdfGenerationService {
         table.setWidths(new float[]{1.3f, 1.7f, 1.3f, 1.7f});
         table.setSpacingAfter(10);
 
+        String rawSt = item.getStatus() != null ? item.getStatus().toUpperCase() : "";
+        boolean isApproved = "APPROVED".equals(rawSt) || "BOOKED".equals(rawSt) ||
+                             "READY_FOR_COLLECTION".equals(rawSt) || "COLLECTED".equals(rawSt) ||
+                             "AO_DIRECT_APPROVED".equals(rawSt) || "COMPLETED".equals(rawSt);
+        boolean isRejected = "REJECTED".equals(rawSt) || "AO_REJECTED".equals(rawSt);
+        boolean isCancelled = "CANCELLED".equals(rawSt) || "CANCELED".equals(rawSt);
+
+        String approvalStatusDisplay = isApproved ? (item.getStatus() != null ? item.getStatus().toUpperCase() : "APPROVED")
+                : (isRejected ? "REJECTED" : (isCancelled ? "CANCELLED" : "PENDING APPROVAL"));
+
         String approver = item.getApprovedBy();
         if (approver == null || approver.isBlank()) {
-            approver = determineDefaultApprover(item.getServiceCategory());
+            approver = isApproved ? determineDefaultApprover(item.getServiceCategory()) : "Pending Review";
         }
 
         String approvalDate;
         if (item.getApprovedAt() != null) {
             approvalDate = item.getApprovedAt().format(DATE_TIME_FORMATTER);
-        } else if (item.getCreatedAt() != null) {
+        } else if (isApproved && item.getCreatedAt() != null) {
             approvalDate = item.getCreatedAt().format(DATE_TIME_FORMATTER);
-        } else {
+        } else if (isApproved) {
             approvalDate = LocalDateTime.now().format(DATE_TIME_FORMATTER);
+        } else {
+            approvalDate = "Pending Approval";
         }
 
         String remarks = item.getAdminRemarks();
         if (remarks == null || remarks.isBlank()) {
-            remarks = "Approved as requested. Authorized for official service delivery.";
+            remarks = isApproved
+                    ? "Approved as requested. Authorized for official service delivery."
+                    : (isRejected ? "Request rejected by administrator." : (isCancelled ? "Request cancelled." : "Awaiting administrative review and approval."));
         }
 
-        addGridRow(table, "Approval Status", item.getStatus() != null ? item.getStatus().toUpperCase() : "APPROVED", "Approved By", approver);
+        addGridRow(table, "Approval Status", approvalStatusDisplay, "Approved By", approver);
         addGridRow(table, "Approved Date & Time", approvalDate, "Authority Level", "Institutional Administrator");
         addGridRowSpan(table, "Administrator Remarks", remarks);
 

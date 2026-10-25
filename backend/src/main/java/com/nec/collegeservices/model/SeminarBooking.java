@@ -42,6 +42,8 @@ public class SeminarBooking {
 
     // Slot: FORENOON (09:00 AM - 12:00 PM), AFTERNOON (12:00 PM - 04:00 PM), FULL_DAY (09:00 AM - 04:00 PM)
     private String slot; 
+    private String startTime;
+    private String endTime;
 
     // Status: PENDING, APPROVED, REJECTED, BOOKED
     private String status;
@@ -60,6 +62,12 @@ public class SeminarBooking {
 
     private String startDate; // YYYY-MM-DD
     private String endDate;   // YYYY-MM-DD
+
+    // Explicit occurrence dates for parent recurring bookings
+    private java.util.List<String> dates; // List of YYYY-MM-DD dates
+
+    // Detailed occurrence-level info
+    private java.util.List<Occurrence> occurrences;
 
     // Recurring Series details
     @Builder.Default
@@ -110,5 +118,22 @@ public class SeminarBooking {
         private String actor;
         private LocalDateTime timestamp;
         private String comment;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Occurrence {
+        private Integer index;
+        private String date; // YYYY-MM-DD
+        private String dayOfWeek;
+        private String hallId;
+        private String hallName;
+        private String hallLocation;
+        private String slot;
+        private String startTime;
+        private String endTime;
+        private String status; // PENDING, APPROVED, REJECTED, CANCELLED
     }
 }

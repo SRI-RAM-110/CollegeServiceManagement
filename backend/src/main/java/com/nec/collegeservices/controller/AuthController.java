@@ -40,4 +40,16 @@ public class AuthController {
         User updated = authService.changePassword(request, caller);
         return ResponseEntity.ok(ApiResponse.ok("Password changed successfully", updated));
     }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody com.nec.collegeservices.dto.ForgotPasswordRequestDTO request) {
+        authService.forgotPassword(request);
+        return ResponseEntity.ok(ApiResponse.ok("If an account exists for this email, password reset instructions will be sent."));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody com.nec.collegeservices.dto.PasswordResetConfirmDTO request) {
+        authService.resetPassword(request);
+        return ResponseEntity.ok(ApiResponse.ok("Password has been reset successfully. You can now log in with your new password."));
+    }
 }

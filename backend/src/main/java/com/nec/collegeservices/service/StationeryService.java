@@ -34,6 +34,9 @@ public class StationeryService {
     @Autowired
     private AuthService authService;
 
+    @Autowired
+    private RequestIdService requestIdService;
+
     public List<StationeryItem> getAllItems() {
         return itemRepository.findAll().stream()
                 .filter(i -> i.getActive() == null || i.getActive())
@@ -77,7 +80,7 @@ public class StationeryService {
                     .build());
         }
 
-        String requestId = "STA-" + String.format("%04d", (System.currentTimeMillis() % 100000));
+        String requestId = requestIdService.generateRequestId("STA", user, user.getDepartment());
 
         StationeryRequest request = StationeryRequest.builder()
                 .requestId(requestId)

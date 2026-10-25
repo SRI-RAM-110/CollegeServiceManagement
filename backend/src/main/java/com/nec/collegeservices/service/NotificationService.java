@@ -17,6 +17,9 @@ public class NotificationService {
     @Autowired
     private PushService pushService;
 
+    @Autowired
+    private EmailService emailService;
+
     public Notification sendNotification(String recipientRole, String recipientDept, String recipientUserId,
                                          String title, String message, String service, String type, String referenceId) {
         Notification notification = Notification.builder()
@@ -42,6 +45,13 @@ public class NotificationService {
             }
         } catch (Exception e) {
             // Push delivery failure must never break core notification or business logic
+        }
+
+        // Dispatch email notification asynchronously (non-blocking, failure isolated)
+        try {
+            emailService.sendNotificationEmailAsync(saved);
+        } catch (Exception e) {
+            // Email delivery failure must never break core notification or business logic
         }
 
         return saved;

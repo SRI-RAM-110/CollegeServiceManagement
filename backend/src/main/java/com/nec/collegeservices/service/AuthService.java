@@ -27,6 +27,12 @@ public class AuthService {
     private UserRepository userRepository;
 
     @Autowired
+    private com.nec.collegeservices.repository.PasswordResetTokenRepository passwordResetTokenRepository;
+
+    @Autowired
+    private EmailService emailService;
+
+    @Autowired
     private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     public AuthResponse login(LoginRequest request) {
@@ -120,5 +126,118 @@ public class AuthService {
         return userRepository.findByUserId(principal)
                 .or(() -> userRepository.findByEmailIgnoreCase(principal))
                 .orElse(null);
+    }
+
+    public void forgotPassword(com.nec.collegeservices.dto.ForgotPasswordRequestDTO request) {
+        if (request == null || request.getEmail() == null || request.getEmail().isBlank()) {
+            return;
+        }
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+        java.util.Optional<User> userOpt = userRepository.findByEmailIgnoreCase(cleanEmail);
+        if (userOpt.isEmpty()) {
+            // Never reveal whether an email address is registered
+            return;
+        }
+
+        User user = userOpt.get();
+        if (Boolean.FALSE.equals(user.getActive())) {
+            return;
+        }
+
+        // Rate limiting cooldown: 60 seconds between reset token generations
+        java.util.Optional<com.nec.collegeservices.model.PasswordResetToken> recent = passwordResetTokenRepository
+                .findFirstByUserIdAndUsedFalseOrderByCreatedAtDesc(user.getUserId());
+        if (recent.isPresent() && recent.get().getCreatedAt() != null &&
+            recent.get().getCreatedAt().isAfter(java.time.LocalDateTime.now().minusSeconds(60))) {
+            return;
+        }
+
+        // Invalidate previous unused reset tokens for this user
+        java.util.List<com.nec.collegeservices.model.PasswordResetToken> existingTokens =
+                passwordResetTokenRepository.findAllByUserIdAndUsedFalse(user.getUserId());
+        for (com.nec.collegeservices.model.PasswordResetToken t : existingTokens) {
+            t.setUsed(true);
+            t.setUsedAt(java.time.LocalDateTime.now());
+        }
+        if (!existingTokens.isEmpty()) {
+            passwordResetTokenRepository.saveAll(existingTokens);
+        }
+
+        // Generate 32 bytes cryptographically secure unpredictable token
+        byte[] randomBytes = new byte[32];
+        new java.security.SecureRandom().nextBytes(randomBytes);
+        String rawToken = java.util.HexFormat.of().formatHex(randomBytes);
+        String tokenHash = hashToken(rawToken);
+
+        com.nec.collegeservices.model.PasswordResetToken resetToken = com.nec.collegeservices.model.PasswordResetToken.builder()
+                .userId(user.getUserId())
+                .email(cleanEmail)
+                .tokenHash(tokenHash)
+                .expiryDate(java.time.LocalDateTime.now().plusMinutes(15))
+                .used(false)
+                .createdAt(java.time.LocalDateTime.now())
+                .build();
+        passwordResetTokenRepository.save(resetToken);
+
+        // Send email via existing EmailService (without CC)
+        emailService.sendPasswordResetEmail(cleanEmail, user.getName(), rawToken);
+    }
+
+    public void resetPassword(com.nec.collegeservices.dto.PasswordResetConfirmDTO request) {
+        if (request == null || request.getToken() == null || request.getToken().isBlank()) {
+            throw new com.nec.collegeservices.exception.BadRequestException("Invalid or expired password reset token.");
+        }
+        if (request.getNewPassword() == null || request.getNewPassword().length() < 6) {
+            throw new com.nec.collegeservices.exception.BadRequestException("New password must be at least 6 characters long.");
+        }
+
+        String rawToken = request.getToken().trim();
+        String tokenHash = hashToken(rawToken);
+
+        com.nec.collegeservices.model.PasswordResetToken resetToken = passwordResetTokenRepository.findByTokenHash(tokenHash)
+                .orElseThrow(() -> new com.nec.collegeservices.exception.BadRequestException("Invalid or expired password reset token."));
+
+        if (resetToken.isUsed() || resetToken.getExpiryDate() == null || resetToken.getExpiryDate().isBefore(java.time.LocalDateTime.now())) {
+            throw new com.nec.collegeservices.exception.BadRequestException("Invalid or expired password reset token.");
+        }
+
+        User user = userRepository.findByUserId(resetToken.getUserId())
+                .orElseThrow(() -> new com.nec.collegeservices.exception.ResourceNotFoundException("User account not found."));
+
+        if (Boolean.FALSE.equals(user.getActive())) {
+            throw new com.nec.collegeservices.exception.BadRequestException("User account is inactive. Please contact administrator.");
+        }
+
+        // Update password using existing password encoder
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setMustChangePassword(false);
+        user.setUpdatedAt(java.time.LocalDateTime.now());
+        userRepository.save(user);
+
+        // Mark token as consumed/used
+        resetToken.setUsed(true);
+        resetToken.setUsedAt(java.time.LocalDateTime.now());
+        passwordResetTokenRepository.save(resetToken);
+
+        // Invalidate any other tokens for this user
+        java.util.List<com.nec.collegeservices.model.PasswordResetToken> otherTokens =
+                passwordResetTokenRepository.findAllByUserIdAndUsedFalse(user.getUserId());
+        for (com.nec.collegeservices.model.PasswordResetToken t : otherTokens) {
+            t.setUsed(true);
+            t.setUsedAt(java.time.LocalDateTime.now());
+        }
+        if (!otherTokens.isEmpty()) {
+            passwordResetTokenRepository.saveAll(otherTokens);
+        }
+    }
+
+    private String hashToken(String rawToken) {
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] digest = md.digest(rawToken.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 algorithm not available", e);
+        }
     }
 }

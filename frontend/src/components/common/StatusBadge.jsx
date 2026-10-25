@@ -8,7 +8,10 @@ export const StatusBadge = ({ status }) => {
   let className = 'badge-neutral';
   let label = status;
 
-  if (normalized === 'APPROVED' || normalized === 'AVAILABLE' || normalized === 'FUNCTIONAL' || normalized === 'COMPLETED') {
+  if (normalized === 'SUBMITTED') {
+    className = 'badge-pending';
+    label = 'Submitted';
+  } else if (normalized === 'APPROVED' || normalized === 'AVAILABLE' || normalized === 'FUNCTIONAL' || normalized === 'COMPLETED') {
     className = 'badge-approved';
     label = normalized === 'FUNCTIONAL' ? 'Functional' : (normalized === 'AVAILABLE' ? 'Available' : (normalized === 'COMPLETED' ? 'Completed' : 'Approved'));
   } else if (normalized === 'READY_FOR_COLLECTION' || normalized === 'READY FOR COLLECTION' || normalized === 'READY') {

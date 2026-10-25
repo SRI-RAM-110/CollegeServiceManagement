@@ -30,22 +30,19 @@ import { ServiceDateRangeViewer } from '../../components/common/ServiceDateRange
 import { RequestDetailsModal } from '../../components/common/RequestDetailsModal';
 import { Modal } from '../../components/common/Modal';
 import confetti from 'canvas-confetti';
-import { getTodayStr, formatDateDisplay } from '../../utils/dateUtils';
-
-const WEEKDAYS = [
-  { key: 'MONDAY', label: 'Mon', fullLabel: 'Monday', dayIndex: 1 },
-  { key: 'TUESDAY', label: 'Tue', fullLabel: 'Tuesday', dayIndex: 2 },
-  { key: 'WEDNESDAY', label: 'Wed', fullLabel: 'Wednesday', dayIndex: 3 },
-  { key: 'THURSDAY', label: 'Thu', fullLabel: 'Thursday', dayIndex: 4 },
-  { key: 'FRIDAY', label: 'Fri', fullLabel: 'Friday', dayIndex: 5 },
-  { key: 'SATURDAY', label: 'Sat', fullLabel: 'Saturday', dayIndex: 6 },
-  { key: 'SUNDAY', label: 'Sun', fullLabel: 'Sunday', dayIndex: 0 },
-];
+import {
+  getTodayStr,
+  formatDateDisplay,
+  isSlotPassedForDate,
+  validateSeminarBookingOccurrences,
+  WEEKDAYS,
+  validateRecurringDateRange,
+} from '../../utils/dateUtils';
 
 const parseLocalDate = (str) => {
   if (!str) return new Date();
   const [y, m, d] = str.split('-').map(Number);
-  return new Date(y, m - 1, d);
+  return new Date(y, m - 1, d, 12, 0, 0);
 };
 
 const formatLocalDate = (d) => {
@@ -82,9 +79,18 @@ export const SeminarBooking = () => {
   const [selectedReqModal, setSelectedReqModal] = useState(null);
   const [conflictModalData, setConflictModalData] = useState(null);
 
+  // Seminar hall filter for "View Booked Slots in Date Range" (multi-select, default ['ALL'])
+  const [viewerHallFilter, setViewerHallFilter] = useState(['ALL']);
+
   // Booking Type: ONE_TIME | RECURRING | MULTI_DAY
   const [bookingType, setBookingType] = useState('ONE_TIME');
   const [recurrenceDays, setRecurrenceDays] = useState(['MONDAY']);
+
+  // Recurring date-range and weekday occurrence validation
+  const recurrenceValidation = useMemo(() => {
+    if (bookingType !== 'RECURRING') return null;
+    return validateRecurringDateRange(selectedDate, toDate, recurrenceDays);
+  }, [bookingType, selectedDate, toDate, recurrenceDays]);
 
   // Availability & Conflicts
   const [availability, setAvailability] = useState(null);
@@ -221,24 +227,10 @@ export const SeminarBooking = () => {
       return list;
     } else {
       // RECURRING
-      if (!selectedDate || !toDate || toDate < selectedDate) return [];
-      if (recurrenceDays.length === 0) return [];
-      const targetDayIndices = recurrenceDays.map((k) => {
-        const found = WEEKDAYS.find((w) => w.key === k);
-        return found ? found.dayIndex : -1;
-      });
-      const list = [];
-      let cur = parseLocalDate(selectedDate);
-      const end = parseLocalDate(toDate);
-      while (cur <= end) {
-        if (targetDayIndices.includes(cur.getDay())) {
-          list.push(formatLocalDate(cur));
-        }
-        cur.setDate(cur.getDate() + 1);
-      }
-      return list;
+      if (!recurrenceValidation || !recurrenceValidation.isValid) return [];
+      return recurrenceValidation.targetDates || [];
     }
-  }, [bookingType, selectedDate, toDate, recurrenceDays]);
+  }, [bookingType, selectedDate, toDate, recurrenceValidation]);
 
   // Bulk conflict check on target dates
   useEffect(() => {
@@ -284,6 +276,10 @@ export const SeminarBooking = () => {
   const activeBookings = availability?.bookings || [];
 
   const handleSlotSelect = (slotName) => {
+    if (isSlotPassedForDate(selectedDate, slotName)) {
+      showToast('This booking time has already passed. Please select a future date and time.', 'warning');
+      return;
+    }
     if (slotsStatus[slotName] === 'BOOKED') {
       showToast(`The ${slotName} slot is already booked for this date!`, 'warning');
       return;
@@ -316,13 +312,36 @@ export const SeminarBooking = () => {
     const today = getTodayStr();
 
     if (selectedDate < today) {
-      showToast('Start date cannot be in the past', 'warning');
+      showToast('This booking time has already passed. Please select a future date and time.', 'warning');
       return;
     }
     if (toDate && toDate < selectedDate) {
       showToast('End date must be on or after the start date', 'warning');
       return;
     }
+
+    if (bookingType === 'RECURRING') {
+      if (!toDate || toDate < selectedDate) {
+        showToast('End date must be on or after the start date', 'warning');
+        return;
+      }
+      if (recurrenceDays.length === 0) {
+        showToast('Please select at least one weekday for recurring bookings', 'warning');
+        return;
+      }
+      if (recurrenceValidation && !recurrenceValidation.isValid) {
+        showToast(recurrenceValidation.message, 'warning');
+        return;
+      }
+    }
+
+    // Validate past dates and times across all target occurrences
+    const timeValidationError = validateSeminarBookingOccurrences(targetDates, selectedSlot);
+    if (timeValidationError) {
+      showToast(timeValidationError, 'warning');
+      return;
+    }
+
     if (!isHallOperational) {
       showToast(
         `Seminar Hall ${currentHall.name || currentHall.hallId} is currently under maintenance. New bookings cannot be submitted for this hall.`,
@@ -371,6 +390,18 @@ export const SeminarBooking = () => {
 
   // Final confirmed submission
   const handleConfirmSubmit = async () => {
+    // Re-validate at submission time in case start time passed while the review modal was open
+    const timeValidationError = validateSeminarBookingOccurrences(targetDates, selectedSlot);
+    if (timeValidationError) {
+      showToast(timeValidationError, 'warning');
+      return;
+    }
+
+    if (bookingType === 'RECURRING' && recurrenceValidation && !recurrenceValidation.isValid) {
+      showToast(recurrenceValidation.message, 'warning');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const effectiveType = bookingType;
@@ -388,13 +419,16 @@ export const SeminarBooking = () => {
         additionalRequirements,
         recurrenceDays: bookingType === 'RECURRING' ? recurrenceDays : null,
         recurrencePattern: bookingType === 'RECURRING' ? 'WEEKLY' : null,
+        dates: targetDates,
       };
 
       const res = await seminarApi.createBooking(payload);
 
       if (res.success) {
         showToast(
-          effectiveType === 'RECURRING' || effectiveType === 'MULTI_DAY'
+          effectiveType === 'RECURRING'
+            ? `Successfully submitted recurring booking request (${targetDates.length} occurrences) for approval!`
+            : effectiveType === 'MULTI_DAY'
             ? `Successfully submitted ${targetDates.length} booking occurrences for approval!`
             : 'Seminar hall booking request submitted successfully!',
           'success'
@@ -414,8 +448,24 @@ export const SeminarBooking = () => {
   };
 
   const fetchBookedSlots = async ({ fromDate, toDate }) => {
-    const res = await seminarApi.getBookings({ fromDate, toDate });
-    return res.data || [];
+    const params = { fromDate, toDate };
+    const isAll = !viewerHallFilter || viewerHallFilter.length === 0 || viewerHallFilter.includes('ALL');
+    if (!isAll) {
+      params.hallId = viewerHallFilter.join(',');
+    }
+    const res = await seminarApi.getBookings(params);
+    let list = res.data || [];
+    // Exclude cancelled bookings consistently
+    list = list.filter((b) => !b.status || b.status.toUpperCase() !== 'CANCELLED');
+    if (!isAll) {
+      const selectedSet = new Set(viewerHallFilter.map((id) => id.toUpperCase()));
+      list = list.filter((b) => {
+        const hId = (b.hallId || '').toUpperCase();
+        const hName = (b.hallName || '').toUpperCase();
+        return selectedSet.has(hId) || selectedSet.has(hName);
+      });
+    }
+    return list;
   };
 
   // Open Cancel Modal
@@ -681,7 +731,9 @@ export const SeminarBooking = () => {
                         </td>
                         <td className="table-cell-date text-xs whitespace-nowrap">
                           <div>
-                            {r.startDate && r.endDate && r.startDate !== r.endDate
+                            {r.dates && r.dates.length > 0
+                              ? `${formatDateDisplay(r.startDate || r.dates[0])} - ${formatDateDisplay(r.endDate || r.dates[r.dates.length - 1])} (${r.dates.length} dates)`
+                              : r.startDate && r.endDate && r.startDate !== r.endDate
                               ? `${formatDateDisplay(r.startDate)} - ${formatDateDisplay(r.endDate)}`
                               : formatDateDisplay(r.date || r.startDate)}
                           </div>
@@ -797,7 +849,9 @@ export const SeminarBooking = () => {
                         <span className="text-[10px] text-slate-500 block">Date / Range</span>
                         <span className="font-medium flex items-center gap-1">
                           <CalendarDays size={11} className="text-blue-400" />
-                          {r.startDate && r.endDate && r.startDate !== r.endDate
+                          {r.dates && r.dates.length > 0
+                            ? `${formatDateDisplay(r.startDate || r.dates[0])} - ${formatDateDisplay(r.endDate || r.dates[r.dates.length - 1])} (${r.dates.length} dates)`
+                            : r.startDate && r.endDate && r.startDate !== r.endDate
                             ? `${formatDateDisplay(r.startDate)} - ${formatDateDisplay(r.endDate)}`
                             : formatDateDisplay(r.date || r.startDate)}
                         </span>
@@ -891,8 +945,31 @@ export const SeminarBooking = () => {
         countLabel="Total Bookings"
         loadingMessage="Loading booked slots..."
         errorMessage="Unable to load booked slots. Please try again."
-        emptyMessage="No booked slots found for the selected date range."
+        emptyMessage={
+          !viewerHallFilter || viewerHallFilter.length === 0 || viewerHallFilter.includes('ALL')
+            ? 'No booked slots found for the selected date range.'
+            : viewerHallFilter.length === 1
+              ? `No booked slots found for ${halls.find((h) => h.hallId === viewerHallFilter[0])?.name || 'the selected hall'} in the selected date range.`
+              : 'No booked slots found for the selected halls in the selected date range.'
+        }
         onFetch={fetchBookedSlots}
+        extraFilters={[
+          {
+            id: 'booked-slots-hall-filter',
+            type: 'multi-select',
+            label: 'Seminar Hall',
+            value: viewerHallFilter,
+            onChange: (val) => setViewerHallFilter(val),
+            allOptionValue: 'ALL',
+            options: [
+              { value: 'ALL', label: 'All Halls' },
+              ...halls.map((h) => ({
+                value: h.hallId,
+                label: h.name || h.hallId,
+              })),
+            ],
+          },
+        ]}
         renderResults={(records) => (
           <table className="custom-table">
             <thead>
@@ -1141,6 +1218,16 @@ export const SeminarBooking = () => {
                           );
                         })}
                       </div>
+
+                      {recurrenceValidation && !recurrenceValidation.isValid && (
+                        <div className="mt-2.5 p-2.5 rounded-lg bg-amber-950/40 border border-amber-800/60 text-amber-200 text-xs flex items-start gap-2">
+                          <AlertTriangle size={15} className="mt-0.5 shrink-0 text-amber-400" />
+                          <div>
+                            <span className="font-semibold text-amber-300">Recurring Schedule Notice: </span>
+                            <span>{recurrenceValidation.message}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1160,12 +1247,14 @@ export const SeminarBooking = () => {
                     <div className="grid grid-cols-3 gap-2">
                       {['FORENOON', 'AFTERNOON', 'FULL_DAY'].map((slotKey) => {
                         const isBooked = slotsStatus[slotKey] === 'BOOKED';
+                        const isPassed = slotsStatus[slotKey] === 'PASSED' || isSlotPassedForDate(selectedDate, slotKey);
+                        const isUnavailable = isBooked || isPassed;
                         const isSelected = selectedSlot === slotKey;
                         return (
                           <div
                             key={slotKey}
                             onClick={() => handleSlotSelect(slotKey)}
-                            className={`p-2.5 rounded-lg border text-center cursor-pointer transition ${isBooked
+                            className={`p-2.5 rounded-lg border text-center cursor-pointer transition ${isUnavailable
                               ? 'bg-rose-950/20 border-rose-800/40 text-rose-400 cursor-not-allowed opacity-60'
                               : isSelected
                                 ? 'bg-blue-600/20 border-blue-500 text-white shadow'
@@ -1181,10 +1270,14 @@ export const SeminarBooking = () => {
                                   : '09:00 AM - 04:00 PM'}
                             </div>
                             <span
-                              className={`badge text-[10px] ${isBooked ? 'bg-rose-900/60 text-rose-300' : 'bg-emerald-900/40 text-emerald-300'
+                              className={`badge text-[10px] ${isBooked
+                                ? 'bg-rose-900/60 text-rose-300'
+                                : isPassed
+                                  ? 'bg-amber-900/40 text-amber-300 border border-amber-800/50'
+                                  : 'bg-emerald-900/40 text-emerald-300'
                                 }`}
                             >
-                              {isBooked ? 'BOOKED' : 'AVAILABLE'}
+                              {isBooked ? 'BOOKED' : isPassed ? 'PASSED' : 'AVAILABLE'}
                             </span>
                           </div>
                         );

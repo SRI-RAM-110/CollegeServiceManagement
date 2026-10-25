@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { COLLEGE_LOGO } from '../../constants/branding';
 import { ShieldCheck, Eye, EyeOff, Lock, User as UserIcon, AlertCircle, ArrowRight, Mail } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -140,7 +140,7 @@ export const LoginPage = () => {
             </div>
           </div>
 
-          {/* Remember Me */}
+          {/* Remember Me & Forgot Password */}
           <div className="login-options-row">
             <label className="login-remember-label">
               <input
@@ -151,7 +151,9 @@ export const LoginPage = () => {
               />
               Remember me
             </label>
-            <span className="login-version-tag">College Portal v1.0</span>
+            <Link to="/forgot-password" className="login-forgot-link">
+              Forgot password?
+            </Link>
           </div>
 
           {/* Submit Button */}

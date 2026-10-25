@@ -22,6 +22,21 @@ public class NotificationController {
     @Autowired
     private AuthService authService;
 
+    @Autowired
+    private com.nec.collegeservices.service.EmailService emailService;
+
+    @PostMapping("/test-email")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> sendTestEmail(
+            @RequestParam(required = false) String targetEmail) {
+        User user = authService.getCurrentUser();
+        if (user == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Unauthorized"));
+        }
+        java.util.Map<String, Object> result = emailService.sendTestEmail(user.getUserId(), targetEmail);
+        return ResponseEntity.ok(ApiResponse.ok("Test email execution completed", result));
+    }
+
     @GetMapping
     public ResponseEntity<ApiResponse<List<Notification>>> getNotifications() {
         User user = authService.getCurrentUser();

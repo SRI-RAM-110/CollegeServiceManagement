@@ -1,0 +1,626 @@
+package com.nec.collegeservices.service;
+
+import com.nec.collegeservices.model.EmailLog;
+import com.nec.collegeservices.model.Notification;
+import com.nec.collegeservices.model.User;
+import com.nec.collegeservices.repository.EmailLogRepository;
+import com.nec.collegeservices.repository.UserRepository;
+import jakarta.annotation.PostConstruct;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeMessage;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
+
+@Service
+@Slf4j
+public class EmailService {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private EmailLogRepository emailLogRepository;
+
+    @Value("${spring.mail.host:smtp.gmail.com}")
+    private String mailHost;
+
+    @Value("${spring.mail.port:587}")
+    private int mailPort;
+
+    @Value("${spring.mail.username:}")
+    private String mailUsername;
+
+    @Value("${spring.mail.password:}")
+    private String mailPassword;
+
+    @Value("${app.mail.enabled:true}")
+    private boolean mailEnabled;
+
+    @Value("${app.mail.from:${spring.mail.username:no-reply@nrtec.in}}")
+    private String mailFrom;
+
+    @Value("${app.mail.from-name:NEC Service Management}")
+    private String mailFromName;
+
+    @Value("${app.mail.app-url:http://localhost:5173}")
+    private String appUrl;
+
+    @Value("${app.notification.cc-emails:zsonsoul@gmail.com}")
+    private String ccEmailsConfig;
+
+    @Value("${app.notification.cc-events:REQUEST_SUBMITTED,REQUEST_APPROVED,REQUEST_REJECTED,REQUEST_CANCELLED,TEST_EVENT}")
+    private String ccEventsConfig;
+
+    private JavaMailSender dynamicMailSender;
+
+    @PostConstruct
+    public void init() {
+        if (isSmtpConfigured()) {
+            this.dynamicMailSender = createMailSender();
+            log.info("EmailService initialized successfully with SMTP host {}:{} (Sender: {})",
+                    mailHost, mailPort, mailUsername);
+        } else {
+            log.warn("EmailService: SMTP credentials not configured (SPRING_MAIL_USERNAME / SPRING_MAIL_PASSWORD missing). " +
+                     "Email notifications will be safely simulated/logged.");
+        }
+    }
+
+    public boolean isSmtpConfigured() {
+        return mailUsername != null && !mailUsername.isBlank() &&
+               mailPassword != null && !mailPassword.isBlank();
+    }
+
+    private JavaMailSender createMailSender() {
+        JavaMailSenderImpl sender = new JavaMailSenderImpl();
+        sender.setHost(mailHost != null && !mailHost.isBlank() ? mailHost : "smtp.gmail.com");
+        sender.setPort(mailPort > 0 ? mailPort : 587);
+        sender.setUsername(mailUsername != null ? mailUsername.trim() : "");
+        sender.setPassword(mailPassword != null ? mailPassword.trim().replaceAll("\\s+", "") : "");
+
+        Properties props = sender.getJavaMailProperties();
+        props.put("mail.transport.protocol", "smtp");
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.starttls.enable", "true");
+        props.put("mail.smtp.starttls.required", "true");
+        props.put("mail.smtp.ssl.protocols", "TLSv1.2 TLSv1.3");
+        props.put("mail.smtp.ssl.trust", mailHost != null && !mailHost.isBlank() ? mailHost : "smtp.gmail.com");
+        props.put("mail.smtp.connectiontimeout", "5000");
+        props.put("mail.smtp.timeout", "5000");
+        props.put("mail.smtp.writetimeout", "5000");
+        return sender;
+    }
+
+    public List<String> getCcEmailsList() {
+        if (ccEmailsConfig == null || ccEmailsConfig.isBlank()) {
+            return Collections.emptyList();
+        }
+        return Arrays.stream(ccEmailsConfig.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank() && s.contains("@"))
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    public Set<String> getCcEventsSet() {
+        if (ccEventsConfig == null || ccEventsConfig.isBlank()) {
+            return Collections.emptySet();
+        }
+        return Arrays.stream(ccEventsConfig.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .map(String::toUpperCase)
+                .collect(Collectors.toSet());
+    }
+
+    public String classifyEvent(Notification notification) {
+        if (notification == null) return "GENERAL";
+        String title = notification.getTitle() != null ? notification.getTitle().toUpperCase() : "";
+        String msg = notification.getMessage() != null ? notification.getMessage().toUpperCase() : "";
+
+        if (title.contains("NEW") && (title.contains("REQUEST") || title.contains("BOOKING"))) {
+            return "REQUEST_SUBMITTED";
+        }
+        if (title.contains("APPROVED") && (title.contains("CANCEL") || msg.contains("CANCELLATION"))) {
+            return "REQUEST_CANCELLED";
+        }
+        if (title.contains("APPROVED")) {
+            return "REQUEST_APPROVED";
+        }
+        if (title.contains("REJECTED") && (title.contains("CANCEL") || msg.contains("CANCELLATION"))) {
+            return "REQUEST_CANCEL_REJECTED";
+        }
+        if (title.contains("REJECTED")) {
+            return "REQUEST_REJECTED";
+        }
+        if (title.contains("CANCELLATION REQUESTED") || title.contains("CANCEL REQUEST")) {
+            return "REQUEST_CANCEL_REQUESTED";
+        }
+        if (title.contains("CANCELLED") || title.contains("CANCELLATION")) {
+            return "REQUEST_CANCELLED";
+        }
+        if (title.contains("READY") || title.contains("COLLECTED") || title.contains("UNDER REVIEW") || title.contains("FORWARDED")) {
+            return "REQUEST_STATUS_UPDATED";
+        }
+        return "GENERAL_NOTIFICATION";
+    }
+
+    @Async
+    public CompletableFuture<Void> sendNotificationEmailAsync(Notification notification) {
+        try {
+            processAndSendNotificationEmail(notification);
+        } catch (Exception e) {
+            log.warn("Asynchronous email notification dispatch failed for notification {}: {}",
+                    notification != null ? notification.getId() : "null", e.getMessage());
+        }
+        return CompletableFuture.completedFuture(null);
+    }
+
+    public void processAndSendNotificationEmail(Notification notification) {
+        if (notification == null || !mailEnabled) {
+            return;
+        }
+
+        String eventCategory = classifyEvent(notification);
+        List<String> primaryRecipients = resolvePrimaryRecipients(notification);
+        if (primaryRecipients.isEmpty()) {
+            log.debug("No valid primary email recipients found for notification {}", notification.getId());
+            return;
+        }
+
+        List<String> ccRecipients = resolveCcRecipients(eventCategory);
+
+        for (String primaryRecipient : primaryRecipients) {
+            sendSingleEmail(notification, eventCategory, primaryRecipient, ccRecipients);
+        }
+    }
+
+    public List<String> resolvePrimaryRecipients(Notification notification) {
+        Set<String> recipientEmails = new LinkedHashSet<>();
+
+        String userId = notification.getRecipientUserId();
+        if (userId != null && !userId.isBlank() && !"ALL".equalsIgnoreCase(userId)) {
+            userRepository.findByUserId(userId.trim())
+                    .or(() -> userRepository.findByEmailIgnoreCase(userId.trim()))
+                    .ifPresent(u -> {
+                        if (u.getEmail() != null && !u.getEmail().isBlank()) {
+                            recipientEmails.add(u.getEmail().trim().toLowerCase());
+                        }
+                    });
+            return new ArrayList<>(recipientEmails);
+        }
+
+        String role = notification.getRecipientRole();
+        String dept = notification.getRecipientDept();
+
+        List<User> targetUsers = userRepository.findAll().stream()
+                .filter(u -> Boolean.TRUE.equals(u.getActive()))
+                .filter(u -> {
+                    boolean roleMatch = role == null || "ALL".equalsIgnoreCase(role) || u.hasRole(role) || u.hasServicePermission(role);
+                    boolean deptMatch = dept == null || "ALL".equalsIgnoreCase(dept) || "ADMIN".equalsIgnoreCase(dept) ||
+                            "ADMIN".equalsIgnoreCase(u.getDepartment()) || (u.getDepartment() != null && u.getDepartment().equalsIgnoreCase(dept));
+                    return roleMatch && deptMatch;
+                })
+                .toList();
+
+        for (User u : targetUsers) {
+            if (u.getEmail() != null && !u.getEmail().isBlank() && u.getEmail().contains("@")) {
+                recipientEmails.add(u.getEmail().trim().toLowerCase());
+            }
+        }
+
+        return new ArrayList<>(recipientEmails);
+    }
+
+    public List<String> resolveCcRecipients(String eventCategory) {
+        Set<String> configuredEvents = getCcEventsSet();
+        if (configuredEvents.contains(eventCategory)) {
+            return getCcEmailsList();
+        }
+        return Collections.emptyList();
+    }
+
+    private void sendSingleEmail(Notification notification, String eventCategory,
+                                 String primaryRecipient, List<String> ccRecipients) {
+        String referenceId = notification.getReferenceId() != null ? notification.getReferenceId() : notification.getId();
+        String dedupKey = (referenceId != null ? referenceId : "GEN") + ":" + eventCategory + ":" + primaryRecipient.toLowerCase();
+
+        // Check deduplication
+        Optional<EmailLog> existing = emailLogRepository.findFirstByDeduplicationKeyAndStatus(dedupKey, "SENT");
+        if (existing.isPresent()) {
+            log.info("Duplicate email skipped for key: {}", dedupKey);
+            return;
+        }
+
+        // Filter CCs so primary is not in CC
+        List<String> effectiveCcs = ccRecipients.stream()
+                .filter(cc -> !cc.equalsIgnoreCase(primaryRecipient))
+                .toList();
+
+        String subject = "[NEC Services] " + (notification.getTitle() != null ? notification.getTitle() : "Notification") +
+                         (referenceId != null ? " (" + referenceId + ")" : "");
+
+        EmailLog logEntry = EmailLog.builder()
+                .notificationId(notification.getId())
+                .referenceId(referenceId)
+                .deduplicationKey(dedupKey)
+                .service(notification.getService() != null ? notification.getService() : "General")
+                .eventCategory(eventCategory)
+                .primaryRecipient(primaryRecipient)
+                .ccRecipients(effectiveCcs)
+                .subject(subject)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        if (!isSmtpConfigured()) {
+            logEntry.setStatus("SKIPPED_NO_CREDENTIALS");
+            logEntry.setErrorMessage("SMTP credentials not configured in environment. Email logged safely.");
+            emailLogRepository.save(logEntry);
+            log.info("Email notification simulated [SKIPPED_NO_CREDENTIALS] to: {} (CC: {}) - Subject: {}",
+                    primaryRecipient, effectiveCcs, subject);
+            return;
+        }
+
+        try {
+            if (dynamicMailSender == null) {
+                dynamicMailSender = createMailSender();
+            }
+            MimeMessage message = dynamicMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            String senderFrom = (mailFrom != null && !mailFrom.isBlank()) ? mailFrom : mailUsername;
+            helper.setFrom(new InternetAddress(senderFrom, mailFromName));
+            helper.setTo(primaryRecipient);
+            if (!effectiveCcs.isEmpty()) {
+                helper.setCc(effectiveCcs.toArray(new String[0]));
+            }
+            helper.setSubject(subject);
+
+            String htmlBody = buildHtmlEmailBody(notification, eventCategory, referenceId);
+            String plainText = buildPlainTextEmailBody(notification, eventCategory, referenceId);
+            helper.setText(plainText, htmlBody);
+
+            dynamicMailSender.send(message);
+
+            logEntry.setStatus("SENT");
+            emailLogRepository.save(logEntry);
+            log.info("Email notification SENT successfully to: {} (CC: {}) - Subject: {}",
+                    primaryRecipient, effectiveCcs, subject);
+
+        } catch (Exception e) {
+            logEntry.setStatus("FAILED");
+            logEntry.setErrorMessage(e.getMessage());
+            emailLogRepository.save(logEntry);
+            log.warn("Email delivery failed to {}: {}", primaryRecipient, e.getMessage());
+        }
+    }
+
+    public Map<String, Object> sendTestEmail(String requestingUserId, String targetEmail) {
+        String recipient = (targetEmail != null && !targetEmail.isBlank())
+                ? targetEmail.trim()
+                : "sriramsriram123654@gmail.com";
+
+        List<String> ccList = getCcEmailsList();
+
+        Notification testNotification = Notification.builder()
+                .id("TEST-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                .recipientUserId(requestingUserId)
+                .service("Seminar Hall")
+                .title("Test Email Notification")
+                .message("This is a live test notification from Narasaraopet Engineering College Services Management System. " +
+                         "Verifying email delivery to primary recipient and external CC.")
+                .type("INFO")
+                .referenceId("TEST-SEM-0001")
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        String eventCategory = "TEST_EVENT";
+        String dedupKey = "TEST:" + System.currentTimeMillis() + ":" + recipient.toLowerCase();
+
+        EmailLog logEntry = EmailLog.builder()
+                .notificationId(testNotification.getId())
+                .referenceId(testNotification.getReferenceId())
+                .deduplicationKey(dedupKey)
+                .service("Seminar Hall")
+                .eventCategory(eventCategory)
+                .primaryRecipient(recipient)
+                .ccRecipients(ccList)
+                .subject("[NEC Services] Test Email Notification (TEST-SEM-0001)")
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("primaryRecipient", recipient);
+        result.put("ccRecipients", ccList);
+        result.put("event", eventCategory);
+        result.put("smtpConfigured", isSmtpConfigured());
+
+        if (!isSmtpConfigured()) {
+            logEntry.setStatus("SKIPPED_NO_CREDENTIALS");
+            logEntry.setErrorMessage("SMTP credentials not configured (set SPRING_MAIL_USERNAME and SPRING_MAIL_PASSWORD to enable live delivery).");
+            emailLogRepository.save(logEntry);
+            result.put("status", "SKIPPED_NO_CREDENTIALS");
+            result.put("message", "SMTP credentials not configured. Email logged safely without failure.");
+            return result;
+        }
+
+        try {
+            if (dynamicMailSender == null) {
+                dynamicMailSender = createMailSender();
+            }
+            MimeMessage message = dynamicMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            String senderFrom = (mailFrom != null && !mailFrom.isBlank()) ? mailFrom : mailUsername;
+            helper.setFrom(new InternetAddress(senderFrom, mailFromName));
+            helper.setTo(recipient);
+            if (!ccList.isEmpty()) {
+                helper.setCc(ccList.toArray(new String[0]));
+            }
+            helper.setSubject(logEntry.getSubject());
+
+            String htmlBody = buildHtmlEmailBody(testNotification, eventCategory, testNotification.getReferenceId());
+            String plainText = buildPlainTextEmailBody(testNotification, eventCategory, testNotification.getReferenceId());
+            helper.setText(plainText, htmlBody);
+
+            dynamicMailSender.send(message);
+
+            logEntry.setStatus("SENT");
+            emailLogRepository.save(logEntry);
+
+            result.put("status", "SENT");
+            result.put("message", "Test email sent successfully to " + recipient + " (CC: " + ccList + ")");
+            return result;
+
+        } catch (Exception e) {
+            logEntry.setStatus("FAILED");
+            logEntry.setErrorMessage(e.getMessage());
+            emailLogRepository.save(logEntry);
+
+            result.put("status", "FAILED");
+            result.put("error", e.getMessage());
+            result.put("message", "Failed to deliver email: " + e.getMessage());
+            return result;
+        }
+    }
+
+    private String buildHtmlEmailBody(Notification notification, String eventCategory, String referenceId) {
+        String badgeColor = "#2563eb"; // blue
+        String badgeText = "Notification";
+
+        switch (eventCategory) {
+            case "REQUEST_SUBMITTED":
+                badgeColor = "#0284c7"; // sky
+                badgeText = "Submitted";
+                break;
+            case "REQUEST_APPROVED":
+                badgeColor = "#16a34a"; // green
+                badgeText = "Approved";
+                break;
+            case "REQUEST_REJECTED":
+                badgeColor = "#dc2626"; // red
+                badgeText = "Rejected";
+                break;
+            case "REQUEST_CANCELLED":
+                badgeColor = "#ea580c"; // orange
+                badgeText = "Cancelled";
+                break;
+            case "REQUEST_CANCEL_REQUESTED":
+                badgeColor = "#d97706"; // amber
+                badgeText = "Cancellation Requested";
+                break;
+            case "TEST_EVENT":
+                badgeColor = "#7c3aed"; // purple
+                badgeText = "Test Verification";
+                break;
+        }
+
+        String serviceName = notification.getService() != null ? notification.getService() : "Department Service";
+        String reqId = referenceId != null ? referenceId : "N/A";
+        String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a"));
+
+        return "<!DOCTYPE html>" +
+                "<html><head><meta charset='UTF-8'>" +
+                "<style>" +
+                "body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 20px; color: #1e293b; }" +
+                ".container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }" +
+                ".header { background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); padding: 24px; color: #ffffff; text-align: center; }" +
+                ".header h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px; }" +
+                ".header p { margin: 4px 0 0 0; font-size: 13px; opacity: 0.9; }" +
+                ".body-content { padding: 28px 24px; }" +
+                ".badge-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }" +
+                ".badge { background-color: " + badgeColor + "; color: #ffffff; padding: 6px 14px; border-radius: 9999px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; }" +
+                ".req-id { font-family: monospace; font-size: 14px; font-weight: 700; color: #334155; background: #f8fafc; padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; display: inline-block; }" +
+                ".card-title { font-size: 18px; font-weight: 700; margin: 0 0 12px 0; color: #0f172a; }" +
+                ".details-table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; }" +
+                ".details-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }" +
+                ".details-table td.label { font-weight: 600; color: #64748b; width: 35%; }" +
+                ".details-table td.value { color: #1e293b; font-weight: 500; }" +
+                ".message-box { background-color: #f8fafc; border-left: 4px solid " + badgeColor + "; padding: 14px 16px; border-radius: 0 8px 8px 0; margin: 20px 0; font-size: 14px; line-height: 1.5; color: #334155; }" +
+                ".action-btn { display: inline-block; background-color: #2563eb; color: #ffffff !important; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; text-align: center; margin-top: 10px; }" +
+                ".footer { background-color: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; }" +
+                ".footer p { margin: 4px 0; }" +
+                "</style></head><body>" +
+                "<div class='container'>" +
+                "<div class='header'>" +
+                "<h1>NARASARAOPET ENGINEERING COLLEGE</h1>" +
+                "<p>College Department Services Management System</p>" +
+                "</div>" +
+                "<div class='body-content'>" +
+                "<div style='margin-bottom: 16px;'>" +
+                "<span class='badge'>" + badgeText + "</span>" +
+                "<span class='req-id' style='float: right;'>#" + reqId + "</span>" +
+                "<div style='clear: both;'></div>" +
+                "</div>" +
+                "<h2 class='card-title'>" + (notification.getTitle() != null ? notification.getTitle() : "Service Notification") + "</h2>" +
+                "<div class='message-box'>" + (notification.getMessage() != null ? notification.getMessage() : "") + "</div>" +
+                "<table class='details-table'>" +
+                "<tr><td class='label'>Service</td><td class='value'>" + serviceName + "</td></tr>" +
+                "<tr><td class='label'>Request ID</td><td class='value'>" + reqId + "</td></tr>" +
+                "<tr><td class='label'>Status</td><td class='value'><strong style='color: " + badgeColor + ";'>" + badgeText + "</strong></td></tr>" +
+                "<tr><td class='label'>Timestamp</td><td class='value'>" + dateStr + "</td></tr>" +
+                "</table>" +
+                "<div style='text-align: center; margin-top: 24px;'>" +
+                "<a href='" + appUrl + "/requests' class='action-btn' target='_blank'>View in Portal</a>" +
+                "</div>" +
+                "</div>" +
+                "<div class='footer'>" +
+                "<p>This is an automated notification from NEC Department Services Management System.</p>" +
+                "<p>Please do not reply directly to this email.</p>" +
+                "<p>&copy; " + LocalDateTime.now().getYear() + " Narasaraopet Engineering College (Autonomous). All rights reserved.</p>" +
+                "</div></div></body></html>";
+    }
+
+    private String buildPlainTextEmailBody(Notification notification, String eventCategory, String referenceId) {
+        String reqId = referenceId != null ? referenceId : "N/A";
+        String serviceName = notification.getService() != null ? notification.getService() : "Department Service";
+        String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a"));
+
+        return "=======================================================\n" +
+                "NARASARAOPET ENGINEERING COLLEGE (AUTONOMOUS)\n" +
+                "College Department Services Management System\n" +
+                "=======================================================\n\n" +
+                "Notification: " + (notification.getTitle() != null ? notification.getTitle() : "Service Notification") + "\n" +
+                "Request ID: " + reqId + "\n" +
+                "Service: " + serviceName + "\n" +
+                "Event: " + eventCategory + "\n" +
+                "Timestamp: " + dateStr + "\n\n" +
+                "Details:\n" +
+                (notification.getMessage() != null ? notification.getMessage() : "") + "\n\n" +
+                "View Request in Portal: " + appUrl + "/requests\n\n" +
+                "-------------------------------------------------------\n" +
+                "This is an automated notification. Please do not reply directly.";
+    }
+
+    public void sendPasswordResetEmail(String recipientEmail, String userName, String rawToken) {
+        if (!mailEnabled || recipientEmail == null || recipientEmail.isBlank()) {
+            return;
+        }
+
+        String baseUrl = (appUrl != null && !appUrl.isBlank()) ? appUrl.replaceAll("/+$", "") : "http://localhost:5173";
+        String resetLink = baseUrl + "/reset-password?token=" + rawToken;
+
+        String subject = "[NEC Services] Password Reset Request";
+        String referenceId = "PWD-RESET";
+        String dedupKey = "PWD_RESET:" + System.currentTimeMillis() + ":" + recipientEmail.toLowerCase();
+
+        EmailLog logEntry = EmailLog.builder()
+                .referenceId(referenceId)
+                .deduplicationKey(dedupKey)
+                .service("Authentication")
+                .eventCategory("PASSWORD_RESET")
+                .primaryRecipient(recipientEmail)
+                .ccRecipients(Collections.emptyList()) // Strictly NO CC
+                .subject(subject)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        if (!isSmtpConfigured()) {
+            logEntry.setStatus("SKIPPED_NO_CREDENTIALS");
+            logEntry.setErrorMessage("SMTP credentials not configured.");
+            emailLogRepository.save(logEntry);
+            log.info("Password reset email simulated to: {} (No CC)", recipientEmail);
+            return;
+        }
+
+        try {
+            if (dynamicMailSender == null) {
+                dynamicMailSender = createMailSender();
+            }
+            MimeMessage message = dynamicMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            String senderFrom = (mailFrom != null && !mailFrom.isBlank()) ? mailFrom : mailUsername;
+            helper.setFrom(new InternetAddress(senderFrom, mailFromName));
+            helper.setTo(recipientEmail);
+            // Strictly NO CC for password reset emails
+            helper.setSubject(subject);
+
+            String htmlBody = buildPasswordResetHtml(userName, resetLink);
+            String plainText = buildPasswordResetPlainText(userName, resetLink);
+            helper.setText(plainText, htmlBody);
+
+            dynamicMailSender.send(message);
+
+            logEntry.setStatus("SENT");
+            emailLogRepository.save(logEntry);
+            log.info("Password reset email SENT successfully to: {} (No CC)", recipientEmail);
+
+        } catch (Exception e) {
+            logEntry.setStatus("FAILED");
+            logEntry.setErrorMessage(e.getMessage());
+            emailLogRepository.save(logEntry);
+            log.warn("Password reset email delivery failed to {}: {}", recipientEmail, e.getMessage());
+        }
+    }
+
+    private String buildPasswordResetHtml(String userName, String resetLink) {
+        String greeting = (userName != null && !userName.isBlank()) ? "Hello " + userName + "," : "Hello,";
+        return "<!DOCTYPE html>" +
+                "<html><head><meta charset='UTF-8'>" +
+                "<style>" +
+                "body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 20px; color: #1e293b; }" +
+                ".container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }" +
+                ".header { background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); padding: 24px; color: #ffffff; text-align: center; }" +
+                ".header h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px; }" +
+                ".header p { margin: 4px 0 0 0; font-size: 13px; opacity: 0.9; }" +
+                ".body-content { padding: 28px 24px; }" +
+                ".card-title { font-size: 18px; font-weight: 700; margin: 0 0 12px 0; color: #0f172a; }" +
+                ".message-box { background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 14px 16px; border-radius: 0 8px 8px 0; margin: 20px 0; font-size: 14px; line-height: 1.6; color: #334155; }" +
+                ".action-btn { display: inline-block; background-color: #2563eb; color: #ffffff !important; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; text-align: center; margin: 16px 0; }" +
+                ".expiry-note { font-size: 13px; color: #64748b; margin-top: 16px; }" +
+                ".footer { background-color: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; }" +
+                ".footer p { margin: 4px 0; }" +
+                "</style></head><body>" +
+                "<div class='container'>" +
+                "<div class='header'>" +
+                "<h1>NARASARAOPET ENGINEERING COLLEGE</h1>" +
+                "<p>College Department Services Management System</p>" +
+                "</div>" +
+                "<div class='body-content'>" +
+                "<h2 class='card-title'>Password Reset Request</h2>" +
+                "<p style='font-size: 14px; line-height: 1.5; color: #334155;'>" + greeting + "</p>" +
+                "<p style='font-size: 14px; line-height: 1.5; color: #334155;'>We received a request to reset your password for your institutional account on the NEC Services Management Portal.</p>" +
+                "<div style='text-align: center; margin: 24px 0;'>" +
+                "<a href='" + resetLink + "' class='action-btn' target='_blank'>Reset Password</a>" +
+                "</div>" +
+                "<div class='message-box'>" +
+                "<strong>Security Notice:</strong> This password reset link is valid for <strong>15 minutes</strong> and can only be used once. If you did not request this reset, you can safely ignore this email; your existing password will remain secure and unchanged." +
+                "</div>" +
+                "<p class='expiry-note'>If the button above does not work, copy and paste the following link into your browser:<br>" +
+                "<span style='word-break: break-all; color: #2563eb;'>" + resetLink + "</span></p>" +
+                "</div>" +
+                "<div class='footer'>" +
+                "<p>This is an automated system email. Please do not reply directly.</p>" +
+                "<p>&copy; " + LocalDateTime.now().getYear() + " Narasaraopet Engineering College (Autonomous). All rights reserved.</p>" +
+                "</div></div></body></html>";
+    }
+
+    private String buildPasswordResetPlainText(String userName, String resetLink) {
+        String greeting = (userName != null && !userName.isBlank()) ? "Hello " + userName + "," : "Hello,";
+        return "=======================================================\n" +
+                "NARASARAOPET ENGINEERING COLLEGE (AUTONOMOUS)\n" +
+                "College Department Services Management System\n" +
+                "=======================================================\n\n" +
+                greeting + "\n\n" +
+                "We received a request to reset your password for your institutional account on the NEC Services Management Portal.\n\n" +
+                "To choose a new password, open the following link in your browser:\n" +
+                resetLink + "\n\n" +
+                "This password reset link is valid for 15 minutes and can only be used once.\n\n" +
+                "If you did not request this password reset, please ignore this email. Your account remains secure.\n\n" +
+                "-------------------------------------------------------\n" +
+                "This is an automated notification. Please do not reply directly.";
+    }
+}
+

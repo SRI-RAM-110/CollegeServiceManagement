@@ -85,6 +85,10 @@ export const RequestDetailsModal = ({
     'CANCELLATION_REQUESTED'
   ].includes(normStatus);
 
+  const isRejected = ['REJECTED', 'AO_REJECTED'].includes(normStatus);
+  const isCancelled = ['CANCELLED', 'CANCELED'].includes(normStatus);
+  const isPending = !isApproved && !isRejected && !isCancelled;
+
   const status = rawStatus ? rawStatus.toUpperCase() : 'PENDING';
 
   const handleExecuteCancel = async () => {
@@ -205,7 +209,7 @@ export const RequestDetailsModal = ({
               </div>
               <div className="doc-view-banner-meta">
                 <span className="doc-view-req-badge">Request ID: <strong>{reqId}</strong></span>
-                <StatusBadge status={status} />
+                <StatusBadge status={isPending ? 'SUBMITTED' : status} />
               </div>
             </div>
 
@@ -236,9 +240,9 @@ export const RequestDetailsModal = ({
                   </span>
                 </div>
                 <div className="doc-view-cell">
-                  <span className="doc-view-label">Current Status</span>
+                  <span className="doc-view-label">Submission Status</span>
                   <div className="mt-0.5">
-                    <StatusBadge status={status} />
+                    <StatusBadge status="SUBMITTED" />
                   </div>
                 </div>
               </div>
@@ -278,7 +282,7 @@ export const RequestDetailsModal = ({
                     <span className="doc-view-value">{raw.expectedParticipants || '—'}</span>
                   </div>
 
-                  {(raw.seriesId || raw.occurrenceIndex) && (
+                  {(raw.seriesId || raw.occurrenceIndex || (raw.dates && raw.dates.length > 0)) && (
                     <>
                       <div className="doc-view-cell">
                         <span className="doc-view-label">Series ID</span>
@@ -287,7 +291,11 @@ export const RequestDetailsModal = ({
                       <div className="doc-view-cell">
                         <span className="doc-view-label">Occurrence</span>
                         <span className="doc-view-value font-bold text-amber-300">
-                          {raw.occurrenceIndex && raw.totalOccurrences ? `${raw.occurrenceIndex} of ${raw.totalOccurrences}` : 'Series Booking'}
+                          {raw.dates && raw.dates.length > 0
+                            ? `All ${raw.dates.length} Occurrences`
+                            : raw.occurrenceIndex && raw.totalOccurrences
+                            ? `${raw.occurrenceIndex} of ${raw.totalOccurrences}`
+                            : 'Series Booking'}
                         </span>
                       </div>
                     </>
@@ -304,6 +312,22 @@ export const RequestDetailsModal = ({
                     <div className="doc-view-cell doc-view-span-2">
                       <span className="doc-view-label">Recurring Days</span>
                       <span className="doc-view-value">{raw.recurrenceDays.join(', ')}</span>
+                    </div>
+                  )}
+
+                  {raw.dates && raw.dates.length > 0 && (
+                    <div className="doc-view-cell doc-view-span-full">
+                      <span className="doc-view-label">Scheduled Occurrence Dates ({raw.dates.length} Occurrences)</span>
+                      <div className="doc-view-value flex flex-wrap gap-1.5 mt-1.5">
+                        {raw.dates.map((d, i) => (
+                          <span
+                            key={d}
+                            className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-slate-900 text-cyan-300 border border-cyan-800/60"
+                          >
+                            #{i + 1}: {formatDate(d)}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   )}
 
@@ -641,18 +665,55 @@ export const RequestDetailsModal = ({
                       </tr>
                     </thead>
                     <tbody>
-                      {raw.statusHistory.map((h, idx) => (
-                        <tr key={idx}>
-                          <td style={{ padding: '6px 8px' }}>
-                            <StatusBadge status={h.status} />
-                          </td>
-                          <td style={{ padding: '6px 8px', fontWeight: 600 }}>{h.actor || 'System'}</td>
-                          <td style={{ padding: '6px 8px', fontFamily: 'monospace' }}>
-                            {h.timestamp ? h.timestamp.replace('T', ' ').substring(0, 16) : '—'}
-                          </td>
-                          <td style={{ padding: '6px 8px' }}>{h.comment || '—'}</td>
-                        </tr>
-                      ))}
+                      {raw.statusHistory.map((h, idx) => {
+                        const rawEntryStatus = (h.status || '').toUpperCase();
+                        let displayStatus = h.status;
+
+                        if (rawEntryStatus === 'SUBMITTED') {
+                          displayStatus = 'SUBMITTED';
+                        } else if (
+                          rawEntryStatus === 'PENDING' ||
+                          rawEntryStatus === 'PENDING_AO_APPROVAL' ||
+                          rawEntryStatus === 'PENDING_ADMIN_APPROVAL' ||
+                          !rawEntryStatus
+                        ) {
+                          const comment = (h.comment || '').toLowerCase();
+                          const action = (h.action || '').toLowerCase();
+                          const hasSubmissionRemark =
+                            comment.includes('submit') ||
+                            comment.includes('submission') ||
+                            comment.includes('booking created') ||
+                            comment.includes('request created');
+                          const hasSubmissionAction =
+                            action.includes('submit') ||
+                            action.includes('create');
+
+                          if (
+                            hasSubmissionRemark ||
+                            hasSubmissionAction ||
+                            (idx === 0 &&
+                              !comment.includes('awaiting') &&
+                              !comment.includes('pending approval') &&
+                              !comment.includes('review') &&
+                              !comment.includes('revert'))
+                          ) {
+                            displayStatus = 'SUBMITTED';
+                          }
+                        }
+
+                        return (
+                          <tr key={idx}>
+                            <td style={{ padding: '6px 8px' }}>
+                              <StatusBadge status={displayStatus} />
+                            </td>
+                            <td style={{ padding: '6px 8px', fontWeight: 600 }}>{h.actor || 'System'}</td>
+                            <td style={{ padding: '6px 8px', fontFamily: 'monospace' }}>
+                              {h.timestamp ? h.timestamp.replace('T', ' ').substring(0, 16) : '—'}
+                            </td>
+                            <td style={{ padding: '6px 8px' }}>{h.comment || '—'}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -664,9 +725,9 @@ export const RequestDetailsModal = ({
               <div className="doc-view-non-approved-notice">
                 <Clock size={18} color="var(--warning)" />
                 <div>
-                  <div className="font-semibold text-warning">Approval Required for Official Document</div>
+                  <div className="font-semibold text-warning">Awaiting Administrative Approval</div>
                   <div className="text-xs text-muted">
-                    This request currently has status <strong>{status}</strong>. Official PDF document generation and download are activated once an administrator approves the request.
+                    This request was submitted on {details.createdAt ? details.createdAt.split('T')[0] : 'record'} and is currently pending administrative review. You can preview or download the submitted requisition document below.
                   </div>
                 </div>
               </div>
@@ -700,37 +761,33 @@ export const RequestDetailsModal = ({
                 </button>
               )}
 
-              {isApproved && (
-                <>
-                  <button
-                    onClick={handleOpenPreview}
-                    className="btn btn-outline flex items-center gap-2"
-                    id="btn-preview-pdf-details"
-                  >
-                    <Eye size={16} />
-                    <span>Preview PDF</span>
-                  </button>
+              <button
+                onClick={handleOpenPreview}
+                className="btn btn-outline flex items-center gap-2"
+                id="btn-preview-pdf-details"
+              >
+                <Eye size={16} />
+                <span>Preview PDF</span>
+              </button>
 
-                  <button
-                    onClick={handleDownloadPdf}
-                    disabled={downloading}
-                    className="btn btn-primary flex items-center gap-2"
-                    id="btn-download-pdf-details"
-                  >
-                    {downloading ? (
-                      <>
-                        <Loader2 className="animate-spin" size={16} />
-                        <span>Generating PDF...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Download size={16} />
-                        <span>Download PDF</span>
-                      </>
-                    )}
-                  </button>
-                </>
-              )}
+              <button
+                onClick={handleDownloadPdf}
+                disabled={downloading}
+                className="btn btn-primary flex items-center gap-2"
+                id="btn-download-pdf-details"
+              >
+                {downloading ? (
+                  <>
+                    <Loader2 className="animate-spin" size={16} />
+                    <span>Generating PDF...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download size={16} />
+                    <span>Download PDF</span>
+                  </>
+                )}
+              </button>
 
               <button onClick={onClose} className="btn btn-outline" id="btn-close-details">
                 Close

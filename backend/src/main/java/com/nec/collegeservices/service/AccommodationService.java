@@ -46,6 +46,9 @@ public class AccommodationService {
     @Autowired
     private AuthService authService;
 
+    @Autowired
+    private RequestIdService requestIdService;
+
     public List<AccommodationRoom> getAllRooms() {
         List<AccommodationRoom> rooms = roomRepository.findAll();
         for (AccommodationRoom r : rooms) {
@@ -270,10 +273,12 @@ public class AccommodationService {
     /**
      * Submit Accommodation Request (supports single stay and multiple dates).
      */
+    public String generateParentRequestId(User user, String dept) {
+        return requestIdService.generateParentRequestId("ACC", user, dept);
+    }
+
     public String generateParentRequestId() {
-        int year = LocalDate.now().getYear();
-        long seq = ID_COUNTER.incrementAndGet() % 100000;
-        return String.format("ACC-PARENT-%d-%05d", year, seq);
+        return generateParentRequestId(null, null);
     }
 
     /**
@@ -308,7 +313,7 @@ public class AccommodationService {
         dualDto.getBoysRequest().setHostel("Boys Hostel");
         dualDto.getGirlsRequest().setHostel("Girls Hostel");
 
-        String parentRequestId = generateParentRequestId();
+        String parentRequestId = generateParentRequestId(user, user != null ? user.getDepartment() : null);
 
         AccommodationRequest boysReq = doCreateSingleRequest(dualDto.getBoysRequest(), user, parentRequestId);
         AccommodationRequest girlsReq = doCreateSingleRequest(dualDto.getGirlsRequest(), user, parentRequestId);
@@ -484,7 +489,7 @@ public class AccommodationService {
             }
 
             int totalOccurrences = targetDates.size();
-            String seriesId = generateSeriesId();
+            String seriesId = generateSeriesId(user, user.getDepartment());
             List<AccommodationRequest> createdList = new ArrayList<>();
             int occurrenceIndex = 1;
             String startDateStr = targetDates.get(0).toString();
@@ -494,7 +499,7 @@ public class AccommodationService {
             for (LocalDate d : targetDates) {
                 String inStr = d.toString();
                 String outStr = d.plusDays(1).toString();
-                String requestId = generateRequestId(occurrenceIndex);
+                String requestId = generateRequestId(user, user.getDepartment());
 
                 AccommodationRequest.StatusHistoryEntry initialHistory = AccommodationRequest.StatusHistoryEntry.builder()
                         .status("PENDING_AO_APPROVAL")
@@ -564,7 +569,7 @@ public class AccommodationService {
             }
         }
 
-        String requestId = generateRequestId(0);
+        String requestId = generateRequestId(user, user.getDepartment());
         String effBookingType = (checkIn != null && checkIn.plusDays(1).equals(checkOut)) ? "ONE_TIME" : bookingType;
 
         AccommodationRequest.StatusHistoryEntry initialHistory = AccommodationRequest.StatusHistoryEntry.builder()
@@ -612,23 +617,20 @@ public class AccommodationService {
         return saved;
     }
 
-    private String generateRequestId() {
-        return generateRequestId(0);
+    private String generateRequestId(User user, String dept) {
+        return requestIdService.generateRequestId("ACC", user, dept);
     }
 
-    private String generateRequestId(int index) {
-        int year = LocalDate.now().getYear();
-        long seq = ID_COUNTER.incrementAndGet() % 100000;
-        if (index > 0) {
-            return String.format("ACC-%d-%05d-%d", year, seq, index);
-        }
-        return String.format("ACC-%d-%05d", year, seq);
+    private String generateRequestId() {
+        return generateRequestId(null, null);
+    }
+
+    private String generateSeriesId(User user, String dept) {
+        return requestIdService.generateSeriesId("ACC", user, dept);
     }
 
     private String generateSeriesId() {
-        int year = LocalDate.now().getYear();
-        long seq = ID_COUNTER.incrementAndGet() % 100000;
-        return String.format("ACC-SERIES-%d-%05d", year, seq);
+        return generateSeriesId(null, null);
     }
 
     public List<AccommodationRequest> getAllRequests(String status, String hostel, String date, String fromDate, String toDate, String department, User user) {
@@ -1567,7 +1569,7 @@ public class AccommodationService {
                 : (user != null ? user.getDepartment() : "CSE");
 
         AccommodationRequest booking = AccommodationRequest.builder()
-                .requestId(generateRequestId())
+                .requestId(generateRequestId(user, dept))
                 .department(dept)
                 .facultyOrGuestName(dto.getFacultyOrGuestName() != null ? dto.getFacultyOrGuestName() : "Test Fixture Guest")
                 .hostel(room.getHostel())

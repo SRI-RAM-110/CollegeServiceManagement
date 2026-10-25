@@ -43,4 +43,11 @@ public class SeminarBookingRequestDTO {
     // Slot: FORENOON, AFTERNOON, FULL_DAY
     @NotBlank(message = "Preferred slot is required (FORENOON, AFTERNOON, or FULL_DAY)")
     private String slot;
+
+    // Optional custom start and end times (HH:mm)
+    private String startTime;
+    private String endTime;
+
+    // Optional explicitly generated or submitted occurrence dates
+    private java.util.List<String> dates;
 }

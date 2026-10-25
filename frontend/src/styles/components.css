@@ -1664,6 +1664,31 @@
   gap: 8px;
 }
 
+.login-forgot-link {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--arctic-blue, #38bdf8);
+  text-decoration: none;
+  transition: color var(--transition-fast, 0.15s ease);
+}
+
+.login-forgot-link:hover {
+  color: var(--primary-light, #60a5fa);
+  text-decoration: underline;
+}
+
+.login-success-alert {
+  background-color: var(--success-bg, rgba(22, 163, 74, 0.15));
+  border: 1px solid var(--success-border, rgba(22, 163, 74, 0.35));
+  border-radius: var(--radius-sm, 6px);
+  padding: 12px 14px;
+  color: var(--success, #16a34a);
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
 
 /* Toast System — Arctic Blue Glass */
 .toast-container {
@@ -1744,6 +1769,7 @@
   gap: 6px;
   min-width: 180px;
   flex: 1;
+  position: relative;
 }
 
 .date-range-field-group .form-label {
@@ -1752,9 +1778,104 @@
   color: var(--text-secondary);
 }
 
-.date-range-field-group input[type="date"] {
+.date-range-field-group input[type="date"],
+.date-range-field-group select,
+.date-range-multi-btn {
   width: 100%;
   box-sizing: border-box;
+}
+
+.date-range-multi-btn {
+  font-family: inherit;
+  color: var(--text-primary);
+  background-color: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 0.88rem;
+  outline: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  transition: all var(--transition-fast);
+  backdrop-filter: var(--glass-blur-sm);
+  -webkit-backdrop-filter: var(--glass-blur-sm);
+  min-height: 42px;
+}
+
+.date-range-multi-btn:hover {
+  border-color: rgba(77, 163, 255, 0.4);
+}
+
+.date-range-multi-btn:focus,
+.date-range-multi-btn.open {
+  border-color: var(--primary-color);
+  box-shadow:
+    0 0 0 3px rgba(37, 99, 235, 0.20),
+    0 0 16px rgba(37, 99, 235, 0.12);
+}
+
+.date-range-multi-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 60;
+  background-color: var(--arctic-bg-secondary, #0c1a2e);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45), 0 0 16px rgba(77, 163, 255, 0.08);
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  backdrop-filter: var(--glass-blur-md);
+  -webkit-backdrop-filter: var(--glass-blur-md);
+}
+
+.date-range-multi-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-xs, 6px);
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  user-select: none;
+  transition: background 0.15s ease;
+}
+
+.date-range-multi-option:hover {
+  background: rgba(77, 163, 255, 0.1);
+}
+
+.date-range-multi-option.selected {
+  background: rgba(77, 163, 255, 0.16);
+  color: var(--arctic-blue);
+  font-weight: 600;
+}
+
+.date-range-multi-checkbox {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--primary-color, #2563eb);
+  cursor: pointer;
+  margin: 0;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.date-range-multi-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .date-range-actions {
