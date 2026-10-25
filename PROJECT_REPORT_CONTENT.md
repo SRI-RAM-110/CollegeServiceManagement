@@ -1,6 +1,6 @@
 # College Faculty Service Management System
 ## Formal Academic Project Report Content
-**Narasaraopet Engineering College (Autonomous)**  
+**Narasaraopeta Engineering College (Autonomous)**  
 *Affiliated to JNTUK, Approved by AICTE, Accredited by NAAC with 'A+' Grade*  
 *Kotappakonda Road, Yellamanda (P.O), Narasaraopet – 522601, Palnadu Dist., A.P.*
 
@@ -34,14 +34,14 @@
 ---
 
 ### 1. Title of the Project
-**Design and Implementation of an Enterprise Faculty Service Management System with Role-Based Access Control and Automated Conflict Detection for Narasaraopet Engineering College**
+**Design and Implementation of an Enterprise Faculty Service Management System with Role-Based Access Control and Automated Conflict Detection for Narasaraopeta Engineering College**
 
 ---
 
 ### 2. Abstract
 Higher educational institutions organize a broad variety of academic and administrative events, including guest lectures, national symposia, faculty development programs, industrial visits, and recruitment drives. These events require continuous support from institutional resources: seminar halls, guest houses, transport fleets, stationery stores, and catering facilities. Traditionally, these workflows were administered using physical paper slips, uncoordinated telephonic confirmations, and disjointed departmental logs, frequently leading to schedule collisions, duplicate resource reservations, and administrative opacity.
 
-This project delivers the **College Faculty Service Management System**, an enterprise-grade digital management platform tailored specifically for Narasaraopet Engineering College. Developed using **React 19**, **Spring Boot 3.3.4**, and **MongoDB**, the platform implements strict Role-Based Access Control (RBAC) across eight academic departments (CSE, ECE, EEE, ME, CIVIL, AI&DS, MBA, Pharmacy) and six specialized administrative divisions (Seminar Hall, Accommodation, Transport, Stationery, Snacks & Meals, and Administrative Officer). The system incorporates automated time-slot collision detection, dynamic date validation, real-time status tracking, automated campus notice broadcasting, and interactive visual calendars. Rigorous verification demonstrates 100% test passage, sub-second API latency, and zero runtime errors.
+This project delivers the **College Faculty Service Management System**, an enterprise-grade digital management platform tailored specifically for Narasaraopeta Engineering College. Developed using **React 19**, **Spring Boot 3.3.4**, and **MongoDB**, the platform implements strict Role-Based Access Control (RBAC) across eight academic departments (CSE, ECE, EEE, ME, CIVIL, AI&DS, MBA, Pharmacy) and six specialized administrative divisions (Seminar Hall, Accommodation, Transport, Stationery, Snacks & Meals, and Administrative Officer). The system incorporates automated time-slot collision detection, dynamic date validation, real-time status tracking, automated campus notice broadcasting, and interactive visual calendars. Rigorous verification demonstrates 100% test passage, sub-second API latency, and zero runtime errors.
 
 ---
 
@@ -255,4 +255,4 @@ The system successfully passed all verification gates:
 ---
 
 ### 23. Conclusion
-The **College Faculty Service Management System** represents a complete, secure, and technologically advanced digital solution for Narasaraopet Engineering College. By eliminating bureaucratic paperwork, preventing resource scheduling collisions, and establishing transparent accountability, the system enhances institutional efficiency and serves as an exemplary model of collegiate digital transformation.
+The **College Faculty Service Management System** represents a complete, secure, and technologically advanced digital solution for Narasaraopeta Engineering College. By eliminating bureaucratic paperwork, preventing resource scheduling collisions, and establishing transparent accountability, the system enhances institutional efficiency and serves as an exemplary model of collegiate digital transformation.

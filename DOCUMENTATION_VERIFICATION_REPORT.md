@@ -1,5 +1,5 @@
 # College Faculty Service Management System — Documentation Verification Audit Report
-**Narasaraopet Engineering College (Autonomous)**
+**Narasaraopeta Engineering College (Autonomous)**
 
 ---
 
@@ -102,7 +102,7 @@ As documented across the guides:
 
 ## 7. Final Certification
 
-Every technical claim, route definition, model field, business rule, and user persona documented in this package has been inspected against the current source code of the **Narasaraopet Engineering College Faculty Service Management System**.
+Every technical claim, route definition, model field, business rule, and user persona documented in this package has been inspected against the current source code of the **Narasaraopeta Engineering College Faculty Service Management System**.
 
 ```
 ================================================================================

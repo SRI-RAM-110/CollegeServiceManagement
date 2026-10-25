@@ -100,7 +100,7 @@ public class ExcelReportGenerator {
 
         Row r0 = sheet.createRow(r++);
         Cell c0 = r0.createCell(0);
-        c0.setCellValue("NARASARAOPET ENGINEERING COLLEGE (AUTONOMOUS)");
+        c0.setCellValue("NARASARAOPETA ENGINEERING COLLEGE (AUTONOMOUS)");
         c0.setCellStyle(titleStyle);
 
         Row r1 = sheet.createRow(r++);

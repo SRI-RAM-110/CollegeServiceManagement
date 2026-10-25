@@ -1,5 +1,5 @@
 # College Faculty Service Management System — Documentation Master Index
-**Narasaraopet Engineering College (Autonomous)**
+**Narasaraopeta Engineering College (Autonomous)**
 
 This index provides a comprehensive directory of all technical, academic, operational, and architectural documentation created for the **College Faculty Service Management System**.
 

@@ -1,5 +1,5 @@
 /**
- * Reusable Date Utilities for Narasaraopet Engineering College FSMS
+ * Reusable Date Utilities for Narasaraopeta Engineering College FSMS
  * Enforces local timezone handling (no UTC 1-day shifting) and YYYY-MM-DD formats.
  */
 

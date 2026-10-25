@@ -13,7 +13,7 @@
     <artifactId>collegeservices-backend</artifactId>
     <version>1.0.0</version>
     <name>collegeservices-backend</name>
-    <description>College Faculty Service Management System for Narasaraopet Engineering College</description>
+    <description>College Faculty Service Management System for Narasaraopeta Engineering College</description>
 
     <properties>
         <java.version>21</java.version>

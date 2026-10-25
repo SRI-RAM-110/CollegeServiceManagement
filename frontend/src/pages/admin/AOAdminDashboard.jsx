@@ -490,7 +490,7 @@ const sortEventsChronological = (a, b) => {
               </span>
             </div>
             <p className="text-sm text-slate-400 mt-1">
-              Complete institutional governance, cross-service requisitions, and analytics for Narasaraopet Engineering College.
+              Complete institutional governance, cross-service requisitions, and analytics for Narasaraopeta Engineering College.
             </p>
           </div>
         </div>

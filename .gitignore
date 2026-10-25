@@ -2,3 +2,14 @@ backend/target/
 frontend/node_modules/
 frontend/dist/
 *.log
+
+# Local environment configuration & credentials (NEVER commit secrets)
+*.local
+*.local.properties
+application-local.properties
+backend/src/main/resources/application-local.properties
+backend/application-local.properties
+.env
+.env.local
+backend/.env
+backend/.env.local

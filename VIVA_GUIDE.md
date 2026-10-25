@@ -1,5 +1,5 @@
 # College Faculty Service Management System — Viva & Technical Defense Guide
-**Narasaraopet Engineering College (Autonomous)**
+**Narasaraopeta Engineering College (Autonomous)**
 
 This guide prepares students and engineers for academic viva voce, technical reviews, external examinations, and project demonstrations.
 
@@ -8,7 +8,7 @@ This guide prepares students and engineers for academic viva voce, technical rev
 ## 1. Fast Pitches & Explanations
 
 ### 1.1 The 2-Minute Elevator Pitch
-> *"Our project is the **College Faculty Service Management System**, designed and implemented for **Narasaraopet Engineering College**. In colleges, academic departments routinely need institutional resources like seminar halls, guest rooms, college buses, stationery, and refreshments for conferences and workshops. Traditionally, these workflows relied on paper requisition slips and verbal phone calls, leading to double-bookings, delayed approvals, and zero visibility.*  
+> *"Our project is the **College Faculty Service Management System**, designed and implemented for **Narasaraopeta Engineering College**. In colleges, academic departments routinely need institutional resources like seminar halls, guest rooms, college buses, stationery, and refreshments for conferences and workshops. Traditionally, these workflows relied on paper requisition slips and verbal phone calls, leading to double-bookings, delayed approvals, and zero visibility.*  
 > *We replaced that paper process with a modern, secure web application built on **React 19**, **Spring Boot 3.3.4**, and **MongoDB**. The system provides self-service booking for all 8 departments, isolated admin dashboards for each service manager, and a central command console for the Administrative Officer. It features real-time conflict prevention, dynamic date validation, interactive quick calendars, and in-app notifications. In testing, the application demonstrated 100% test passage with sub-second response times and zero runtime errors."*
 
 ---

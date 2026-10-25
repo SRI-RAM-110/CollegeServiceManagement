@@ -510,7 +510,7 @@ public class EmailService {
                 .recipientUserId(requestingUserId)
                 .service("Seminar Hall")
                 .title("Test Email Notification")
-                .message("This is a live test notification from Narasaraopet Engineering College Services Management System. " +
+                .message("This is a live test notification from Narasaraopeta Engineering College Services Management System. " +
                          "Verifying email delivery to primary recipient and external CC via SMTP.")
                 .type("INFO")
                 .referenceId("TEST-SEM-0001")
@@ -647,7 +647,7 @@ public class EmailService {
                 "</style></head><body>" +
                 "<div class='container'>" +
                 "<div class='header'>" +
-                "<h1>NARASARAOPET ENGINEERING COLLEGE</h1>" +
+                "<h1>NARASARAOPETA ENGINEERING COLLEGE</h1>" +
                 "<p>College Department Services Management System</p>" +
                 "</div>" +
                 "<div class='body-content'>" +
@@ -671,7 +671,7 @@ public class EmailService {
                 "<div class='footer'>" +
                 "<p>This is an automated notification from NEC Department Services Management System.</p>" +
                 "<p>Please do not reply directly to this email.</p>" +
-                "<p>&copy; " + LocalDateTime.now().getYear() + " Narasaraopet Engineering College (Autonomous). All rights reserved.</p>" +
+                "<p>&copy; " + LocalDateTime.now().getYear() + " Narasaraopeta Engineering College (Autonomous). All rights reserved.</p>" +
                 "</div></div></body></html>";
     }
 
@@ -681,7 +681,7 @@ public class EmailService {
         String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a"));
 
         return "=======================================================\n" +
-                "NARASARAOPET ENGINEERING COLLEGE (AUTONOMOUS)\n" +
+                "NARASARAOPETA ENGINEERING COLLEGE (AUTONOMOUS)\n" +
                 "College Department Services Management System\n" +
                 "=======================================================\n\n" +
                 "Notification: " + (notification.getTitle() != null ? notification.getTitle() : "Service Notification") + "\n" +
@@ -756,7 +756,7 @@ public class EmailService {
                 "</style></head><body>" +
                 "<div class='container'>" +
                 "<div class='header'>" +
-                "<h1>NARASARAOPET ENGINEERING COLLEGE</h1>" +
+                "<h1>NARASARAOPETA ENGINEERING COLLEGE</h1>" +
                 "<p>College Department Services Management System</p>" +
                 "</div>" +
                 "<div class='body-content'>" +
@@ -774,14 +774,14 @@ public class EmailService {
                 "</div>" +
                 "<div class='footer'>" +
                 "<p>This is an automated system email. Please do not reply directly.</p>" +
-                "<p>&copy; " + LocalDateTime.now().getYear() + " Narasaraopet Engineering College (Autonomous). All rights reserved.</p>" +
+                "<p>&copy; " + LocalDateTime.now().getYear() + " Narasaraopeta Engineering College (Autonomous). All rights reserved.</p>" +
                 "</div></div></body></html>";
     }
 
     private String buildPasswordResetPlainText(String userName, String resetLink) {
         String greeting = (userName != null && !userName.isBlank()) ? "Hello " + userName + "," : "Hello,";
         return "=======================================================\n" +
-                "NARASARAOPET ENGINEERING COLLEGE (AUTONOMOUS)\n" +
+                "NARASARAOPETA ENGINEERING COLLEGE (AUTONOMOUS)\n" +
                 "College Department Services Management System\n" +
                 "=======================================================\n\n" +
                 greeting + "\n\n" +

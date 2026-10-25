@@ -1,5 +1,5 @@
 # College Faculty Service Management System — Project Changelog
-**Narasaraopet Engineering College (Autonomous)**
+**Narasaraopeta Engineering College (Autonomous)**
 
 All documented releases, audits, remediations, and enhancements are recorded below based on verified project commit and audit history.
 

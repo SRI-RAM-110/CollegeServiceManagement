@@ -1,4 +1,4 @@
-# Narasaraopet Engineering College (Autonomous)
+# Narasaraopeta Engineering College (Autonomous)
 ## College Faculty Service Management System — Master Project Documentation
 
 ---
@@ -8,7 +8,7 @@
 | Attribute | Details |
 | :--- | :--- |
 | **Project Title** | College Faculty Service Management System |
-| **Institution** | Narasaraopet Engineering College (Autonomous), Kotappakonda Road, Yellamanda, Narasaraopet, AP |
+| **Institution** | Narasaraopeta Engineering College (Autonomous), Kotappakonda Road, Yellamanda, Narasaraopet, AP |
 | **Academic Purpose** | Major Project / Final-Year Technical Submission / Faculty Operational Platform |
 | **Document Classification** | Master Technical & Functional Documentation |
 | **Document Version** | 1.0.0 (Production Verified) |
@@ -23,7 +23,7 @@
 ## 2. Executive Summary & Problem Statement
 
 ### 2.1 The Problem
-In large educational institutions like **Narasaraopet Engineering College (NEC)**, academic departments frequently require institutional resources and administrative services to conduct guest lectures, national conferences, faculty development programs (FDPs), workshops, and campus recruitments. Historically, these workflows relied on fragmented manual procedures:
+In large educational institutions like **Narasaraopeta Engineering College (NEC)**, academic departments frequently require institutional resources and administrative services to conduct guest lectures, national conferences, faculty development programs (FDPs), workshops, and campus recruitments. Historically, these workflows relied on fragmented manual procedures:
 - Physical printed requisition forms signed by Heads of Departments (HODs).
 - Uncoordinated telephone calls to Estate and Administrative Officers.
 - Inability to verify real-time availability of seminar halls, resulting in double-bookings.

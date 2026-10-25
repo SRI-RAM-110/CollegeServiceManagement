@@ -1,5 +1,5 @@
 # Complete Read-Only UI Layout, Size, Spacing, and Placement Audit Report
-**Project:** Narasaraopet Engineering College — Faculty Service Management System  
+**Project:** Narasaraopeta Engineering College — Faculty Service Management System  
 **Audit Type:** Complete Read-Only Frontend UI/UX, Layout, Dimension, Spacing & Placement Audit  
 **Scope:** All 14 Page Views (Department, Admin, Auth), 7 Shared Components, 10 Modular CSS Files + `index.css`  
 **Execution Mode:** STRICT READ-ONLY (No source code files modified)
@@ -50,7 +50,7 @@
 
 ## 1. Executive Summary
 
-This comprehensive audit was conducted across the entire frontend repository of the **Narasaraopet Engineering College Faculty Service Management System**. The visual design tokens (the *Arctic Blue Glass* theme) have successfully resolved color vibrancy and contrast. However, an in-depth spatial, layout, sizing, and placement inspection revealed several critical layout defects, selector collisions, and dimension anomalies that impair visual hierarchy and responsive stability.
+This comprehensive audit was conducted across the entire frontend repository of the **Narasaraopeta Engineering College Faculty Service Management System**. The visual design tokens (the *Arctic Blue Glass* theme) have successfully resolved color vibrancy and contrast. However, an in-depth spatial, layout, sizing, and placement inspection revealed several critical layout defects, selector collisions, and dimension anomalies that impair visual hierarchy and responsive stability.
 
 ### Key Findings Summary:
 1. **Critical Overflow & Clipping in Accommodation (`Accommodation.jsx` & `cards.css`):**

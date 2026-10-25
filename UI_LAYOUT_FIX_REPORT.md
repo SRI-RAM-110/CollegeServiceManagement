@@ -1,6 +1,6 @@
 # UI Layout, Sizing, Spacing & Placement Fix Report
 
-**Project:** Narasaraopet Engineering College — Faculty Service Management System  
+**Project:** Narasaraopeta Engineering College — Faculty Service Management System  
 **Task:** Implementation of Confirmed UI Layout, Sizing, Placement, and Responsive CSS Fixes  
 **Status:** COMPLETED & VERIFIED  
 **Build:** PASSING (`vite build` in 887ms)  

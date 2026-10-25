@@ -1,5 +1,5 @@
 # College Faculty Service Management System — Non-Technical User Manual
-**Narasaraopet Engineering College (Autonomous)**
+**Narasaraopeta Engineering College (Autonomous)**
 
 ---
 

@@ -1,5 +1,5 @@
 # College Faculty Service Management System — Architecture Diagrams Reference
-**Narasaraopet Engineering College (Autonomous)**
+**Narasaraopeta Engineering College (Autonomous)**
 
 This document compiles the complete architectural, behavioural, and data model diagrams illustrating the system's design.
 

@@ -1,0 +1,13 @@
+# ============================================================
+# Local SMTP Development Configuration Template
+# ============================================================
+# Copy this file to 'application-local.properties' (in this same directory)
+# and supply your local credentials.
+#
+# 'application-local.properties' is excluded in .gitignore and will NEVER be committed.
+# On Render (Production), environment variables configured in the Render Dashboard
+# automatically take precedence.
+# ============================================================
+
+local.mail.username=collegeservice2026@gmail.com
+local.mail.password=your_16_character_app_password_here

@@ -1,5 +1,5 @@
 # FINAL READ-ONLY VERIFICATION REPORT
-## Narasaraopet Engineering College (Autonomous) — Faculty Service Management System
+## Narasaraopeta Engineering College (Autonomous) — Faculty Service Management System
 
 **Document Reference:** `NEC/FSMS/VERIFICATION/2026-09-24/READONLY-01`  
 **Verification Mode:** STRICT READ-ONLY FORENSIC & RUNTIME AUDIT (Zero source files modified, Zero fixes applied)  
@@ -14,7 +14,7 @@
 
 ## 1. EXECUTIVE SUMMARY
 
-An exhaustive, end-to-end read-only audit of the Narasaraopet Engineering College Faculty Service Management System was conducted across all 8 department accounts (`CSE001`, `ECE001`, `EEE001`, `ME001`, `CIVIL001`, `AI001`, `MBA001`, `PHARM001`), all 6 administrative roles (`AO_ADMIN`, `SEMINAR_ADMIN`, `ACCOMMODATION_ADMIN`, `TRANSPORT_ADMIN`, `STATIONERY_ADMIN`, `MEALS_ADMIN`), their respective dashboards, quick calendars, announcements cards, sidebars, form validations, workflows, security boundaries, and headless browser console/network logs.
+An exhaustive, end-to-end read-only audit of the Narasaraopeta Engineering College Faculty Service Management System was conducted across all 8 department accounts (`CSE001`, `ECE001`, `EEE001`, `ME001`, `CIVIL001`, `AI001`, `MBA001`, `PHARM001`), all 6 administrative roles (`AO_ADMIN`, `SEMINAR_ADMIN`, `ACCOMMODATION_ADMIN`, `TRANSPORT_ADMIN`, `STATIONERY_ADMIN`, `MEALS_ADMIN`), their respective dashboards, quick calendars, announcements cards, sidebars, form validations, workflows, security boundaries, and headless browser console/network logs.
 
 ### Key Audit Findings:
 1. **Backend & Database Health:** 100% operational. Spring Boot 3.3.4 and MongoDB `collegeservices_db` are fully responsive. All 14 user accounts authenticate with BCrypt-hashed passwords, JWT tokens are issued and verified, department isolation is strictly maintained (0 data leaks across all 112 stored requests), and all 5 service domain APIs handle requests, stock validations, and status transitions correctly.

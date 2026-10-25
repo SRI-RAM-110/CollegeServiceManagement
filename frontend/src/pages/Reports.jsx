@@ -396,7 +396,7 @@ export default function Reports() {
                   Reports & Analytics
                 </h1>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Narasaraopet Engineering College (Autonomous) &bull; Service Performance & Requisition Auditing
+                  Narasaraopeta Engineering College (Autonomous) &bull; Service Performance & Requisition Auditing
                 </p>
               </div>
             </div>

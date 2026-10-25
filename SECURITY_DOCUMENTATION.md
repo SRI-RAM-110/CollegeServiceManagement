@@ -1,5 +1,5 @@
 # College Faculty Service Management System — Security Architecture & Hardening Guide
-**Narasaraopet Engineering College (Autonomous)**
+**Narasaraopeta Engineering College (Autonomous)**
 
 ---
 

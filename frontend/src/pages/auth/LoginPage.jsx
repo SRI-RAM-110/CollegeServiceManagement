@@ -68,7 +68,7 @@ export const LoginPage = () => {
           </div>
 
           <h1 className="login-title">
-            Narasaraopet Engineering College
+            Narasaraopeta Engineering College
           </h1>
           <p className="login-subtitle">
             Faculty Service Management System

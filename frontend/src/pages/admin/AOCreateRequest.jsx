@@ -144,7 +144,7 @@ export default function AOCreateRequest() {
 
           <div className="hidden lg:flex flex-col items-center justify-center p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 text-center w-52 flex-shrink-0">
             <img src={COLLEGE_LOGO} alt="NEC Logo" className="w-14 h-14 object-contain mb-2" />
-            <span className="text-xs font-bold text-white uppercase tracking-wider">Narasaraopet</span>
+            <span className="text-xs font-bold text-white uppercase tracking-wider">Narasaraopeta</span>
             <span className="text-[11px] text-slate-400">Engineering College</span>
           </div>
         </div>

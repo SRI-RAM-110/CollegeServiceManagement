@@ -519,7 +519,7 @@ public class PdfReportGenerator {
             cb.setFontAndSize(baseFont, 7);
             cb.setColorFill(TEXT_MUTED);
 
-            String footerLeft = "Narasaraopet Engineering College (Autonomous) • Services Management System";
+            String footerLeft = "Narasaraopeta Engineering College (Autonomous) • Services Management System";
             cb.showTextAligned(PdfContentByte.ALIGN_LEFT, footerLeft, document.left(), y, 0);
 
             String pageStr = "Page " + writer.getPageNumber() + " of ";

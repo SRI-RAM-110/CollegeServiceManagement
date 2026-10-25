@@ -1,5 +1,5 @@
 # INLINE STYLE EXCEPTIONS DOCUMENTATION
-**Project:** Narasaraopet Engineering College — Faculty Service Management System  
+**Project:** Narasaraopeta Engineering College — Faculty Service Management System  
 **Theme:** Arctic Blue Glass  
 **Inspection Date:** 2026-09-24  
 

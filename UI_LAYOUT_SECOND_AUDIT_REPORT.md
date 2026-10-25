@@ -1,6 +1,6 @@
 # Complete Second Read-Only UI Placement, Size, Spacing & Layout Audit Report
 
-**Project:** Narasaraopet Engineering College — Faculty Service Management System  
+**Project:** Narasaraopeta Engineering College — Faculty Service Management System  
 **Audit Type:** Second Comprehensive Read-Only UI Placement, Sizing, Alignment, Spacing, and Responsive Inspection  
 **Scope:** All 14 Page Views (7 Department, 6 Admin, 1 Auth), All 13 QuickCalendar Instances, 7 Reusable Components, 10 Modular CSS Files + `index.css`  
 **Execution Mode:** STRICT READ-ONLY (No files modified; zero changes to code, CSS, JSX, or logic)  

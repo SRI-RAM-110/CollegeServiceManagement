@@ -156,7 +156,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
           </div>
           <div>
             <h2 className="sidebar-title">
-              Narasaraopet
+              Narasaraopeta
             </h2>
             <div className="sidebar-subtitle">
               Engineering College
@@ -204,7 +204,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
             "Together for a Better Campus"
           </div>
           <div className="sidebar-footer-desc">
-            Narasaraopet Engineering College<br />
+            Narasaraopeta Engineering College<br />
             Empowering Knowledge. Enriching Lives.
           </div>
         </div>

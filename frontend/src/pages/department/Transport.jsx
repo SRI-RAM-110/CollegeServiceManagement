@@ -89,7 +89,7 @@ export const Transport = () => {
   const [tripType, setTripType] = useState('College Bus');
   const [tripDate, setTripDate] = useState(getTomorrowStr());
   const [roundTrip, setRoundTrip] = useState(true);
-  const [pickupLocation, setPickupLocation] = useState('Narasaraopet Engineering College');
+  const [pickupLocation, setPickupLocation] = useState('Narasaraopeta Engineering College');
   const [destination, setDestination] = useState('');
   const [purpose, setPurpose] = useState('');
   const [departureTime, setDepartureTime] = useState('09:00 AM');
@@ -751,7 +751,7 @@ export const Transport = () => {
                   <label className="form-label text-xs">Pickup Location *</label>
                   <input
                     type="text"
-                    placeholder="e.g. Narasaraopet Engineering College"
+                    placeholder="e.g. Narasaraopeta Engineering College"
                     value={pickupLocation}
                     onChange={(e) => setPickupLocation(e.target.value)}
                     required
