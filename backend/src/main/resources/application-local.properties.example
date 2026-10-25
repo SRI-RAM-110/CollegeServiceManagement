@@ -9,5 +9,8 @@
 # automatically take precedence.
 # ============================================================
 
+# Provider selection: 'local' uses local SMTP; 'apps-script' uses Google Apps Script HTTPS relay
+app.mail.provider=local
+
 local.mail.username=collegeservice2026@gmail.com
 local.mail.password=your_16_character_app_password_here

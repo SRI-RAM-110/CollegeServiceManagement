@@ -21,6 +21,15 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -73,11 +82,21 @@ public class EmailService {
     @Value("${APP_URL:${FRONTEND_URL:http://localhost:5173}}")
     private String appUrl;
 
-    @Value("${app.notification.cc-emails:zsonsoul@gmail.com}")
-    private String ccEmailsConfig;
+    @Value("${app.mail.provider:${APP_MAIL_PROVIDER:${MAIL_PROVIDER:local}}}")
+    private String mailProvider;
 
-    @Value("${app.notification.cc-events:REQUEST_SUBMITTED,REQUEST_APPROVED,REQUEST_REJECTED,REQUEST_CANCELLED,TEST_EVENT}")
-    private String ccEventsConfig;
+    @Value("${app.mail.apps-script.url:${APP_SCRIPT_MAIL_URL:${APPS_SCRIPT_URL:}}}")
+    private String appsScriptUrl;
+
+    @Value("${app.mail.apps-script.secret:${APP_SCRIPT_MAIL_SECRET:${APPS_SCRIPT_SECRET:}}}")
+    private String appsScriptSecret;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private HttpClient httpClient;
+
+    public void setHttpClient(HttpClient httpClient) {
+        this.httpClient = httpClient;
+    }
 
     private JavaMailSender dynamicMailSender;
 
@@ -88,15 +107,35 @@ public class EmailService {
     @PostConstruct
     public void init() {
         log.info("==========================================================");
-        log.info("EmailService initialized using SMTP provider");
-        if (isSmtpConfigured()) {
-            this.dynamicMailSender = createMailSender();
-            log.info("SMTP active: host={}:{}, sender={}", mailHost, mailPort, mailUsername);
+        String provider = getActiveProvider();
+        log.info("EmailService initialized. Active provider: {}", provider.toUpperCase());
+        if ("apps-script".equals(provider)) {
+            if (isAppsScriptConfigured()) {
+                log.info("Google Apps Script HTTPS relay active: endpoint configured, secret configured");
+            } else {
+                log.warn("Google Apps Script relay credentials missing (APP_SCRIPT_MAIL_URL / APP_SCRIPT_MAIL_SECRET).");
+            }
         } else {
-            log.warn("SMTP credentials not configured (SPRING_MAIL_USERNAME / SPRING_MAIL_PASSWORD missing). " +
-                     "Email notifications will be safely simulated/logged.");
+            if (isSmtpConfigured()) {
+                this.dynamicMailSender = createMailSender();
+                log.info("SMTP active: host={}:{}, sender={}", mailHost, mailPort, mailUsername);
+            } else {
+                log.warn("SMTP credentials not configured (SPRING_MAIL_USERNAME / SPRING_MAIL_PASSWORD missing). " +
+                         "Email notifications will be safely simulated/logged.");
+            }
         }
         log.info("==========================================================");
+    }
+
+    public String getActiveProvider() {
+        if (mailProvider == null || mailProvider.isBlank()) {
+            return "local";
+        }
+        String p = mailProvider.trim().toLowerCase();
+        if (p.contains("apps-script") || p.contains("appscript") || p.contains("google")) {
+            return "apps-script";
+        }
+        return "local";
     }
 
     public boolean isSmtpConfigured() {
@@ -104,7 +143,15 @@ public class EmailService {
                mailPassword != null && !mailPassword.isBlank();
     }
 
+    public boolean isAppsScriptConfigured() {
+        return appsScriptUrl != null && !appsScriptUrl.isBlank() &&
+               appsScriptSecret != null && !appsScriptSecret.isBlank();
+    }
+
     public boolean isProviderConfigured() {
+        if ("apps-script".equals(getActiveProvider())) {
+            return isAppsScriptConfigured();
+        }
         return isSmtpConfigured();
     }
 
@@ -127,6 +174,10 @@ public class EmailService {
         if (mailPassword != null && !mailPassword.isBlank()) {
             sanitized = sanitized.replace(mailPassword, "[REDACTED_PASSWORD]");
             sanitized = sanitized.replace(mailPassword.trim(), "[REDACTED_PASSWORD]");
+        }
+        if (appsScriptSecret != null && !appsScriptSecret.isBlank()) {
+            sanitized = sanitized.replace(appsScriptSecret, "[REDACTED_SECRET]");
+            sanitized = sanitized.replace(appsScriptSecret.trim(), "[REDACTED_SECRET]");
         }
         if (sensitiveValues != null) {
             for (String val : sensitiveValues) {
@@ -161,26 +212,11 @@ public class EmailService {
         return sender;
     }
 
-    public List<String> getCcEmailsList() {
-        if (ccEmailsConfig == null || ccEmailsConfig.isBlank()) {
-            return Collections.emptyList();
-        }
-        return Arrays.stream(ccEmailsConfig.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isBlank() && s.contains("@"))
-                .distinct()
-                .collect(Collectors.toList());
-    }
-
-    public Set<String> getCcEventsSet() {
-        if (ccEventsConfig == null || ccEventsConfig.isBlank()) {
-            return Collections.emptySet();
-        }
-        return Arrays.stream(ccEventsConfig.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isBlank())
-                .map(String::toUpperCase)
-                .collect(Collectors.toSet());
+    private HttpClient createHttpClient() {
+        return HttpClient.newBuilder()
+                .followRedirects(HttpClient.Redirect.ALWAYS)
+                .connectTimeout(Duration.ofSeconds(15))
+                .build();
     }
 
     public String classifyEvent(Notification notification) {
@@ -283,18 +319,12 @@ public class EmailService {
     }
 
     public List<String> resolveCcRecipients(String eventCategory) {
-        return resolveCcRecipients(null, eventCategory);
+        return Collections.emptyList();
     }
 
     public List<String> resolveCcRecipients(Notification notification, String eventCategory) {
         if (isSeminarNotification(notification)) {
             return resolveSeminarHallCcRecipients(notification);
-        }
-
-        // Global CC behavior preserved for non-seminar services
-        Set<String> configuredEvents = getCcEventsSet();
-        if (configuredEvents.contains(eventCategory)) {
-            return getCcEmailsList();
         }
         return Collections.emptyList();
     }
@@ -430,6 +460,9 @@ public class EmailService {
         String subject = "[NEC Services] " + (notification.getTitle() != null ? notification.getTitle() : "Notification") +
                          (referenceId != null ? " (" + referenceId + ")" : "");
 
+        String activeProvider = getActiveProvider();
+        String providerName = "apps-script".equalsIgnoreCase(activeProvider) ? "APPS_SCRIPT" : "SMTP";
+
         EmailLog logEntry = EmailLog.builder()
                 .notificationId(notification.getId())
                 .referenceId(referenceId)
@@ -439,7 +472,7 @@ public class EmailService {
                 .primaryRecipient(primaryRecipient)
                 .ccRecipients(effectiveCcs)
                 .subject(subject)
-                .provider("SMTP")
+                .provider(providerName)
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -452,7 +485,101 @@ public class EmailService {
     private void dispatchEmail(String primaryRecipient, List<String> ccRecipients,
                                String subject, String htmlBody, String plainText,
                                EmailLog logEntry, String... sensitiveValues) {
-        dispatchViaSmtp(primaryRecipient, ccRecipients, subject, htmlBody, plainText, logEntry, sensitiveValues);
+        String activeProvider = getActiveProvider();
+        if ("apps-script".equalsIgnoreCase(activeProvider)) {
+            logEntry.setProvider("APPS_SCRIPT");
+            dispatchViaAppsScript(primaryRecipient, ccRecipients, subject, htmlBody, plainText, logEntry, sensitiveValues);
+        } else {
+            logEntry.setProvider("SMTP");
+            dispatchViaSmtp(primaryRecipient, ccRecipients, subject, htmlBody, plainText, logEntry, sensitiveValues);
+        }
+    }
+
+    private void dispatchViaAppsScript(String primaryRecipient, List<String> ccRecipients,
+                                       String subject, String htmlBody, String plainText,
+                                       EmailLog logEntry, String... sensitiveValues) {
+        if (!isAppsScriptConfigured()) {
+            logEntry.setStatus("SKIPPED_NO_CREDENTIALS");
+            logEntry.setErrorMessage("Apps Script URL or secret not configured in environment. Email logged safely.");
+            emailLogRepository.save(logEntry);
+            log.info("Email notification simulated [SKIPPED_NO_CREDENTIALS] via Apps Script to: {} (CC: {}) - Subject: {}",
+                    primaryRecipient, ccRecipients, subject);
+            return;
+        }
+
+        try {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("secret", appsScriptSecret);
+            payload.put("to", primaryRecipient);
+            payload.put("cc", ccRecipients != null ? ccRecipients : Collections.emptyList());
+            payload.put("subject", subject);
+            payload.put("htmlBody", htmlBody);
+            payload.put("textBody", plainText);
+            payload.put("senderName", (mailFromName != null && !mailFromName.isBlank()) ? mailFromName.trim() : "NEC Service Management");
+
+            String jsonPayload = objectMapper.writeValueAsString(payload);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(appsScriptUrl.trim()))
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json")
+                    .timeout(Duration.ofSeconds(20))
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonPayload, StandardCharsets.UTF_8))
+                    .build();
+
+            HttpClient client = (this.httpClient != null) ? this.httpClient : createHttpClient();
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+
+            int statusCode = response.statusCode();
+            String responseBody = response.body() != null ? response.body().trim() : "";
+
+            if (statusCode >= 200 && statusCode < 300) {
+                boolean success = false;
+                String errorDetail = null;
+                try {
+                    JsonNode root = objectMapper.readTree(responseBody);
+                    success = root.path("success").asBoolean(false);
+                    if (!success) {
+                        errorDetail = root.has("error") ? root.get("error").asText() :
+                                     (root.has("message") ? root.get("message").asText() : "Apps Script rejected request");
+                    }
+                } catch (Exception parseEx) {
+                    errorDetail = "Invalid JSON response from Apps Script: " + responseBody;
+                }
+
+                if (success) {
+                    logEntry.setStatus("SENT");
+                    logEntry.setErrorMessage(null);
+                    emailLogRepository.save(logEntry);
+                    log.info("Email notification SENT successfully via Apps Script relay to: {} (CC: {}) - Subject: {}",
+                            primaryRecipient, ccRecipients, subject);
+                } else {
+                    String sanitized = sanitizeErrorMessage(errorDetail, sensitiveValues);
+                    logEntry.setStatus("FAILED");
+                    logEntry.setErrorMessage(sanitized);
+                    emailLogRepository.save(logEntry);
+                    log.warn("Apps Script relay reported failure for {}: {}", primaryRecipient, sanitized);
+                }
+            } else {
+                String sanitized = sanitizeErrorMessage("HTTP " + statusCode + ": " + responseBody, sensitiveValues);
+                logEntry.setStatus("FAILED");
+                logEntry.setErrorMessage(sanitized);
+                emailLogRepository.save(logEntry);
+                log.warn("Apps Script HTTP failure for {}: {}", primaryRecipient, sanitized);
+            }
+        } catch (HttpTimeoutException te) {
+            String sanitized = sanitizeErrorMessage("Apps Script request timed out: " + te.getMessage(), sensitiveValues);
+            logEntry.setStatus("FAILED");
+            logEntry.setErrorMessage(sanitized);
+            emailLogRepository.save(logEntry);
+            log.warn("Apps Script timeout for {}: {}", primaryRecipient, sanitized);
+        } catch (Exception e) {
+            String sanitized = sanitizeErrorMessage(e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName(), sensitiveValues);
+            logEntry.setStatus("FAILED");
+            logEntry.setErrorMessage(sanitized);
+            emailLogRepository.save(logEntry);
+            log.warn("Apps Script delivery error for {}: {}", primaryRecipient, sanitized);
+        }
     }
 
     private void dispatchViaSmtp(String primaryRecipient, List<String> ccRecipients,
@@ -503,7 +630,12 @@ public class EmailService {
                 ? targetEmail.trim()
                 : "sriramsriram123654@gmail.com";
 
-        List<String> ccList = getCcEmailsList();
+        List<String> ccList = Collections.emptyList(); // Strictly no global CC
+
+        String activeProvider = getActiveProvider();
+        boolean isAppsScript = "apps-script".equalsIgnoreCase(activeProvider);
+        String providerName = isAppsScript ? "APPS_SCRIPT" : "SMTP";
+        boolean isConfigured = isAppsScript ? isAppsScriptConfigured() : isSmtpConfigured();
 
         Notification testNotification = Notification.builder()
                 .id("TEST-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
@@ -511,7 +643,7 @@ public class EmailService {
                 .service("Seminar Hall")
                 .title("Test Email Notification")
                 .message("This is a live test notification from Narasaraopeta Engineering College Services Management System. " +
-                         "Verifying email delivery to primary recipient and external CC via SMTP.")
+                         "Verifying email delivery via " + providerName + ".")
                 .type("INFO")
                 .referenceId("TEST-SEM-0001")
                 .createdAt(LocalDateTime.now())
@@ -529,7 +661,7 @@ public class EmailService {
                 .primaryRecipient(recipient)
                 .ccRecipients(ccList)
                 .subject("[NEC Services] Test Email Notification (TEST-SEM-0001)")
-                .provider("SMTP")
+                .provider(providerName)
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -537,55 +669,33 @@ public class EmailService {
         result.put("primaryRecipient", recipient);
         result.put("ccRecipients", ccList);
         result.put("event", eventCategory);
-        result.put("provider", "SMTP");
-        result.put("configured", isSmtpConfigured());
+        result.put("provider", providerName);
+        result.put("configured", isConfigured);
 
         String htmlBody = buildHtmlEmailBody(testNotification, eventCategory, testNotification.getReferenceId());
         String plainText = buildPlainTextEmailBody(testNotification, eventCategory, testNotification.getReferenceId());
 
-        if (!isSmtpConfigured()) {
+        if (!isConfigured) {
             logEntry.setStatus("SKIPPED_NO_CREDENTIALS");
-            logEntry.setErrorMessage("SMTP credentials not configured (set SPRING_MAIL_USERNAME and SPRING_MAIL_PASSWORD to enable live delivery).");
+            logEntry.setErrorMessage(isAppsScript
+                    ? "Apps Script URL or secret not configured."
+                    : "SMTP credentials not configured.");
             emailLogRepository.save(logEntry);
             result.put("status", "SKIPPED_NO_CREDENTIALS");
-            result.put("message", "SMTP credentials not configured. Email logged safely without failure.");
+            result.put("message", providerName + " credentials not configured. Email logged safely without failure.");
             return result;
         }
 
-        try {
-            JavaMailSender sender = (dynamicMailSender != null) ? dynamicMailSender : createMailSender();
-            MimeMessage message = sender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+        dispatchEmail(recipient, ccList, logEntry.getSubject(), htmlBody, plainText, logEntry);
 
-            String senderFrom = (mailFrom != null && !mailFrom.isBlank()) ? mailFrom : mailUsername;
-            helper.setFrom(new InternetAddress(senderFrom, mailFromName));
-            helper.setTo(recipient);
-            if (!ccList.isEmpty()) {
-                helper.setCc(ccList.toArray(new String[0]));
-            }
-            helper.setSubject(logEntry.getSubject());
-            helper.setText(plainText, htmlBody);
-
-            sender.send(message);
-
-            logEntry.setStatus("SENT");
-            emailLogRepository.save(logEntry);
-
-            result.put("status", "SENT");
-            result.put("message", "Test email sent successfully via SMTP to " + recipient + " (CC: " + ccList + ")");
-            return result;
-
-        } catch (Exception e) {
-            String sanitized = sanitizeErrorMessage(e.getMessage());
-            logEntry.setStatus("FAILED");
-            logEntry.setErrorMessage(sanitized);
-            emailLogRepository.save(logEntry);
-
-            result.put("status", "FAILED");
-            result.put("error", sanitized);
-            result.put("message", "Failed to deliver email: " + sanitized);
-            return result;
+        result.put("status", logEntry.getStatus());
+        if ("SENT".equals(logEntry.getStatus())) {
+            result.put("message", "Test email sent successfully via " + providerName + " to " + recipient);
+        } else {
+            result.put("error", logEntry.getErrorMessage());
+            result.put("message", "Failed to deliver email: " + logEntry.getErrorMessage());
         }
+        return result;
     }
 
     private String buildHtmlEmailBody(Notification notification, String eventCategory, String referenceId) {
@@ -718,6 +828,9 @@ public class EmailService {
         String referenceId = "PWD-RESET";
         String dedupKey = "PWD_RESET:" + System.currentTimeMillis() + ":" + recipientEmail.toLowerCase();
 
+        String activeProvider = getActiveProvider();
+        String providerName = "apps-script".equalsIgnoreCase(activeProvider) ? "APPS_SCRIPT" : "SMTP";
+
         EmailLog logEntry = EmailLog.builder()
                 .referenceId(referenceId)
                 .deduplicationKey(dedupKey)
@@ -726,7 +839,7 @@ public class EmailService {
                 .primaryRecipient(recipientEmail)
                 .ccRecipients(Collections.emptyList()) // Strictly NO CC
                 .subject(subject)
-                .provider("SMTP")
+                .provider(providerName)
                 .createdAt(LocalDateTime.now())
                 .build();
 
