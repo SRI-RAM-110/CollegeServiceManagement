@@ -21,12 +21,6 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -49,18 +43,6 @@ public class EmailService {
     @Autowired(required = false)
     private SeminarHallRepository seminarHallRepository;
 
-    @Autowired(required = false)
-    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
-
-    @Value("${EMAIL_PROVIDER:${MAIL_PROVIDER:${app.mail.provider:resend}}}")
-    private String emailProvider;
-
-    @Value("${RESEND_API_KEY:${resend.api-key:}}")
-    private String resendApiKey;
-
-    @Value("${RESEND_API_URL:${resend.api-url:https://api.resend.com/emails}}")
-    private String resendApiUrl;
-
     @Value("${spring.mail.host:smtp.gmail.com}")
     private String mailHost;
 
@@ -73,16 +55,22 @@ public class EmailService {
     @Value("${spring.mail.password:}")
     private String mailPassword;
 
+    @Value("${spring.mail.properties.mail.smtp.auth:true}")
+    private boolean smtpAuth;
+
+    @Value("${spring.mail.properties.mail.smtp.starttls.enable:true}")
+    private boolean smtpStarttls;
+
     @Value("${app.mail.enabled:true}")
     private boolean mailEnabled;
 
-    @Value("${APP_MAIL_FROM:${MAIL_FROM:${app.mail.from:onboarding@resend.dev}}}")
+    @Value("${APP_MAIL_FROM:${MAIL_FROM:${spring.mail.username:no-reply@nrtec.in}}}")
     private String mailFrom;
 
-    @Value("${APP_MAIL_FROM_NAME:${MAIL_FROM_NAME:${app.mail.from-name:NEC Service Management}}}")
+    @Value("${APP_MAIL_FROM_NAME:${MAIL_FROM_NAME:NEC Service Management}}")
     private String mailFromName;
 
-    @Value("${app.mail.app-url:http://localhost:5173}")
+    @Value("${APP_URL:${FRONTEND_URL:http://localhost:5173}}")
     private String appUrl;
 
     @Value("${app.notification.cc-emails:zsonsoul@gmail.com}")
@@ -93,82 +81,22 @@ public class EmailService {
 
     private JavaMailSender dynamicMailSender;
 
-    private HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(15))
-            .build();
-
-    public void setHttpClient(HttpClient httpClient) {
-        this.httpClient = httpClient;
-    }
-
-    public void setResendApiKey(String resendApiKey) {
-        this.resendApiKey = resendApiKey;
-    }
-
-    public void setEmailProvider(String emailProvider) {
-        this.emailProvider = emailProvider;
+    public void setMailSender(JavaMailSender mailSender) {
+        this.dynamicMailSender = mailSender;
     }
 
     @PostConstruct
     public void init() {
-        String provider = getActiveProvider();
         log.info("==========================================================");
-        log.info("EmailService initialized with active provider: [{}]", provider.toUpperCase());
-        if ("smtp".equalsIgnoreCase(provider)) {
-            if (isSmtpConfigured()) {
-                this.dynamicMailSender = createMailSender();
-                log.info("SMTP Provider Active: host={}:{}, sender={}", mailHost, mailPort, mailUsername);
-            } else {
-                log.warn("SMTP Provider Active but credentials missing (SPRING_MAIL_USERNAME / SPRING_MAIL_PASSWORD missing). Emails will be logged safely.");
-            }
-        } else {
-            // Resend HTTPS API provider
-            this.dynamicMailSender = null; // Guarantee SMTP sender is never initialized or used
-            if (isResendConfigured()) {
-                log.info("Resend HTTPS API Active: sender='{}', endpoint='{}'",
-                        getFormattedFrom(), (resendApiUrl != null && !resendApiUrl.isBlank() ? resendApiUrl.trim() : "https://api.resend.com/emails"));
-            } else {
-                log.warn("Resend HTTPS API selected but RESEND_API_KEY is not configured in environment. Emails will be logged safely without calling SMTP.");
-            }
-        }
-        log.info("==========================================================");
-    }
-
-    public String getCleanResendApiKey() {
-        if (resendApiKey == null) return "";
-        return resendApiKey.trim().replaceAll("^[\"']|[\"']$", "");
-    }
-
-    public String getActiveProvider() {
-        String provider = emailProvider;
-        if (provider != null) {
-            provider = provider.trim().replaceAll("^[\"']|[\"']$", "").toLowerCase();
-        }
-        if ("smtp".equals(provider)) {
-            return "smtp";
-        }
-        if ("resend".equals(provider)) {
-            return "resend";
-        }
-        // If RESEND_API_KEY is present in environment, prioritize resend
-        if (isResendConfigured()) {
-            return "resend";
-        }
+        log.info("EmailService initialized using SMTP provider");
         if (isSmtpConfigured()) {
-            return "smtp";
+            this.dynamicMailSender = createMailSender();
+            log.info("SMTP active: host={}:{}, sender={}", mailHost, mailPort, mailUsername);
+        } else {
+            log.warn("SMTP credentials not configured (SPRING_MAIL_USERNAME / SPRING_MAIL_PASSWORD missing). " +
+                     "Email notifications will be safely simulated/logged.");
         }
-        return "resend";
-    }
-
-    public boolean isResendConfigured() {
-        return !getCleanResendApiKey().isBlank();
-    }
-
-    public boolean isProviderConfigured() {
-        if ("smtp".equalsIgnoreCase(getActiveProvider())) {
-            return isSmtpConfigured();
-        }
-        return isResendConfigured();
+        log.info("==========================================================");
     }
 
     public boolean isSmtpConfigured() {
@@ -176,21 +104,14 @@ public class EmailService {
                mailPassword != null && !mailPassword.isBlank();
     }
 
+    public boolean isProviderConfigured() {
+        return isSmtpConfigured();
+    }
+
     public String getFormattedFrom() {
         String from = (mailFrom != null && !mailFrom.isBlank())
                 ? mailFrom.trim().replaceAll("^[\"']|[\"']$", "")
-                : "onboarding@resend.dev";
-
-        // If using Resend and the configured sender is a public webmail domain (e.g., @gmail.com)
-        // that cannot be verified in Resend, safely use onboarding@resend.dev to ensure delivery
-        if (!"smtp".equalsIgnoreCase(getActiveProvider())) {
-            String lower = from.toLowerCase();
-            if (lower.endsWith("@gmail.com") || lower.endsWith("@yahoo.com") || lower.endsWith("@outlook.com") || lower.endsWith("@hotmail.com")) {
-                log.warn("Configured sender '{}' is an unverified public webmail domain. Falling back to 'onboarding@resend.dev' for Resend delivery.", from);
-                from = "onboarding@resend.dev";
-            }
-        }
-
+                : ((mailUsername != null && !mailUsername.isBlank()) ? mailUsername.trim() : "no-reply@nrtec.in");
         if (from.contains("<") && from.contains(">")) {
             return from;
         }
@@ -203,10 +124,6 @@ public class EmailService {
     public String sanitizeErrorMessage(String msg, String... sensitiveValues) {
         if (msg == null) return "Unknown error";
         String sanitized = msg;
-        if (resendApiKey != null && !resendApiKey.isBlank()) {
-            sanitized = sanitized.replace(resendApiKey, "[REDACTED_API_KEY]");
-            sanitized = sanitized.replace(resendApiKey.trim(), "[REDACTED_API_KEY]");
-        }
         if (mailPassword != null && !mailPassword.isBlank()) {
             sanitized = sanitized.replace(mailPassword, "[REDACTED_PASSWORD]");
             sanitized = sanitized.replace(mailPassword.trim(), "[REDACTED_PASSWORD]");
@@ -233,8 +150,8 @@ public class EmailService {
 
         Properties props = sender.getJavaMailProperties();
         props.put("mail.transport.protocol", "smtp");
-        props.put("mail.smtp.auth", "true");
-        props.put("mail.smtp.starttls.enable", "true");
+        props.put("mail.smtp.auth", String.valueOf(smtpAuth));
+        props.put("mail.smtp.starttls.enable", String.valueOf(smtpStarttls));
         props.put("mail.smtp.starttls.required", "true");
         props.put("mail.smtp.ssl.protocols", "TLSv1.2 TLSv1.3");
         props.put("mail.smtp.ssl.trust", "*");
@@ -374,7 +291,7 @@ public class EmailService {
             return resolveSeminarHallCcRecipients(notification);
         }
 
-        // Global CC behavior preserved for non-seminar services (Requirement 8)
+        // Global CC behavior preserved for non-seminar services
         Set<String> configuredEvents = getCcEventsSet();
         if (configuredEvents.contains(eventCategory)) {
             return getCcEmailsList();
@@ -513,7 +430,6 @@ public class EmailService {
         String subject = "[NEC Services] " + (notification.getTitle() != null ? notification.getTitle() : "Notification") +
                          (referenceId != null ? " (" + referenceId + ")" : "");
 
-        String provider = getActiveProvider();
         EmailLog logEntry = EmailLog.builder()
                 .notificationId(notification.getId())
                 .referenceId(referenceId)
@@ -523,7 +439,7 @@ public class EmailService {
                 .primaryRecipient(primaryRecipient)
                 .ccRecipients(effectiveCcs)
                 .subject(subject)
-                .provider(provider.toUpperCase())
+                .provider("SMTP")
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -536,86 +452,12 @@ public class EmailService {
     private void dispatchEmail(String primaryRecipient, List<String> ccRecipients,
                                String subject, String htmlBody, String plainText,
                                EmailLog logEntry, String... sensitiveValues) {
-        String provider = getActiveProvider();
-        if ("smtp".equalsIgnoreCase(provider)) {
-            dispatchViaSmtp(primaryRecipient, ccRecipients, subject, htmlBody, plainText, logEntry);
-        } else {
-            dispatchViaResend(primaryRecipient, ccRecipients, subject, htmlBody, plainText, logEntry, sensitiveValues);
-        }
-    }
-
-    private void dispatchViaResend(String primaryRecipient, List<String> ccRecipients,
-                                   String subject, String htmlBody, String plainText,
-                                   EmailLog logEntry, String... sensitiveValues) {
-        if (!isResendConfigured()) {
-            logEntry.setStatus("SKIPPED_NO_CREDENTIALS");
-            logEntry.setErrorMessage("Resend API key not configured (set RESEND_API_KEY in environment). Email logged safely.");
-            emailLogRepository.save(logEntry);
-            log.info("Email notification simulated [SKIPPED_NO_CREDENTIALS] via Resend to: {} (CC: {}) - Subject: {}",
-                    primaryRecipient, ccRecipients, subject);
-            return;
-        }
-
-        try {
-            Map<String, Object> payload = new LinkedHashMap<>();
-            payload.put("from", getFormattedFrom());
-            payload.put("to", Collections.singletonList(primaryRecipient));
-            if (ccRecipients != null && !ccRecipients.isEmpty()) {
-                payload.put("cc", ccRecipients);
-            }
-            payload.put("subject", subject);
-            if (htmlBody != null && !htmlBody.isBlank()) {
-                payload.put("html", htmlBody);
-            }
-            if (plainText != null && !plainText.isBlank()) {
-                payload.put("text", plainText);
-            }
-
-            String jsonPayload = objectMapper != null
-                    ? objectMapper.writeValueAsString(payload)
-                    : new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(payload);
-
-            String endpoint = (resendApiUrl != null && !resendApiUrl.isBlank())
-                    ? resendApiUrl.trim()
-                    : "https://api.resend.com/emails";
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(endpoint))
-                    .timeout(Duration.ofSeconds(20))
-                    .header("Authorization", "Bearer " + getCleanResendApiKey())
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(jsonPayload, StandardCharsets.UTF_8))
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-            if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                logEntry.setStatus("SENT");
-                logEntry.setErrorMessage(null);
-                emailLogRepository.save(logEntry);
-                log.info("Email notification SENT successfully via Resend to: {} (CC: {}) - Subject: {}",
-                        primaryRecipient, ccRecipients, subject);
-            } else {
-                String sanitizedBody = sanitizeErrorMessage(response.body(), sensitiveValues);
-                logEntry.setStatus("FAILED");
-                logEntry.setErrorMessage("Resend API error (HTTP " + response.statusCode() + "): " + sanitizedBody);
-                emailLogRepository.save(logEntry);
-                log.warn("Resend email delivery failed to {} (HTTP {}): {}",
-                        primaryRecipient, response.statusCode(), sanitizedBody);
-            }
-
-        } catch (Exception e) {
-            String sanitizedError = sanitizeErrorMessage(e.getMessage(), sensitiveValues);
-            logEntry.setStatus("FAILED");
-            logEntry.setErrorMessage("Resend request failed: " + sanitizedError);
-            emailLogRepository.save(logEntry);
-            log.warn("Resend email delivery exception to {}: {}", primaryRecipient, sanitizedError);
-        }
+        dispatchViaSmtp(primaryRecipient, ccRecipients, subject, htmlBody, plainText, logEntry, sensitiveValues);
     }
 
     private void dispatchViaSmtp(String primaryRecipient, List<String> ccRecipients,
                                  String subject, String htmlBody, String plainText,
-                                 EmailLog logEntry) {
+                                 EmailLog logEntry, String... sensitiveValues) {
         if (!isSmtpConfigured()) {
             logEntry.setStatus("SKIPPED_NO_CREDENTIALS");
             logEntry.setErrorMessage("SMTP credentials not configured in environment. Email logged safely.");
@@ -626,10 +468,8 @@ public class EmailService {
         }
 
         try {
-            if (dynamicMailSender == null) {
-                dynamicMailSender = createMailSender();
-            }
-            MimeMessage message = dynamicMailSender.createMimeMessage();
+            JavaMailSender sender = (dynamicMailSender != null) ? dynamicMailSender : createMailSender();
+            MimeMessage message = sender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             String senderFrom = (mailFrom != null && !mailFrom.isBlank()) ? mailFrom : mailUsername;
@@ -641,7 +481,7 @@ public class EmailService {
             helper.setSubject(subject);
             helper.setText(plainText, htmlBody);
 
-            dynamicMailSender.send(message);
+            sender.send(message);
 
             logEntry.setStatus("SENT");
             logEntry.setErrorMessage(null);
@@ -650,7 +490,7 @@ public class EmailService {
                     primaryRecipient, ccRecipients, subject);
 
         } catch (Exception e) {
-            String sanitizedError = sanitizeErrorMessage(e.getMessage());
+            String sanitizedError = sanitizeErrorMessage(e.getMessage(), sensitiveValues);
             logEntry.setStatus("FAILED");
             logEntry.setErrorMessage(sanitizedError);
             emailLogRepository.save(logEntry);
@@ -671,7 +511,7 @@ public class EmailService {
                 .service("Seminar Hall")
                 .title("Test Email Notification")
                 .message("This is a live test notification from Narasaraopet Engineering College Services Management System. " +
-                         "Verifying email delivery to primary recipient and external CC.")
+                         "Verifying email delivery to primary recipient and external CC via SMTP.")
                 .type("INFO")
                 .referenceId("TEST-SEM-0001")
                 .createdAt(LocalDateTime.now())
@@ -680,7 +520,6 @@ public class EmailService {
         String eventCategory = "TEST_EVENT";
         String dedupKey = "TEST:" + System.currentTimeMillis() + ":" + recipient.toLowerCase();
 
-        String provider = getActiveProvider();
         EmailLog logEntry = EmailLog.builder()
                 .notificationId(testNotification.getId())
                 .referenceId(testNotification.getReferenceId())
@@ -690,7 +529,7 @@ public class EmailService {
                 .primaryRecipient(recipient)
                 .ccRecipients(ccList)
                 .subject("[NEC Services] Test Email Notification (TEST-SEM-0001)")
-                .provider(provider.toUpperCase())
+                .provider("SMTP")
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -698,124 +537,54 @@ public class EmailService {
         result.put("primaryRecipient", recipient);
         result.put("ccRecipients", ccList);
         result.put("event", eventCategory);
-        result.put("provider", provider);
-        result.put("configured", isProviderConfigured());
-        result.put("resendConfigured", isResendConfigured());
-        result.put("smtpConfigured", isSmtpConfigured());
+        result.put("provider", "SMTP");
+        result.put("configured", isSmtpConfigured());
 
         String htmlBody = buildHtmlEmailBody(testNotification, eventCategory, testNotification.getReferenceId());
         String plainText = buildPlainTextEmailBody(testNotification, eventCategory, testNotification.getReferenceId());
 
-        if ("smtp".equalsIgnoreCase(provider)) {
-            if (!isSmtpConfigured()) {
-                logEntry.setStatus("SKIPPED_NO_CREDENTIALS");
-                logEntry.setErrorMessage("SMTP credentials not configured (set SPRING_MAIL_USERNAME and SPRING_MAIL_PASSWORD to enable live delivery).");
-                emailLogRepository.save(logEntry);
-                result.put("status", "SKIPPED_NO_CREDENTIALS");
-                result.put("message", "SMTP credentials not configured. Email logged safely without failure.");
-                return result;
+        if (!isSmtpConfigured()) {
+            logEntry.setStatus("SKIPPED_NO_CREDENTIALS");
+            logEntry.setErrorMessage("SMTP credentials not configured (set SPRING_MAIL_USERNAME and SPRING_MAIL_PASSWORD to enable live delivery).");
+            emailLogRepository.save(logEntry);
+            result.put("status", "SKIPPED_NO_CREDENTIALS");
+            result.put("message", "SMTP credentials not configured. Email logged safely without failure.");
+            return result;
+        }
+
+        try {
+            JavaMailSender sender = (dynamicMailSender != null) ? dynamicMailSender : createMailSender();
+            MimeMessage message = sender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            String senderFrom = (mailFrom != null && !mailFrom.isBlank()) ? mailFrom : mailUsername;
+            helper.setFrom(new InternetAddress(senderFrom, mailFromName));
+            helper.setTo(recipient);
+            if (!ccList.isEmpty()) {
+                helper.setCc(ccList.toArray(new String[0]));
             }
+            helper.setSubject(logEntry.getSubject());
+            helper.setText(plainText, htmlBody);
 
-            try {
-                if (dynamicMailSender == null) {
-                    dynamicMailSender = createMailSender();
-                }
-                MimeMessage message = dynamicMailSender.createMimeMessage();
-                MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            sender.send(message);
 
-                String senderFrom = (mailFrom != null && !mailFrom.isBlank()) ? mailFrom : mailUsername;
-                helper.setFrom(new InternetAddress(senderFrom, mailFromName));
-                helper.setTo(recipient);
-                if (!ccList.isEmpty()) {
-                    helper.setCc(ccList.toArray(new String[0]));
-                }
-                helper.setSubject(logEntry.getSubject());
-                helper.setText(plainText, htmlBody);
+            logEntry.setStatus("SENT");
+            emailLogRepository.save(logEntry);
 
-                dynamicMailSender.send(message);
+            result.put("status", "SENT");
+            result.put("message", "Test email sent successfully via SMTP to " + recipient + " (CC: " + ccList + ")");
+            return result;
 
-                logEntry.setStatus("SENT");
-                emailLogRepository.save(logEntry);
+        } catch (Exception e) {
+            String sanitized = sanitizeErrorMessage(e.getMessage());
+            logEntry.setStatus("FAILED");
+            logEntry.setErrorMessage(sanitized);
+            emailLogRepository.save(logEntry);
 
-                result.put("status", "SENT");
-                result.put("message", "Test email sent successfully via SMTP to " + recipient + " (CC: " + ccList + ")");
-                return result;
-
-            } catch (Exception e) {
-                String sanitized = sanitizeErrorMessage(e.getMessage());
-                logEntry.setStatus("FAILED");
-                logEntry.setErrorMessage(sanitized);
-                emailLogRepository.save(logEntry);
-
-                result.put("status", "FAILED");
-                result.put("error", sanitized);
-                result.put("message", "Failed to deliver email: " + sanitized);
-                return result;
-            }
-        } else {
-            if (!isResendConfigured()) {
-                logEntry.setStatus("SKIPPED_NO_CREDENTIALS");
-                logEntry.setErrorMessage("Resend API key not configured (set RESEND_API_KEY in environment).");
-                emailLogRepository.save(logEntry);
-                result.put("status", "SKIPPED_NO_CREDENTIALS");
-                result.put("message", "Resend API key not configured. Email logged safely without failure.");
-                return result;
-            }
-            try {
-                Map<String, Object> payload = new LinkedHashMap<>();
-                payload.put("from", getFormattedFrom());
-                payload.put("to", Collections.singletonList(recipient));
-                if (!ccList.isEmpty()) {
-                    payload.put("cc", ccList);
-                }
-                payload.put("subject", logEntry.getSubject());
-                payload.put("html", htmlBody);
-                payload.put("text", plainText);
-
-                String jsonPayload = objectMapper != null
-                        ? objectMapper.writeValueAsString(payload)
-                        : new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(payload);
-
-                String endpoint = (resendApiUrl != null && !resendApiUrl.isBlank())
-                        ? resendApiUrl.trim()
-                        : "https://api.resend.com/emails";
-
-                HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create(endpoint))
-                        .timeout(Duration.ofSeconds(20))
-                        .header("Authorization", "Bearer " + getCleanResendApiKey())
-                        .header("Content-Type", "application/json")
-                        .POST(HttpRequest.BodyPublishers.ofString(jsonPayload, StandardCharsets.UTF_8))
-                        .build();
-
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-                if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                    logEntry.setStatus("SENT");
-                    emailLogRepository.save(logEntry);
-                    result.put("status", "SENT");
-                    result.put("message", "Test email sent successfully via Resend to " + recipient + " (CC: " + ccList + ")");
-                    return result;
-                } else {
-                    String sanitized = sanitizeErrorMessage(response.body());
-                    logEntry.setStatus("FAILED");
-                    logEntry.setErrorMessage("Resend API error (HTTP " + response.statusCode() + "): " + sanitized);
-                    emailLogRepository.save(logEntry);
-                    result.put("status", "FAILED");
-                    result.put("error", "HTTP " + response.statusCode() + ": " + sanitized);
-                    result.put("message", "Failed to deliver email via Resend: " + sanitized);
-                    return result;
-                }
-            } catch (Exception e) {
-                String sanitized = sanitizeErrorMessage(e.getMessage());
-                logEntry.setStatus("FAILED");
-                logEntry.setErrorMessage(sanitized);
-                emailLogRepository.save(logEntry);
-                result.put("status", "FAILED");
-                result.put("error", sanitized);
-                result.put("message", "Failed to deliver email via Resend: " + sanitized);
-                return result;
-            }
+            result.put("status", "FAILED");
+            result.put("error", sanitized);
+            result.put("message", "Failed to deliver email: " + sanitized);
+            return result;
         }
     }
 
@@ -949,7 +718,6 @@ public class EmailService {
         String referenceId = "PWD-RESET";
         String dedupKey = "PWD_RESET:" + System.currentTimeMillis() + ":" + recipientEmail.toLowerCase();
 
-        String provider = getActiveProvider();
         EmailLog logEntry = EmailLog.builder()
                 .referenceId(referenceId)
                 .deduplicationKey(dedupKey)
@@ -958,7 +726,7 @@ public class EmailService {
                 .primaryRecipient(recipientEmail)
                 .ccRecipients(Collections.emptyList()) // Strictly NO CC
                 .subject(subject)
-                .provider(provider.toUpperCase())
+                .provider("SMTP")
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -1026,4 +794,3 @@ public class EmailService {
                 "This is an automated notification. Please do not reply directly.";
     }
 }
-

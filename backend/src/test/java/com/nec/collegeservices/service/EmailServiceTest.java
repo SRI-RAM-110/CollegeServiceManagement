@@ -1,7 +1,5 @@
 package com.nec.collegeservices.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nec.collegeservices.model.EmailLog;
 import com.nec.collegeservices.model.Notification;
 import com.nec.collegeservices.model.SeminarBooking;
@@ -11,6 +9,8 @@ import com.nec.collegeservices.repository.EmailLogRepository;
 import com.nec.collegeservices.repository.SeminarBookingRepository;
 import com.nec.collegeservices.repository.SeminarHallRepository;
 import com.nec.collegeservices.repository.UserRepository;
+import jakarta.mail.Session;
+import jakarta.mail.internet.MimeMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,17 +19,14 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.springframework.mail.MailSendException;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.io.IOException;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.LocalDateTime;
 import java.util.*;
-
-import org.mockito.quality.Strictness;
-import org.mockito.junit.jupiter.MockitoSettings;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -37,7 +34,7 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-public class EmailServiceResendTest {
+public class EmailServiceTest {
 
     @Mock
     private UserRepository userRepository;
@@ -52,38 +49,37 @@ public class EmailServiceResendTest {
     private SeminarHallRepository seminarHallRepository;
 
     @Mock
-    private HttpClient mockHttpClient;
-
-    @Mock
-    private HttpResponse<String> mockHttpResponse;
+    private JavaMailSender mockMailSender;
 
     @InjectMocks
     private EmailService emailService;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private MimeMessage mimeMessage;
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(emailService, "emailProvider", "resend");
-        ReflectionTestUtils.setField(emailService, "resendApiKey", "re_test_1234567890abcdef");
-        ReflectionTestUtils.setField(emailService, "resendApiUrl", "https://api.resend.com/emails");
+        mimeMessage = new MimeMessage((Session) null);
+        when(mockMailSender.createMimeMessage()).thenReturn(mimeMessage);
+
+        ReflectionTestUtils.setField(emailService, "mailHost", "smtp.gmail.com");
+        ReflectionTestUtils.setField(emailService, "mailPort", 587);
+        ReflectionTestUtils.setField(emailService, "mailUsername", "collegeservice2026@gmail.com");
+        ReflectionTestUtils.setField(emailService, "mailPassword", "sample_smtp_app_password");
+        ReflectionTestUtils.setField(emailService, "smtpAuth", true);
+        ReflectionTestUtils.setField(emailService, "smtpStarttls", true);
         ReflectionTestUtils.setField(emailService, "mailEnabled", true);
-        ReflectionTestUtils.setField(emailService, "mailFrom", "onboarding@resend.dev");
+        ReflectionTestUtils.setField(emailService, "mailFrom", "collegeservice2026@gmail.com");
         ReflectionTestUtils.setField(emailService, "mailFromName", "NEC Service Management");
         ReflectionTestUtils.setField(emailService, "appUrl", "https://college-service-management.vercel.app");
         ReflectionTestUtils.setField(emailService, "ccEmailsConfig", "global-cc@nrtec.in");
         ReflectionTestUtils.setField(emailService, "ccEventsConfig", "REQUEST_SUBMITTED,REQUEST_APPROVED,REQUEST_REJECTED,REQUEST_CANCELLED,TEST_EVENT");
-        ReflectionTestUtils.setField(emailService, "objectMapper", objectMapper);
-        emailService.setHttpClient(mockHttpClient);
+
+        emailService.setMailSender(mockMailSender);
     }
 
     @Test
-    @DisplayName("1. Resend notification delivery sends valid HTTPS request and marks log SENT")
-    void testResendNotificationDeliverySuccess() throws Exception {
-        when(mockHttpResponse.statusCode()).thenReturn(200);
-        when(mockHttpResponse.body()).thenReturn("{\"id\":\"msg_resend_101\"}");
-        doReturn(mockHttpResponse).when(mockHttpClient).send(any(), any());
-
+    @DisplayName("1. SMTP notification delivery sends MimeMessage and marks log SENT")
+    void testSmtpNotificationDeliverySuccess() {
         User user = User.builder()
                 .userId("usr_001")
                 .name("Dr. Smith")
@@ -104,84 +100,111 @@ public class EmailServiceResendTest {
 
         emailService.processAndSendNotificationEmail(notification);
 
-        // Verify HTTP request sent to Resend
-        ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
-        verify(mockHttpClient).send(requestCaptor.capture(), any());
+        verify(mockMailSender, times(1)).send(any(MimeMessage.class));
 
-        HttpRequest request = requestCaptor.getValue();
-        assertEquals("POST", request.method());
-        assertEquals("https://api.resend.com/emails", request.uri().toString());
-        assertEquals("Bearer re_test_1234567890abcdef", request.headers().firstValue("Authorization").orElse(""));
-        assertEquals("application/json", request.headers().firstValue("Content-Type").orElse(""));
-
-        // Verify EmailLog status marked SENT
         ArgumentCaptor<EmailLog> logCaptor = ArgumentCaptor.forClass(EmailLog.class);
         verify(emailLogRepository).save(logCaptor.capture());
 
         EmailLog savedLog = logCaptor.getValue();
         assertEquals("SENT", savedLog.getStatus());
-        assertEquals("RESEND", savedLog.getProvider());
+        assertEquals("SMTP", savedLog.getProvider());
         assertEquals("smith@nrtec.in", savedLog.getPrimaryRecipient());
+        assertTrue(savedLog.getCcRecipients().contains("global-cc@nrtec.in"));
         assertNull(savedLog.getErrorMessage());
     }
 
     @Test
-    @DisplayName("2. Hall-specific CC routing passes hall CCs to Resend without global CC")
-    void testHallSpecificCcRoutingToResend() throws Exception {
-        when(mockHttpResponse.statusCode()).thenReturn(200);
-        when(mockHttpResponse.body()).thenReturn("{\"id\":\"msg_resend_102\"}");
-        doReturn(mockHttpResponse).when(mockHttpClient).send(any(), any());
-
-        User user = User.builder().userId("usr_002").email("faculty@nrtec.in").active(true).build();
-        when(userRepository.findByUserId("usr_002")).thenReturn(Optional.of(user));
-
+    @DisplayName("2. Hall-specific CC routing applies hall CCs and bypasses global CC for seminars")
+    void testSeminarHallSpecificCcRouting() {
         SeminarBooking booking = SeminarBooking.builder()
                 .bookingId("CSE-SEM-1001")
-                .hallId("SH-1")
-                .hallName("Main Auditorium")
+                .hallId("HALL_CSE_01")
+                .hallName("Visvesvaraya Seminar Hall")
+                .eventTitle("AI Workshop")
+                .status("PENDING")
                 .build();
         when(seminarBookingRepository.findByBookingId("CSE-SEM-1001")).thenReturn(Optional.of(booking));
 
         SeminarHall hall = SeminarHall.builder()
-                .hallId("SH-1")
-                .name("Main Auditorium")
+                .hallId("HALL_CSE_01")
+                .name("Visvesvaraya Seminar Hall")
                 .ccEmails(Arrays.asList("hall-coord@nrtec.in", "dept-cc@nrtec.in"))
                 .build();
-        when(seminarHallRepository.findByHallId("SH-1")).thenReturn(Optional.of(hall));
+        when(seminarHallRepository.findByHallId("HALL_CSE_01")).thenReturn(Optional.of(hall));
+
+        User faculty = User.builder()
+                .userId("fac_101")
+                .email("faculty@nrtec.in")
+                .active(true)
+                .build();
+        when(userRepository.findByUserId("fac_101")).thenReturn(Optional.of(faculty));
 
         Notification notification = Notification.builder()
                 .id("NOTIF-SEM-001")
-                .recipientUserId("usr_002")
-                .title("New Seminar Request")
-                .message("National Conference booking request.")
+                .recipientUserId("fac_101")
                 .service("Seminar Hall")
+                .title("New Seminar Request")
+                .message("Booking submitted for Visvesvaraya Seminar Hall")
                 .referenceId("CSE-SEM-1001")
                 .createdAt(LocalDateTime.now())
                 .build();
 
         emailService.processAndSendNotificationEmail(notification);
 
-        // Verify EmailLog CC recipients
+        verify(mockMailSender, times(1)).send(any(MimeMessage.class));
+
         ArgumentCaptor<EmailLog> logCaptor = ArgumentCaptor.forClass(EmailLog.class);
         verify(emailLogRepository).save(logCaptor.capture());
 
         EmailLog savedLog = logCaptor.getValue();
         assertEquals("SENT", savedLog.getStatus());
-        assertEquals("RESEND", savedLog.getProvider());
+        assertEquals("faculty@nrtec.in", savedLog.getPrimaryRecipient());
+
+        // Must contain hall-specific CCs
         assertTrue(savedLog.getCcRecipients().contains("hall-coord@nrtec.in"));
         assertTrue(savedLog.getCcRecipients().contains("dept-cc@nrtec.in"));
-        assertFalse(savedLog.getCcRecipients().contains("global-cc@nrtec.in"), "Global CC must NOT be in seminar notification");
+        // Must NOT contain global CC for seminar notifications
+        assertFalse(savedLog.getCcRecipients().contains("global-cc@nrtec.in"));
     }
 
     @Test
-    @DisplayName("3. Password-reset emails are sent strictly to user with zero CC recipients")
-    void testPasswordResetEmailPrivacyResend() throws Exception {
-        when(mockHttpResponse.statusCode()).thenReturn(200);
-        when(mockHttpResponse.body()).thenReturn("{\"id\":\"msg_resend_pwd_103\"}");
-        doReturn(mockHttpResponse).when(mockHttpClient).send(any(), any());
+    @DisplayName("3. Non-seminar notifications preserve global CC recipients")
+    void testNonSeminarNotificationsPreserveGlobalCc() {
+        User user = User.builder()
+                .userId("usr_transport")
+                .email("transport.user@nrtec.in")
+                .active(true)
+                .build();
+        when(userRepository.findByUserId("usr_transport")).thenReturn(Optional.of(user));
 
+        Notification notification = Notification.builder()
+                .id("NOTIF-TR-001")
+                .recipientUserId("usr_transport")
+                .title("New Transport Booking")
+                .message("Bus requested for industry tour.")
+                .service("Transport")
+                .referenceId("REQ-TR-1001")
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        emailService.processAndSendNotificationEmail(notification);
+
+        ArgumentCaptor<EmailLog> logCaptor = ArgumentCaptor.forClass(EmailLog.class);
+        verify(emailLogRepository).save(logCaptor.capture());
+
+        EmailLog savedLog = logCaptor.getValue();
+        assertEquals("SENT", savedLog.getStatus());
+        assertEquals("transport.user@nrtec.in", savedLog.getPrimaryRecipient());
+        assertTrue(savedLog.getCcRecipients().contains("global-cc@nrtec.in"), "Global CC must be present for non-seminar events");
+    }
+
+    @Test
+    @DisplayName("4. Password-reset emails have strictly zero CC recipients")
+    void testPasswordResetEmailPrivacyZeroCc() {
         String rawToken = "sample-secret-reset-token-xyz-12345";
         emailService.sendPasswordResetEmail("faculty.user@nrtec.in", "Prof. Sharma", rawToken);
+
+        verify(mockMailSender, times(1)).send(any(MimeMessage.class));
 
         ArgumentCaptor<EmailLog> logCaptor = ArgumentCaptor.forClass(EmailLog.class);
         verify(emailLogRepository).save(logCaptor.capture());
@@ -194,16 +217,13 @@ public class EmailServiceResendTest {
     }
 
     @Test
-    @DisplayName("4. Provider errors mark status FAILED and sanitize sensitive tokens/keys")
-    void testProviderFailureHandlingAndSanitization() throws Exception {
-        String sensitiveKey = "re_test_1234567890abcdef";
+    @DisplayName("5. SMTP failure marks status FAILED and redacts password and token")
+    void testSmtpFailureHandlingAndSanitization() {
+        String sensitivePassword = "sample_smtp_app_password";
         String sensitiveToken = "secret-plain-token-abc-9876";
 
-        when(mockHttpResponse.statusCode()).thenReturn(422);
-        when(mockHttpResponse.body()).thenReturn(
-                "{\"statusCode\":422,\"message\":\"Domain not verified for " + sensitiveKey + " with token " + sensitiveToken + "\"}"
-        );
-        doReturn(mockHttpResponse).when(mockHttpClient).send(any(), any());
+        doThrow(new MailSendException("SMTP connection failed with password " + sensitivePassword + " and token " + sensitiveToken))
+                .when(mockMailSender).send(any(MimeMessage.class));
 
         emailService.sendPasswordResetEmail("error.test@nrtec.in", "User", sensitiveToken);
 
@@ -213,19 +233,19 @@ public class EmailServiceResendTest {
         EmailLog savedLog = logCaptor.getValue();
         assertEquals("FAILED", savedLog.getStatus());
         assertNotNull(savedLog.getErrorMessage());
-        assertTrue(savedLog.getErrorMessage().contains("422"));
 
-        // Verify sensitive keys and tokens are redacted
-        assertFalse(savedLog.getErrorMessage().contains(sensitiveKey), "API key must be redacted");
+        // Verify sensitive credentials and reset token are redacted
+        assertFalse(savedLog.getErrorMessage().contains(sensitivePassword), "SMTP password must be redacted");
         assertFalse(savedLog.getErrorMessage().contains(sensitiveToken), "Reset token must be redacted");
-        assertTrue(savedLog.getErrorMessage().contains("[REDACTED_API_KEY]"));
+        assertTrue(savedLog.getErrorMessage().contains("[REDACTED_PASSWORD]"));
         assertTrue(savedLog.getErrorMessage().contains("[REDACTED_TOKEN]"));
     }
 
     @Test
-    @DisplayName("5. Unconfigured Resend API key safely simulates SKIPPED_NO_CREDENTIALS")
-    void testMissingCredentialsSimulatedSafely() {
-        ReflectionTestUtils.setField(emailService, "resendApiKey", "");
+    @DisplayName("6. Unconfigured SMTP credentials safely simulate SKIPPED_NO_CREDENTIALS")
+    void testMissingSmtpCredentialsSimulatedSafely() {
+        ReflectionTestUtils.setField(emailService, "mailUsername", "");
+        ReflectionTestUtils.setField(emailService, "mailPassword", "");
 
         User user = User.builder().userId("usr_003").email("test@nrtec.in").active(true).build();
         when(userRepository.findByUserId("usr_003")).thenReturn(Optional.of(user));
@@ -242,57 +262,27 @@ public class EmailServiceResendTest {
 
         emailService.processAndSendNotificationEmail(notification);
 
+        // MailSender should not be invoked when credentials are missing
+        verify(mockMailSender, never()).send(any(MimeMessage.class));
+
         ArgumentCaptor<EmailLog> logCaptor = ArgumentCaptor.forClass(EmailLog.class);
         verify(emailLogRepository).save(logCaptor.capture());
 
         EmailLog savedLog = logCaptor.getValue();
         assertEquals("SKIPPED_NO_CREDENTIALS", savedLog.getStatus());
-        assertTrue(savedLog.getErrorMessage().contains("RESEND_API_KEY"));
+        assertTrue(savedLog.getErrorMessage().contains("SMTP"));
     }
 
     @Test
-    @DisplayName("6. SendTestEmail via Resend returns formatted response")
-    void testSendTestEmailViaResend() throws Exception {
-        when(mockHttpResponse.statusCode()).thenReturn(200);
-        when(mockHttpResponse.body()).thenReturn("{\"id\":\"msg_resend_test_105\"}");
-        doReturn(mockHttpResponse).when(mockHttpClient).send(any(), any());
-
+    @DisplayName("7. SendTestEmail via SMTP executes delivery and returns formatted result")
+    void testSendTestEmailViaSmtp() {
         Map<String, Object> result = emailService.sendTestEmail("admin_user", "target@nrtec.in");
 
+        verify(mockMailSender, times(1)).send(any(MimeMessage.class));
+
         assertEquals("SENT", result.get("status"));
-        assertEquals("resend", result.get("provider"));
+        assertEquals("SMTP", result.get("provider"));
         assertEquals("target@nrtec.in", result.get("primaryRecipient"));
-        assertTrue(result.get("message").toString().contains("Resend"));
-    }
-
-    @Test
-    @DisplayName("7. Gmail sender address falls back to onboarding@resend.dev for Resend authorization")
-    void testGmailSenderFallsBackToResendAuthorizedSender() {
-        ReflectionTestUtils.setField(emailService, "mailFrom", "collegeservice2026@gmail.com");
-        ReflectionTestUtils.setField(emailService, "mailFromName", "NEC Service Management");
-
-        String formatted = emailService.getFormattedFrom();
-        assertEquals("NEC Service Management <onboarding@resend.dev>", formatted);
-    }
-
-    @Test
-    @DisplayName("8. Quoted env values are safely normalized and do not trigger SMTP")
-    void testQuotedEnvironmentValuesNormalized() {
-        ReflectionTestUtils.setField(emailService, "emailProvider", "\"resend\"");
-        ReflectionTestUtils.setField(emailService, "resendApiKey", "\"re_sample_with_quotes_123\"");
-
-        assertEquals("resend", emailService.getActiveProvider());
-        assertTrue(emailService.isResendConfigured());
-        assertEquals("re_sample_with_quotes_123", emailService.getCleanResendApiKey());
-    }
-
-    @Test
-    @DisplayName("9. Active provider defaults to Resend when RESEND_API_KEY is present without EMAIL_PROVIDER")
-    void testProviderDefaultsToResendWhenApiKeyPresent() {
-        ReflectionTestUtils.setField(emailService, "emailProvider", "");
-        ReflectionTestUtils.setField(emailService, "resendApiKey", "re_active_key_test");
-
-        assertEquals("resend", emailService.getActiveProvider());
-        assertTrue(emailService.isProviderConfigured());
+        assertTrue(result.get("message").toString().contains("SMTP"));
     }
 }
