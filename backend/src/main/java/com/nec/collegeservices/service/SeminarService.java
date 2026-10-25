@@ -137,7 +137,8 @@ public class SeminarService {
 
     public boolean isSuperAdmin(User user) {
         if (user == null) return false;
-        return user.hasRole("CREATOR") || user.hasRole("AO_ADMIN");
+        return user.hasRole("CREATOR") || user.hasRole("AO_ADMIN") || user.hasRole("ADMIN") ||
+                "AO_ADMIN".equalsIgnoreCase(user.getRole()) || "ADMIN".equalsIgnoreCase(user.getRole());
     }
 
     public String normalizeHallKey(String hall) {
@@ -1161,8 +1162,11 @@ public class SeminarService {
         }
         validateHallAuthorization(user, booking.getHallId(), "approve booking");
 
-        // Self-approval guard: Requester cannot approve their own request
-        if (user != null && (UnifiedRequestService.isRequestedByUser(booking.getRequestedBy(), user) ||
+        // Self-approval guard: Non-admin requesters cannot approve their own requests
+        boolean isAuthorizedAdmin = isSuperAdmin(user) || (user != null && (user.hasRole("SEMINAR_ADMIN") ||
+                user.hasServicePermission("SEMINAR_ADMIN") ||
+                (user.hasRole("SEMINAR_COORDINATOR") && isHallAssigned(user.getAssignedHallIds(), booking.getHallId()))));
+        if (!isAuthorizedAdmin && user != null && (UnifiedRequestService.isRequestedByUser(booking.getRequestedBy(), user) ||
                 (booking.getRequesterUserId() != null && booking.getRequesterUserId().equalsIgnoreCase(user.getUserId())))) {
             throw new BadRequestException("Self-approval is not permitted. Requesters cannot approve their own requests.");
         }

@@ -395,7 +395,10 @@ public class MealService {
             current = authService.getCurrentUser();
         } catch (Exception ignored) {}
 
-        if (current != null && (UnifiedRequestService.isRequestedByUser(req.getRequestedBy(), current) ||
+        // Self-approval guard: Non-admin requesters cannot approve their own requests
+        boolean isAuthorizedAdmin = current != null && (current.hasRole("CREATOR") || current.hasRole("AO_ADMIN") ||
+                current.hasRole("MEALS_ADMIN") || current.hasServicePermission("MEALS_ADMIN"));
+        if (!isAuthorizedAdmin && current != null && (UnifiedRequestService.isRequestedByUser(req.getRequestedBy(), current) ||
                 (req.getRequesterUserId() != null && req.getRequesterUserId().equalsIgnoreCase(current.getUserId())))) {
             throw new BadRequestException("Self-approval is not permitted. Requesters cannot approve their own requests.");
         }

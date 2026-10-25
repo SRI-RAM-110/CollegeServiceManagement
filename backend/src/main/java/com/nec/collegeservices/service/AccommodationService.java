@@ -127,7 +127,8 @@ public class AccommodationService {
 
     public boolean isSuperAdmin(User user) {
         if (user == null) return false;
-        return user.hasRole("CREATOR") || user.hasRole("AO_ADMIN");
+        return user.hasRole("CREATOR") || user.hasRole("AO_ADMIN") || user.hasRole("ADMIN") ||
+                "AO_ADMIN".equalsIgnoreCase(user.getRole()) || "ADMIN".equalsIgnoreCase(user.getRole());
     }
 
     public boolean isAccommodationAdmin(User user) {
@@ -748,8 +749,8 @@ public class AccommodationService {
             throw new AccessDeniedException("Only AO Admin / Super Admin can perform Level 1 AO Direct Approval.");
         }
 
-        // Self-approval guard: Requester cannot approve their own request
-        if (user != null && (UnifiedRequestService.isRequestedByUser(req.getRequestedBy(), user) ||
+        // Self-approval guard: Non-admin requesters cannot approve their own requests
+        if (!isSuperAdmin(user) && user != null && (UnifiedRequestService.isRequestedByUser(req.getRequestedBy(), user) ||
                 (req.getRequesterUserId() != null && req.getRequesterUserId().equalsIgnoreCase(user.getUserId())))) {
             throw new BadRequestException("Self-approval is not permitted. Requesters cannot approve their own requests.");
         }
@@ -973,8 +974,9 @@ public class AccommodationService {
             try { user = authService.getCurrentUser(); } catch (Exception ignored) {}
         }
 
-        // Self-approval guard: Requester cannot approve their own request
-        if (user != null && (UnifiedRequestService.isRequestedByUser(req.getRequestedBy(), user) ||
+        // Self-approval guard: Non-admin requesters cannot approve their own requests
+        boolean isAuthorizedAdmin = isSuperAdmin(user) || (user != null && user.isAssignedToHostel(req.getHostel()));
+        if (!isAuthorizedAdmin && user != null && (UnifiedRequestService.isRequestedByUser(req.getRequestedBy(), user) ||
                 (req.getRequesterUserId() != null && req.getRequesterUserId().equalsIgnoreCase(user.getUserId())))) {
             throw new BadRequestException("Self-approval is not permitted. Requesters cannot approve their own requests.");
         }

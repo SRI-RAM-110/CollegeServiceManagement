@@ -1093,36 +1093,24 @@ const sortEventsChronological = (a, b) => {
 
                           {req.status === 'PENDING' && (
                             <>
-                              {isSelfRequest(req) ? (
-                                <span
-                                  className="px-2 py-1 rounded bg-slate-800 text-slate-400 text-xs border border-slate-700/80 cursor-not-allowed inline-flex items-center gap-1"
-                                  title="Self-approval is not permitted. Respective service administrator must approve personal requests."
-                                >
-                                  <AlertCircle className="w-3 h-3 text-amber-400" />
-                                  <span>Personal Request</span>
-                                </span>
-                              ) : (
-                                <>
-                                  <button
-                                    onClick={() => handleApprove(req)}
-                                    disabled={actionLoading}
-                                    className="btn btn-success btn-sm flex items-center gap-1"
-                                    title="Approve Request"
-                                  >
-                                    <Check className="w-3 h-3" />
-                                    <span>Approve</span>
-                                  </button>
-                                  <button
-                                    onClick={() => handleOpenReject(req)}
-                                    disabled={actionLoading}
-                                    className="btn btn-danger btn-sm flex items-center gap-1"
-                                    title="Reject Request"
-                                  >
-                                    <X className="w-3 h-3" />
-                                    <span>Reject</span>
-                                  </button>
-                                </>
-                              )}
+                              <button
+                                onClick={() => handleApprove(req)}
+                                disabled={actionLoading}
+                                className="btn btn-success btn-sm flex items-center gap-1"
+                                title="Approve Request"
+                              >
+                                <Check className="w-3 h-3" />
+                                <span>Approve</span>
+                              </button>
+                              <button
+                                onClick={() => handleOpenReject(req)}
+                                disabled={actionLoading}
+                                className="btn btn-danger btn-sm flex items-center gap-1"
+                                title="Reject Request"
+                              >
+                                <X className="w-3 h-3" />
+                                <span>Reject</span>
+                              </button>
                             </>
                           )}
 
@@ -1188,31 +1176,22 @@ const sortEventsChronological = (a, b) => {
             </div>
 
             {selectedRequest.status === 'PENDING' && (
-              isSelfRequest(selectedRequest) ? (
-                <div className="pt-3 border-t border-slate-800">
-                  <div className="flex items-center gap-2.5 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs">
-                    <AlertCircle className="w-4 h-4 flex-shrink-0 text-amber-400" />
-                    <span>This is your personal service request. In accordance with institutional policy, self-approval is not permitted. The respective service administrator will review and process this requisition.</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
-                  <button
-                    onClick={() => handleOpenReject(selectedRequest)}
-                    disabled={actionLoading}
-                    className="px-3.5 py-1.5 rounded-lg bg-rose-600/90 hover:bg-rose-500 text-white text-xs font-medium transition"
-                  >
-                    Reject Request
-                  </button>
-                  <button
-                    onClick={() => handleApprove(selectedRequest)}
-                    disabled={actionLoading}
-                    className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition shadow-md"
-                  >
-                    Approve as AO Super Admin
-                  </button>
-                </div>
-              )
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+                <button
+                  onClick={() => handleOpenReject(selectedRequest)}
+                  disabled={actionLoading}
+                  className="px-3.5 py-1.5 rounded-lg bg-rose-600/90 hover:bg-rose-500 text-white text-xs font-medium transition"
+                >
+                  Reject Request
+                </button>
+                <button
+                  onClick={() => handleApprove(selectedRequest)}
+                  disabled={actionLoading}
+                  className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition shadow-md"
+                >
+                  Approve as AO Super Admin
+                </button>
+              </div>
             )}
 
             {isCancellable(selectedRequest.status) && (
