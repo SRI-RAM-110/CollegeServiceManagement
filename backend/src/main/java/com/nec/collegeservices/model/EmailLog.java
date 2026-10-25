@@ -30,6 +30,7 @@ public class EmailLog {
     private String subject;
     private String status;
     private String errorMessage;
+    private String provider;
 
     @CreatedDate
     private LocalDateTime createdAt;
