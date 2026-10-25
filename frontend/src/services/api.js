@@ -32,7 +32,8 @@ export const getApiBaseUrl = () => {
       !envUrl.includes('YOUR_FORWARDED_BACKEND_URL') &&
       !envUrl.includes('<')
     ) {
-      return envUrl.trim().replace(/\/+$/, '');
+      const clean = envUrl.trim().replace(/\/+$/, '');
+      return clean.endsWith('/api') ? clean : `${clean}/api`;
     }
 
     // Automatically resolve VS Code Dev Tunnels backend (port 5173 -> port 8080)

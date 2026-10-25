@@ -179,8 +179,8 @@ public class AuthService {
                 .build();
         passwordResetTokenRepository.save(resetToken);
 
-        // Send email via existing EmailService (without CC)
-        emailService.sendPasswordResetEmail(cleanEmail, user.getName(), rawToken);
+        // Send email asynchronously via existing EmailService (without CC)
+        emailService.sendPasswordResetEmailAsync(cleanEmail, user.getName(), rawToken);
     }
 
     public void resetPassword(com.nec.collegeservices.dto.PasswordResetConfirmDTO request) {

@@ -84,10 +84,12 @@ public class EmailService {
 
     private JavaMailSender createMailSender() {
         JavaMailSenderImpl sender = new JavaMailSenderImpl();
-        sender.setHost(mailHost != null && !mailHost.isBlank() ? mailHost : "smtp.gmail.com");
-        sender.setPort(mailPort > 0 ? mailPort : 587);
-        sender.setUsername(mailUsername != null ? mailUsername.trim() : "");
-        sender.setPassword(mailPassword != null ? mailPassword.trim().replaceAll("\\s+", "") : "");
+        String host = (mailHost != null && !mailHost.isBlank()) ? mailHost.trim().replaceAll("^[\"']|[\"']$", "") : "smtp.gmail.com";
+        int port = mailPort > 0 ? mailPort : 587;
+        sender.setHost(host);
+        sender.setPort(port);
+        sender.setUsername(mailUsername != null ? mailUsername.trim().replaceAll("^[\"']|[\"']$", "") : "");
+        sender.setPassword(mailPassword != null ? mailPassword.trim().replaceAll("^[\"']|[\"']$", "").replaceAll("\\s+", "") : "");
 
         Properties props = sender.getJavaMailProperties();
         props.put("mail.transport.protocol", "smtp");
@@ -95,10 +97,10 @@ public class EmailService {
         props.put("mail.smtp.starttls.enable", "true");
         props.put("mail.smtp.starttls.required", "true");
         props.put("mail.smtp.ssl.protocols", "TLSv1.2 TLSv1.3");
-        props.put("mail.smtp.ssl.trust", mailHost != null && !mailHost.isBlank() ? mailHost : "smtp.gmail.com");
-        props.put("mail.smtp.connectiontimeout", "5000");
-        props.put("mail.smtp.timeout", "5000");
-        props.put("mail.smtp.writetimeout", "5000");
+        props.put("mail.smtp.ssl.trust", "*");
+        props.put("mail.smtp.connectiontimeout", "15000");
+        props.put("mail.smtp.timeout", "15000");
+        props.put("mail.smtp.writetimeout", "15000");
         return sender;
     }
 
@@ -501,6 +503,16 @@ public class EmailService {
                 "View Request in Portal: " + appUrl + "/requests\n\n" +
                 "-------------------------------------------------------\n" +
                 "This is an automated notification. Please do not reply directly.";
+    }
+
+    @Async
+    public CompletableFuture<Void> sendPasswordResetEmailAsync(String recipientEmail, String userName, String rawToken) {
+        try {
+            sendPasswordResetEmail(recipientEmail, userName, rawToken);
+        } catch (Exception e) {
+            log.warn("Asynchronous password reset email dispatch failed for {}: {}", recipientEmail, e.getMessage());
+        }
+        return CompletableFuture.completedFuture(null);
     }
 
     public void sendPasswordResetEmail(String recipientEmail, String userName, String rawToken) {
