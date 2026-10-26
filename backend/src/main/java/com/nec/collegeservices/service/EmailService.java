@@ -323,6 +323,10 @@ public class EmailService {
     }
 
     public List<String> resolveCcRecipients(Notification notification, String eventCategory) {
+        if (notification != null && ("SEMINAR_TECHNICIAN".equalsIgnoreCase(notification.getRecipientRole()) ||
+                "Seminar Equipment".equalsIgnoreCase(notification.getService()))) {
+            return Collections.emptyList();
+        }
         if (isSeminarNotification(notification)) {
             return resolveSeminarHallCcRecipients(notification);
         }

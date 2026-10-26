@@ -62,9 +62,11 @@ export const getUserRoles = (user) => {
     });
   }
 
-  // 6. Assigned halls
+  // 6. Assigned halls (derive SEMINAR_COORDINATOR only if user is not specifically a technician without coordinator role)
   if (Array.isArray(user.assignedHallIds) && user.assignedHallIds.length > 0) {
-    rolesSet.add('SEMINAR_COORDINATOR');
+    if (!rolesSet.has('SEMINAR_TECHNICIAN') || rolesSet.has('SEMINAR_COORDINATOR')) {
+      rolesSet.add('SEMINAR_COORDINATOR');
+    }
   }
 
   // 7. Department HODs are also Department Users

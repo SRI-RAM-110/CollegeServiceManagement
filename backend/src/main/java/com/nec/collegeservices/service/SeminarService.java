@@ -8,10 +8,13 @@ import com.nec.collegeservices.exception.BadRequestException;
 import com.nec.collegeservices.exception.ConflictException;
 import com.nec.collegeservices.exception.ResourceNotFoundException;
 import com.nec.collegeservices.model.SeminarBooking;
+import com.nec.collegeservices.model.SeminarEquipmentChecklist;
 import com.nec.collegeservices.model.SeminarHall;
 import com.nec.collegeservices.model.User;
 import com.nec.collegeservices.repository.SeminarBookingRepository;
+import com.nec.collegeservices.repository.SeminarEquipmentChecklistRepository;
 import com.nec.collegeservices.repository.SeminarHallRepository;
+import com.nec.collegeservices.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -82,6 +85,12 @@ public class SeminarService {
 
     @Autowired
     private RequestIdService requestIdService;
+
+    @Autowired
+    private SeminarEquipmentChecklistRepository checklistRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     public List<SeminarHall> getAllHalls() {
         return getAllHalls(null, false);
@@ -1240,6 +1249,9 @@ public class SeminarService {
                 saved.getBookingId()
         );
 
+        // Notify assigned Seminar Equipment Technicians
+        notifyAssignedTechniciansOnApproval(saved);
+
         return saved;
     }
 
@@ -1935,5 +1947,172 @@ public class SeminarService {
                 .build();
 
         return bookingRepository.save(booking);
+    }
+
+    // ==========================================
+    // SEMINAR EQUIPMENT TECHNICIAN MODULE
+    // ==========================================
+
+    private void notifyAssignedTechniciansOnApproval(SeminarBooking booking) {
+        if (booking == null || booking.getHallId() == null) return;
+        try {
+            List<User> technicians = userRepository.findAll().stream()
+                    .filter(u -> Boolean.TRUE.equals(u.getActive()))
+                    .filter(u -> u.hasRole("SEMINAR_TECHNICIAN"))
+                    .filter(u -> isHallAssigned(u.getAssignedHallIds(), booking.getHallId()))
+                    .toList();
+
+            for (User tech : technicians) {
+                String eventDesc = (booking.getDates() != null && booking.getDates().size() > 1)
+                        ? booking.getHallName() + " (" + booking.getDates().size() + " occurrences, starting " + booking.getDate() + ")"
+                        : booking.getHallName() + " on " + booking.getDate() + " (" + booking.getSlot() + ")";
+
+                notificationService.sendNotification(
+                        "SEMINAR_TECHNICIAN",
+                        tech.getDepartment() != null ? tech.getDepartment() : "ADMIN",
+                        tech.getUserId(),
+                        "Seminar Equipment Setup Required",
+                        "Booking " + booking.getBookingId() + " (" + eventDesc + ") is confirmed. Please complete the equipment inspection checklist.",
+                        "Seminar Equipment",
+                        "INFO",
+                        booking.getBookingId()
+                );
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to notify technicians for booking {}: {}", booking.getBookingId(), e.getMessage());
+        }
+    }
+
+    public void validateTechnicianHallAuthorization(User user, String hallId) {
+        if (user == null) {
+            throw new AccessDeniedException("Authentication required.");
+        }
+        if (isSuperAdmin(user) || user.hasRole("SEMINAR_ADMIN")) {
+            return; // Admins have global access
+        }
+        if (user.hasRole("SEMINAR_TECHNICIAN")) {
+            if (!isHallAssigned(user.getAssignedHallIds(), hallId)) {
+                throw new AccessDeniedException("Technician " + user.getUserId() + " is not authorized for hall: " + hallId);
+            }
+            return;
+        }
+        throw new AccessDeniedException("User does not have Seminar Equipment Technician permissions.");
+    }
+
+    public List<SeminarBooking> getTechnicianBookings(User user) {
+        if (user == null) {
+            throw new AccessDeniedException("Authentication required.");
+        }
+        boolean isAdmin = isSuperAdmin(user) || user.hasRole("SEMINAR_ADMIN");
+        boolean isTech = user.hasRole("SEMINAR_TECHNICIAN");
+        if (!isAdmin && !isTech) {
+            throw new AccessDeniedException("Only Equipment Technicians and Admins can access this view.");
+        }
+
+        return bookingRepository.findAll().stream()
+                .filter(b -> "APPROVED".equalsIgnoreCase(b.getStatus()) || "BOOKED".equalsIgnoreCase(b.getStatus()))
+                .filter(b -> b.getRescheduledToBookingId() == null || b.getRescheduledToBookingId().isBlank())
+                .filter(b -> !"CANCELLED".equalsIgnoreCase(b.getStatus()))
+                .filter(b -> {
+                    if (isAdmin) return true;
+                    return isHallAssigned(user.getAssignedHallIds(), b.getHallId());
+                })
+                .sorted((a, b) -> {
+                    String dateA = a.getDate() != null ? a.getDate() : (a.getStartDate() != null ? a.getStartDate() : "");
+                    String dateB = b.getDate() != null ? b.getDate() : (b.getStartDate() != null ? b.getStartDate() : "");
+                    return dateB.compareTo(dateA);
+                })
+                .toList();
+    }
+
+    public SeminarEquipmentChecklist getEquipmentChecklist(String bookingId, String occurrenceDate, User user) {
+        SeminarBooking booking = bookingRepository.findByBookingId(bookingId)
+                .or(() -> bookingRepository.findById(bookingId))
+                .orElseThrow(() -> new ResourceNotFoundException("Seminar booking not found: " + bookingId));
+
+        validateTechnicianHallAuthorization(user, booking.getHallId());
+
+        String targetDate = (occurrenceDate != null && !occurrenceDate.isBlank())
+                ? occurrenceDate.trim()
+                : (booking.getDate() != null ? booking.getDate() : booking.getStartDate());
+
+        return checklistRepository.findByBookingIdAndOccurrenceDate(booking.getBookingId(), targetDate)
+                .orElseGet(() -> initializeDefaultChecklist(booking, targetDate));
+    }
+
+    private SeminarEquipmentChecklist initializeDefaultChecklist(SeminarBooking booking, String targetDate) {
+        SeminarHall hall = getHallById(booking.getHallId()).orElse(null);
+        List<SeminarEquipmentChecklist.ChecklistItem> items = new ArrayList<>();
+
+        items.add(new SeminarEquipmentChecklist.ChecklistItem("AUDIO_MICS", "Microphones (Handheld & Collar)", "Audio", "PENDING", null));
+        items.add(new SeminarEquipmentChecklist.ChecklistItem("AUDIO_SPEAKERS", "Audio System & Amplifiers", "Audio", "PENDING", null));
+        items.add(new SeminarEquipmentChecklist.ChecklistItem("PROJECTOR_DISPLAY", "Projector Display & Screen", "Display", "PENDING", null));
+        items.add(new SeminarEquipmentChecklist.ChecklistItem("HDMI_CONNECT", "HDMI / Video Input Cabling", "Display", "PENDING", null));
+        items.add(new SeminarEquipmentChecklist.ChecklistItem("PODIUM_SETUP", "Podium & Stage Setup", "Facility", "PENDING", null));
+        items.add(new SeminarEquipmentChecklist.ChecklistItem("AC_VENTILATION", "Air Conditioning & Fans", "Facility", "PENDING", null));
+        items.add(new SeminarEquipmentChecklist.ChecklistItem("POWER_BACKUP", "Power Backup / UPS", "Power", "PENDING", null));
+        items.add(new SeminarEquipmentChecklist.ChecklistItem("WIFI_NETWORK", "Wi-Fi / Internet Connectivity", "Network", "PENDING", null));
+
+        Integer occIndex = null;
+        if (booking.getOccurrences() != null && targetDate != null) {
+            for (SeminarBooking.Occurrence occ : booking.getOccurrences()) {
+                if (targetDate.equals(occ.getDate())) {
+                    occIndex = occ.getIndex();
+                    break;
+                }
+            }
+        }
+
+        return SeminarEquipmentChecklist.builder()
+                .bookingId(booking.getBookingId())
+                .occurrenceDate(targetDate)
+                .occurrenceIndex(occIndex)
+                .hallId(booking.getHallId())
+                .hallName(booking.getHallName() != null ? booking.getHallName() : (hall != null ? hall.getName() : booking.getHallId()))
+                .eventTitle(booking.getEventTitle())
+                .slot(booking.getSlot())
+                .department(booking.getDepartment())
+                .checklistStatus("PENDING")
+                .items(items)
+                .requestedArrangements(booking.getAdditionalRequirements())
+                .build();
+    }
+
+    public SeminarEquipmentChecklist saveEquipmentChecklist(String bookingId, String occurrenceDate, SeminarEquipmentChecklist input, User user) {
+        SeminarBooking booking = bookingRepository.findByBookingId(bookingId)
+                .or(() -> bookingRepository.findById(bookingId))
+                .orElseThrow(() -> new ResourceNotFoundException("Seminar booking not found: " + bookingId));
+
+        validateTechnicianHallAuthorization(user, booking.getHallId());
+
+        String targetDate = (occurrenceDate != null && !occurrenceDate.isBlank())
+                ? occurrenceDate.trim()
+                : (input.getOccurrenceDate() != null ? input.getOccurrenceDate() : booking.getDate());
+
+        SeminarEquipmentChecklist checklist = checklistRepository.findByBookingIdAndOccurrenceDate(booking.getBookingId(), targetDate)
+                .orElseGet(() -> initializeDefaultChecklist(booking, targetDate));
+
+        checklist.setTechnicianUserId(user.getUserId());
+        checklist.setTechnicianName(user.getName() != null ? user.getName() : user.getUserId());
+        checklist.setInspectedAt(LocalDateTime.now());
+        checklist.setUpdatedAt(LocalDateTime.now());
+
+        if (input.getChecklistStatus() != null && !input.getChecklistStatus().isBlank()) {
+            checklist.setChecklistStatus(input.getChecklistStatus().trim().toUpperCase());
+        }
+        if (input.getItems() != null) {
+            checklist.setItems(input.getItems());
+        }
+        if (input.getRequestedArrangementsNotes() != null) {
+            checklist.setRequestedArrangementsNotes(input.getRequestedArrangementsNotes().trim());
+        }
+        if (input.getGeneralRemarks() != null) {
+            checklist.setGeneralRemarks(input.getGeneralRemarks().trim());
+        }
+        if (checklist.getCreatedAt() == null) {
+            checklist.setCreatedAt(LocalDateTime.now());
+        }
+
+        return checklistRepository.save(checklist);
     }
 }

@@ -29,6 +29,7 @@ import AccommodationAdmin from './pages/admin/AccommodationAdmin';
 import TransportAdmin from './pages/admin/TransportAdmin';
 import StationeryAdmin from './pages/admin/StationeryAdmin';
 import MealsAdmin from './pages/admin/MealsAdmin';
+import SeminarTechnicianDashboard from './pages/technician/SeminarTechnicianDashboard';
 import ForcedPasswordChangeModal from './components/common/ForcedPasswordChangeModal';
 import Reports from './pages/Reports';
 
@@ -188,6 +189,24 @@ export default function App() {
                 element={
                   <ProtectedRoute allowedRoles={['CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN', 'SEMINAR_COORDINATOR']}>
                     <SeminarAdmin />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Seminar Equipment Technician */}
+              <Route
+                path="/technician/seminar"
+                element={
+                  <ProtectedRoute allowedRoles={['CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN', 'SEMINAR_TECHNICIAN']}>
+                    <SeminarTechnicianDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/technician/seminar/*"
+                element={
+                  <ProtectedRoute allowedRoles={['CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN', 'SEMINAR_TECHNICIAN']}>
+                    <SeminarTechnicianDashboard />
                   </ProtectedRoute>
                 }
               />

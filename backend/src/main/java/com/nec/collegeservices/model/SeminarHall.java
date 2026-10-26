@@ -35,6 +35,9 @@ public class SeminarHall {
     private List<String> coordinatorUserIds = new java.util.ArrayList<>();
 
     @Builder.Default
+    private List<String> technicianUserIds = new java.util.ArrayList<>();
+
+    @Builder.Default
     private List<String> ccEmails = new java.util.ArrayList<>();
 
     public String getLocation() {

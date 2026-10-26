@@ -22,6 +22,7 @@ import {
   Layers,
   X,
   PlusCircle,
+  Wrench,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getUserRoles } from '../../utils/authUtils';
@@ -39,6 +40,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
         { name: 'My Requests', path: '/admin/my-requests', icon: ListOrdered },
         { name: 'User Management', path: '/admin/users', icon: Users },
         { name: 'Seminar Hall', path: '/admin/seminar', icon: CalendarDays },
+        { name: 'Equipment Dashboard', path: '/technician/seminar', icon: Wrench },
         { name: 'Accommodation', path: '/admin/accommodation', icon: BedDouble },
         { name: 'Transport', path: '/admin/transport', icon: Bus },
         { name: 'Snacks & Meals', path: '/admin/meals', icon: Coffee },
@@ -79,6 +81,10 @@ export const Sidebar = ({ isOpen, onClose }) => {
       adminDashboards.push({ name: 'Meals Dashboard', path: '/admin/meals', icon: LayoutDashboard });
     }
 
+    if (userRoles.includes('SEMINAR_TECHNICIAN')) {
+      adminDashboards.push({ name: 'Equipment Dashboard', path: '/technician/seminar', icon: Wrench });
+    }
+
     // Avoid duplicate links when multiple roles map to the same dashboard
     const seenPaths = new Set();
     const uniqueAdminDashboards = adminDashboards.filter((item) => {
@@ -114,9 +120,13 @@ export const Sidebar = ({ isOpen, onClose }) => {
       const single = uniqueAdminDashboards[0];
       return [
         {
-          name: single.name === 'Coordinator Dashboard' ? 'Coordinator Dashboard' : 'Dashboard',
+          name: single.name === 'Coordinator Dashboard'
+            ? 'Coordinator Dashboard'
+            : single.name === 'Equipment Dashboard'
+              ? 'Equipment Dashboard'
+              : 'Dashboard',
           path: single.path,
-          icon: LayoutDashboard,
+          icon: single.icon || LayoutDashboard,
         },
         { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
       ];

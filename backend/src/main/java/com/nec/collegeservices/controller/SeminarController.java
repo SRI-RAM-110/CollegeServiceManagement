@@ -2,6 +2,7 @@ package com.nec.collegeservices.controller;
 
 import com.nec.collegeservices.dto.*;
 import com.nec.collegeservices.model.SeminarBooking;
+import com.nec.collegeservices.model.SeminarEquipmentChecklist;
 import com.nec.collegeservices.model.SeminarHall;
 import com.nec.collegeservices.model.User;
 import com.nec.collegeservices.service.AuthService;
@@ -263,5 +264,38 @@ public class SeminarController {
         User user = authService.getCurrentUser();
         SeminarBooking booking = seminarService.createPendingBookingTestFixture(dto, user);
         return ResponseEntity.ok(ApiResponse.ok("Test fixture pending booking created", booking));
+    }
+
+    // ==========================================
+    // SEMINAR EQUIPMENT TECHNICIAN ENDPOINTS
+    // ==========================================
+
+    @GetMapping("/technician/bookings")
+    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN', 'SEMINAR_TECHNICIAN')")
+    public ResponseEntity<ApiResponse<List<SeminarBooking>>> getTechnicianBookings() {
+        User user = authService.getCurrentUser();
+        List<SeminarBooking> list = seminarService.getTechnicianBookings(user);
+        return ResponseEntity.ok(ApiResponse.ok("Technician assigned bookings", list));
+    }
+
+    @GetMapping("/technician/checklist/{bookingId}")
+    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN', 'SEMINAR_TECHNICIAN')")
+    public ResponseEntity<ApiResponse<SeminarEquipmentChecklist>> getEquipmentChecklist(
+            @PathVariable String bookingId,
+            @RequestParam(required = false) String date) {
+        User user = authService.getCurrentUser();
+        SeminarEquipmentChecklist checklist = seminarService.getEquipmentChecklist(bookingId, date, user);
+        return ResponseEntity.ok(ApiResponse.ok("Equipment inspection checklist", checklist));
+    }
+
+    @PutMapping("/technician/checklist/{bookingId}")
+    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN', 'SEMINAR_TECHNICIAN')")
+    public ResponseEntity<ApiResponse<SeminarEquipmentChecklist>> saveEquipmentChecklist(
+            @PathVariable String bookingId,
+            @RequestParam(required = false) String date,
+            @RequestBody SeminarEquipmentChecklist checklist) {
+        User user = authService.getCurrentUser();
+        SeminarEquipmentChecklist saved = seminarService.saveEquipmentChecklist(bookingId, date, checklist, user);
+        return ResponseEntity.ok(ApiResponse.ok("Equipment checklist saved successfully", saved));
     }
 }

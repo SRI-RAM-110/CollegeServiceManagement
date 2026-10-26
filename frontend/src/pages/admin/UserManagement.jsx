@@ -49,6 +49,7 @@ const DEPARTMENTS = [
 const ROLES_LIST = [
   { id: 'DEPARTMENT_HOD', label: 'Department HOD', desc: 'Full authority for department approvals & service requests' },
   { id: 'SEMINAR_COORDINATOR', label: 'Seminar Coordinator', desc: 'Direct coordinator authority over specifically assigned seminar halls' },
+  { id: 'SEMINAR_TECHNICIAN', label: 'Seminar Equipment Technician', desc: 'Equipment inspection & setup for assigned seminar halls' },
   { id: 'SERVICE_ADMIN', label: 'Service Admin', desc: 'Administration over specific facility modules' },
   { id: 'AO_ADMIN', label: 'AO Admin / Super Admin', desc: 'Universal super admin rights across all services & users' },
   { id: 'DEPARTMENT_USER', label: 'Department Faculty / Staff', desc: 'Standard department service requester' },
@@ -311,7 +312,7 @@ export default function UserManagement() {
       if ((selectedUser.roles || []).includes('CREATOR') && !submissionData.roles.includes('CREATOR')) {
         submissionData.roles = [...submissionData.roles, 'CREATOR'];
       }
-      if (!submissionData.roles.includes('SEMINAR_COORDINATOR')) {
+      if (!submissionData.roles.includes('SEMINAR_COORDINATOR') && !submissionData.roles.includes('SEMINAR_TECHNICIAN')) {
         submissionData.assignedHallIds = [];
       }
       if (!(submissionData.servicePermissions || []).includes('ACCOMMODATION_ADMIN')) {
@@ -363,7 +364,9 @@ export default function UserManagement() {
       if ((selectedUser.roles || []).includes('CREATOR') && !updatedRoles.includes('CREATOR')) {
         updatedRoles = [...updatedRoles, 'CREATOR'];
       }
-      const assignedHalls = updatedRoles.includes('SEMINAR_COORDINATOR') ? editForm.assignedHallIds : [];
+      const assignedHalls = (updatedRoles.includes('SEMINAR_COORDINATOR') || updatedRoles.includes('SEMINAR_TECHNICIAN'))
+        ? editForm.assignedHallIds
+        : [];
       const assignedHostels = (editForm.servicePermissions || []).includes('ACCOMMODATION_ADMIN')
         ? (editForm.assignedHostels || [])
         : [];
@@ -587,6 +590,7 @@ export default function UserManagement() {
                 <option value="CREATOR">Creator</option>
                 <option value="DEPARTMENT_HOD">Department HOD</option>
                 <option value="SEMINAR_COORDINATOR">Seminar Coordinator</option>
+                <option value="SEMINAR_TECHNICIAN">Seminar Equipment Technician</option>
                 <option value="SERVICE_ADMIN">Service Admin</option>
                 <option value="AO_ADMIN">AO Admin</option>
                 <option value="DEPARTMENT_USER">Department User</option>
@@ -673,6 +677,7 @@ export default function UserManagement() {
                 ) : (
                   users.map((u, idx) => {
                     const isCoord = (u.roles || []).includes('SEMINAR_COORDINATOR');
+                    const isTech = (u.roles || []).includes('SEMINAR_TECHNICIAN');
                     const isHOD = (u.roles || []).includes('DEPARTMENT_HOD');
                     const isAO = (u.roles || []).includes('AO_ADMIN');
                     const isTargetCreator = (u.roles || []).includes('CREATOR') || u.userId === 'CREATOR001';
@@ -723,6 +728,7 @@ export default function UserManagement() {
                               else if (r === 'AO_ADMIN') badgeStyle = 'bg-rose-500/10 text-rose-400 border-rose-500/30';
                               else if (r === 'DEPARTMENT_HOD') badgeStyle = 'bg-purple-500/10 text-purple-400 border-purple-500/30';
                               else if (r === 'SEMINAR_COORDINATOR') badgeStyle = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
+                              else if (r === 'SEMINAR_TECHNICIAN') badgeStyle = 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30';
                               else if (r.endsWith('_ADMIN')) badgeStyle = 'bg-amber-500/10 text-amber-400 border-amber-500/30';
 
                               return (
@@ -760,7 +766,7 @@ export default function UserManagement() {
                         {/* Seminar Hall Access */}
                         <td className="py-2 px-2">
                           <div className="flex flex-wrap gap-1 max-w-[220px]">
-                            {isCoord ? (
+                            {(isCoord || isTech) ? (
                               u.assignedHallIds && u.assignedHallIds.length > 0 ? (
                                 u.assignedHallIds.map((hallId) => {
                                   const hall = availableHalls.find(
@@ -1142,8 +1148,8 @@ export default function UserManagement() {
             </div>
           </div>
 
-          {/* Section: SEMINAR HALL ACCESS (Only when SEMINAR_COORDINATOR is selected) */}
-          {registerForm.roles.includes('SEMINAR_COORDINATOR') && (
+          {/* Section: SEMINAR HALL ACCESS (When SEMINAR_COORDINATOR or SEMINAR_TECHNICIAN is selected) */}
+          {(registerForm.roles.includes('SEMINAR_COORDINATOR') || registerForm.roles.includes('SEMINAR_TECHNICIAN')) && (
             <div className="p-3 bg-blue-950/20 border border-blue-500/30 rounded-xl space-y-2.5 animate-fade-in">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 font-bold text-blue-300 text-xs">
@@ -1425,7 +1431,7 @@ export default function UserManagement() {
           )}
 
           {/* Section: SEMINAR HALL ACCESS */}
-          {editForm.roles.includes('SEMINAR_COORDINATOR') && (
+          {(editForm.roles.includes('SEMINAR_COORDINATOR') || editForm.roles.includes('SEMINAR_TECHNICIAN')) && (
             <div className="p-3 bg-blue-950/20 border border-blue-500/30 rounded-xl space-y-2.5 animate-fade-in">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 font-bold text-blue-300 text-xs">
@@ -1631,8 +1637,8 @@ export default function UserManagement() {
             </div>
           )}
 
-          {/* Seminar Hall Access (Only displayed when SEMINAR_COORDINATOR is selected) */}
-          {editForm.roles.includes('SEMINAR_COORDINATOR') && (
+          {/* Seminar Hall Access (When SEMINAR_COORDINATOR or SEMINAR_TECHNICIAN is selected) */}
+          {(editForm.roles.includes('SEMINAR_COORDINATOR') || editForm.roles.includes('SEMINAR_TECHNICIAN')) && (
             <div className="p-3 bg-blue-950/20 border border-blue-500/30 rounded-xl space-y-2.5 animate-fade-in">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 font-bold text-blue-300 text-xs">

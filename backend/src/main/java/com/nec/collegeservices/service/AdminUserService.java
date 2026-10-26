@@ -222,9 +222,9 @@ public class AdminUserService {
             }
         }
 
-        // Seminar hall assignments
+        // Seminar hall assignments (Coordinators and Technicians)
         List<String> assignedHalls = new ArrayList<>();
-        if (rolesSet.contains("SEMINAR_COORDINATOR") && dto.getAssignedHallIds() != null) {
+        if ((rolesSet.contains("SEMINAR_COORDINATOR") || rolesSet.contains("SEMINAR_TECHNICIAN")) && dto.getAssignedHallIds() != null) {
             for (String h : dto.getAssignedHallIds()) {
                 if (h != null && !h.isBlank()) {
                     assignedHalls.add(h.trim().toUpperCase());
@@ -392,9 +392,10 @@ public class AdminUserService {
             }
         }
 
-        // Dependent permissions cleanup: Seminar Halls
-        boolean hasCoordinator = user.getRoles() != null && user.getRoles().contains("SEMINAR_COORDINATOR");
-        if (!hasCoordinator) {
+        // Dependent permissions cleanup: Seminar Halls (Coordinators & Technicians)
+        boolean hasHallPrivilege = user.getRoles() != null &&
+                (user.getRoles().contains("SEMINAR_COORDINATOR") || user.getRoles().contains("SEMINAR_TECHNICIAN"));
+        if (!hasHallPrivilege) {
             user.setAssignedHallIds(new ArrayList<>());
         } else if (dto.getAssignedHallIds() != null) {
             List<String> halls = new ArrayList<>();

@@ -130,6 +130,9 @@ export const seminarApi = {
   updateHall: (hallId, data) => api.put(`/seminar/halls/${hallId}`, data),
   updateHallCcEmails: (hallId, ccEmails) => api.put(`/seminar/halls/${hallId}/cc-emails`, { ccEmails }),
   assignCoordinators: (hallId, coordinators) => api.post(`/seminar/halls/${hallId}/coordinators`, { coordinators }),
+  getTechnicianBookings: () => api.get('/seminar/technician/bookings'),
+  getEquipmentChecklist: (bookingId, date) => api.get(`/seminar/technician/checklist/${bookingId}`, { params: date ? { date } : {} }),
+  saveEquipmentChecklist: (bookingId, date, data) => api.put(`/seminar/technician/checklist/${bookingId}`, data, { params: date ? { date } : {} }),
 };
 
 export const adminUserApi = {

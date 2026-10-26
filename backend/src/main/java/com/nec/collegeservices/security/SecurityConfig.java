@@ -98,8 +98,10 @@ public class SecurityConfig {
                     .hasAnyRole("CREATOR", "AO_ADMIN", "SEMINAR_ADMIN", "SEMINAR_COORDINATOR")
                 .requestMatchers("/api/seminar/halls/*/coordinators", "/api/seminar/test-fixture/**")
                     .hasAnyRole("CREATOR", "AO_ADMIN", "SEMINAR_ADMIN")
+                .requestMatchers("/api/seminar/technician/**")
+                    .hasAnyRole("CREATOR", "AO_ADMIN", "SEMINAR_ADMIN", "SEMINAR_TECHNICIAN")
                 .requestMatchers("/api/seminar/**")
-                    .hasAnyRole("CREATOR", "AO_ADMIN", "SEMINAR_ADMIN", "SEMINAR_COORDINATOR", "DEPARTMENT_USER", "DEPARTMENT_HOD")
+                    .hasAnyRole("CREATOR", "AO_ADMIN", "SEMINAR_ADMIN", "SEMINAR_COORDINATOR", "DEPARTMENT_USER", "DEPARTMENT_HOD", "SEMINAR_TECHNICIAN")
 
                 // Accommodation Module: Accessible by CREATOR, AO_ADMIN, ACCOMMODATION_ADMIN, and DEPARTMENT_USER / DEPARTMENT_HOD
                 .requestMatchers("/api/accommodation/requests/*/approve", "/api/accommodation/requests/*/reject",
