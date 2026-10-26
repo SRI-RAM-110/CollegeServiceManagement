@@ -1,5 +1,7 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect, useRef } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
+import { App as CapApp } from '@capacitor/app';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -33,6 +35,82 @@ import SeminarTechnicianDashboard from './pages/technician/SeminarTechnicianDash
 import ForcedPasswordChangeModal from './components/common/ForcedPasswordChangeModal';
 import Reports from './pages/Reports';
 
+const ROOT_PATHS = [
+  '/login',
+  '/dashboard',
+  '/admin/ao',
+  '/admin/seminar',
+  '/admin/accommodation',
+  '/admin/transport',
+  '/admin/stationery',
+  '/admin/meals',
+  '/technician/seminar',
+];
+
+function NativeBackButtonHandler() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const locationRef = useRef(location);
+
+  useEffect(() => {
+    locationRef.current = location;
+  }, [location]);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    let listenerHandle = null;
+
+    const setupListener = async () => {
+      listenerHandle = await CapApp.addListener('backButton', ({ canGoBack }) => {
+        // 1. Check for open dismissible modals / overlays
+        const activeBackdrop = document.querySelector('.modal-backdrop:not(.forced-password-modal)');
+        if (activeBackdrop) {
+          // Trigger Escape key event to invoke standard modal close handlers
+          window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }));
+          // If a close button exists, click it as well
+          const closeBtn = activeBackdrop.querySelector('.modal-close-btn, button[aria-label*="Close"], button[aria-label*="close"]');
+          if (closeBtn) {
+            closeBtn.click();
+            return;
+          }
+          return;
+        }
+
+        // 2. Check if currently on a root / landing screen
+        const currentPath = locationRef.current.pathname;
+        const isRoot = ROOT_PATHS.includes(currentPath) || currentPath === '/';
+
+        if (isRoot) {
+          // At root screen, safe predictable behavior: exit app
+          CapApp.exitApp();
+          return;
+        }
+
+        // 3. For nested pages, navigate backward within the app
+        if (window.history.state && typeof window.history.state.idx === 'number' && window.history.state.idx > 0) {
+          navigate(-1);
+        } else if (canGoBack) {
+          navigate(-1);
+        } else {
+          // Fallback to role-based root redirect if history is exhausted
+          navigate('/', { replace: true });
+        }
+      });
+    };
+
+    setupListener();
+
+    return () => {
+      if (listenerHandle) {
+        listenerHandle.remove();
+      }
+    };
+  }, [navigate]);
+
+  return null;
+}
+
 function RootRedirect() {
   const { user, isAuthenticated, getDefaultRouteForRole } = useAuth();
   if (!isAuthenticated) {
@@ -47,8 +125,9 @@ export default function App() {
       <ThemeProvider>
         <AuthProvider>
           <NotificationProvider>
-          <ForcedPasswordChangeModal />
-          <Routes>
+            <NativeBackButtonHandler />
+            <ForcedPasswordChangeModal />
+            <Routes>
             {/* Public Auth Routes */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />

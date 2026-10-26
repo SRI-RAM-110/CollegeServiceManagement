@@ -8,3 +8,13 @@ createRoot(document.getElementById('root')).render(
     <App />
   </StrictMode>,
 )
+
+// Register service worker on window load for PWA installability
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch((err) => {
+      console.warn('PWA service worker registration notice:', err);
+    });
+  });
+}
+

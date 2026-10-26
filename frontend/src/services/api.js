@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Capacitor } from '@capacitor/core';
 
 /**
  * Resolves the API Base URL from Vite's centralized environment variable:
@@ -7,6 +8,12 @@ import axios from 'axios';
  */
 export const getApiBaseUrl = () => {
   if (typeof window !== 'undefined') {
+    // 0. If running inside a native Capacitor app (Android / iOS):
+    // Always connect to the live backend on Render
+    if (Capacitor.isNativePlatform()) {
+      return 'https://collegeservices-backend.onrender.com/api';
+    }
+
     const host = window.location.hostname;
     const isLocal =
       host === 'localhost' ||

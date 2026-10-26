@@ -1,0 +1,36 @@
+{
+  "name": "College Department Services Management System — NEC",
+  "short_name": "NEC Services",
+  "description": "Narasaraopeta Engineering College — Faculty Service Management and Requisitions Portal",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#020617",
+  "theme_color": "#0f172a",
+  "categories": [
+    "education",
+    "productivity",
+    "management"
+  ],
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
