@@ -104,25 +104,21 @@ export const Topbar = ({ onToggleSidebar, searchPlaceholder = 'Search anything..
     markAsRead(item.id);
     const targetRef = item.referenceId || item.requestId;
     if (targetRef) {
-      const role = user?.role;
-      if (
-        role === 'DEPARTMENT_USER' ||
-        role === 'DEPARTMENT_HOD' ||
-        role === 'SEMINAR_COORDINATOR'
-      ) {
-        navigate(`/my-requests?q=${encodeURIComponent(targetRef)}`);
-      } else if (role === 'SEMINAR_ADMIN') {
-        navigate(`/admin/seminar?q=${encodeURIComponent(targetRef)}`);
-      } else if (role === 'ACCOMMODATION_ADMIN' || role === 'BOYS_HOSTEL_ADMIN' || role === 'GIRLS_HOSTEL_ADMIN') {
-        navigate(`/admin/accommodation?q=${encodeURIComponent(targetRef)}`);
-      } else if (role === 'TRANSPORT_ADMIN') {
-        navigate(`/admin/transport?q=${encodeURIComponent(targetRef)}`);
-      } else if (role === 'STATIONERY_ADMIN') {
-        navigate(`/admin/stationery?q=${encodeURIComponent(targetRef)}`);
-      } else if (role === 'MEALS_ADMIN') {
-        navigate(`/admin/meals?q=${encodeURIComponent(targetRef)}`);
-      } else if (role === 'AO_ADMIN' || role === 'CREATOR') {
+      const roles = getUserRoles(user);
+      if (roles.includes('CREATOR') || roles.includes('AO_ADMIN')) {
         navigate(`/admin/ao?q=${encodeURIComponent(targetRef)}`);
+      } else if (roles.includes('TRANSPORT_ADMIN')) {
+        navigate(`/admin/transport?q=${encodeURIComponent(targetRef)}`);
+      } else if (roles.includes('STATIONERY_ADMIN')) {
+        navigate(`/admin/stationery?q=${encodeURIComponent(targetRef)}`);
+      } else if (roles.includes('MEALS_ADMIN')) {
+        navigate(`/admin/meals?q=${encodeURIComponent(targetRef)}`);
+      } else if (roles.includes('SEMINAR_ADMIN')) {
+        navigate(`/admin/seminar?q=${encodeURIComponent(targetRef)}`);
+      } else if (roles.includes('ACCOMMODATION_ADMIN') || roles.includes('BOYS_HOSTEL_ADMIN') || roles.includes('GIRLS_HOSTEL_ADMIN')) {
+        navigate(`/admin/accommodation?q=${encodeURIComponent(targetRef)}`);
+      } else {
+        navigate(`/my-requests?q=${encodeURIComponent(targetRef)}`);
       }
     }
   };
@@ -131,25 +127,19 @@ export const Topbar = ({ onToggleSidebar, searchPlaceholder = 'Search anything..
     e.preventDefault();
     const q = searchTerm.trim();
     if (!q) return;
-    const role = user?.role;
-    if (
-      role === 'DEPARTMENT_USER' ||
-      role === 'DEPARTMENT_HOD' ||
-      role === 'SEMINAR_COORDINATOR'
-    ) {
-      navigate(`/my-requests?q=${encodeURIComponent(q)}`);
-    } else if (role === 'SEMINAR_ADMIN') {
-      navigate(`/admin/seminar?q=${encodeURIComponent(q)}`);
-    } else if (role === 'ACCOMMODATION_ADMIN' || role === 'BOYS_HOSTEL_ADMIN' || role === 'GIRLS_HOSTEL_ADMIN') {
-      navigate(`/admin/accommodation?q=${encodeURIComponent(q)}`);
-    } else if (role === 'TRANSPORT_ADMIN') {
-      navigate(`/admin/transport?q=${encodeURIComponent(q)}`);
-    } else if (role === 'STATIONERY_ADMIN') {
-      navigate(`/admin/stationery?q=${encodeURIComponent(q)}`);
-    } else if (role === 'MEALS_ADMIN') {
-      navigate(`/admin/meals?q=${encodeURIComponent(q)}`);
-    } else if (role === 'CREATOR' || role === 'AO_ADMIN') {
+    const roles = getUserRoles(user);
+    if (roles.includes('CREATOR') || roles.includes('AO_ADMIN')) {
       navigate(`/admin/ao?q=${encodeURIComponent(q)}`);
+    } else if (roles.includes('TRANSPORT_ADMIN')) {
+      navigate(`/admin/transport?q=${encodeURIComponent(q)}`);
+    } else if (roles.includes('STATIONERY_ADMIN')) {
+      navigate(`/admin/stationery?q=${encodeURIComponent(q)}`);
+    } else if (roles.includes('MEALS_ADMIN')) {
+      navigate(`/admin/meals?q=${encodeURIComponent(q)}`);
+    } else if (roles.includes('SEMINAR_ADMIN')) {
+      navigate(`/admin/seminar?q=${encodeURIComponent(q)}`);
+    } else if (roles.includes('ACCOMMODATION_ADMIN') || roles.includes('BOYS_HOSTEL_ADMIN') || roles.includes('GIRLS_HOSTEL_ADMIN')) {
+      navigate(`/admin/accommodation?q=${encodeURIComponent(q)}`);
     } else {
       navigate(`/my-requests?q=${encodeURIComponent(q)}`);
     }

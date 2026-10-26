@@ -290,7 +290,7 @@ export default function UserManagement() {
       phone: user.phone || '',
       department: user.department || 'CSE',
       designation: user.designation || '',
-      roles: user.roles || [],
+      roles: (user.roles || []).filter((r) => ROLES_LIST.some((rl) => rl.id === r)),
       servicePermissions: user.servicePermissions || [],
       assignedHallIds: user.assignedHallIds || [],
       assignedHostels: user.assignedHostels || [],
@@ -305,8 +305,17 @@ export default function UserManagement() {
     try {
       setSubmitting(true);
       const submissionData = { ...editForm };
+      submissionData.roles = (submissionData.roles || []).filter((r) =>
+        ROLES_LIST.some((rl) => rl.id === r)
+      );
       if ((selectedUser.roles || []).includes('CREATOR') && !submissionData.roles.includes('CREATOR')) {
         submissionData.roles = [...submissionData.roles, 'CREATOR'];
+      }
+      if (!submissionData.roles.includes('SEMINAR_COORDINATOR')) {
+        submissionData.assignedHallIds = [];
+      }
+      if (!(submissionData.servicePermissions || []).includes('ACCOMMODATION_ADMIN')) {
+        submissionData.assignedHostels = [];
       }
       await adminUserApi.updateUser(selectedUser.userId, submissionData);
       addToast(`User ${selectedUser.userId} updated successfully!`, 'success');
@@ -334,7 +343,7 @@ export default function UserManagement() {
       phone: user.phone || '',
       department: user.department || 'CSE',
       designation: user.designation || '',
-      roles: user.roles || [],
+      roles: (user.roles || []).filter((r) => ROLES_LIST.some((rl) => rl.id === r)),
       servicePermissions: user.servicePermissions || [],
       assignedHallIds: user.assignedHallIds || [],
       assignedHostels: user.assignedHostels || [],
@@ -348,15 +357,22 @@ export default function UserManagement() {
     if (!selectedUser) return;
     try {
       setSubmitting(true);
-      let updatedRoles = editForm.roles;
+      let updatedRoles = (editForm.roles || []).filter((r) =>
+        ROLES_LIST.some((rl) => rl.id === r)
+      );
       if ((selectedUser.roles || []).includes('CREATOR') && !updatedRoles.includes('CREATOR')) {
         updatedRoles = [...updatedRoles, 'CREATOR'];
       }
+      const assignedHalls = updatedRoles.includes('SEMINAR_COORDINATOR') ? editForm.assignedHallIds : [];
+      const assignedHostels = (editForm.servicePermissions || []).includes('ACCOMMODATION_ADMIN')
+        ? (editForm.assignedHostels || [])
+        : [];
+
       await adminUserApi.updateUser(selectedUser.userId, {
         roles: updatedRoles,
         servicePermissions: editForm.servicePermissions,
-        assignedHallIds: editForm.assignedHallIds,
-        assignedHostels: editForm.assignedHostels || [],
+        assignedHallIds: assignedHalls,
+        assignedHostels: assignedHostels,
         department: editForm.department,
       });
       addToast(`Access permissions updated for ${selectedUser.userId}!`, 'success');
@@ -1356,7 +1372,7 @@ export default function UserManagement() {
           </div>
 
           {/* Section: ACCOMMODATION HOSTEL ASSIGNMENTS */}
-          {(editForm.servicePermissions.includes('ACCOMMODATION_ADMIN') || (editForm.assignedHostels && editForm.assignedHostels.length > 0)) && (
+          {editForm.servicePermissions.includes('ACCOMMODATION_ADMIN') && (
             <div className="p-3 bg-purple-950/20 border border-purple-500/30 rounded-xl space-y-2.5 animate-fade-in">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 font-bold text-purple-300 text-xs">
@@ -1563,7 +1579,7 @@ export default function UserManagement() {
           </div>
 
           {/* Accommodation Hostel Assignments (Shown when Accommodation service access is selected) */}
-          {(editForm.servicePermissions.includes('ACCOMMODATION_ADMIN') || (editForm.assignedHostels && editForm.assignedHostels.length > 0)) && (
+          {editForm.servicePermissions.includes('ACCOMMODATION_ADMIN') && (
             <div className="p-3 bg-purple-950/20 border border-purple-500/30 rounded-xl space-y-2.5 animate-fade-in">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 font-bold text-purple-300 text-xs">

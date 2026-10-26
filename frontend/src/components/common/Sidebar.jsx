@@ -47,84 +47,47 @@ export const Sidebar = ({ isOpen, onClose }) => {
       ];
     }
 
-    if (userRoles.includes('SEMINAR_ADMIN')) {
-      return [
-        { name: 'Dashboard', path: '/admin/seminar', icon: LayoutDashboard },
-        { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
-      ];
-    }
-
-    const isHostelAdmin = userRoles.includes('ACCOMMODATION_ADMIN') || userRoles.includes('BOYS_HOSTEL_ADMIN') || userRoles.includes('GIRLS_HOSTEL_ADMIN') || (Array.isArray(user?.assignedHostels) && user.assignedHostels.length > 0);
+    const isHostelAdmin =
+      userRoles.includes('ACCOMMODATION_ADMIN') ||
+      userRoles.includes('BOYS_HOSTEL_ADMIN') ||
+      userRoles.includes('GIRLS_HOSTEL_ADMIN') ||
+      (Array.isArray(user?.assignedHostels) && user.assignedHostels.length > 0);
     const isDeptUser = userRoles.includes('DEPARTMENT_USER') || userRoles.includes('DEPARTMENT_HOD');
 
-    if (isHostelAdmin && !isDeptUser) {
-      return [
-        { name: 'Dashboard', path: '/admin/accommodation', icon: LayoutDashboard },
-        { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
-      ];
+    // Collect all service-specific admin dashboards the user is authorized to access
+    const adminDashboards = [];
+
+    if (userRoles.includes('SEMINAR_COORDINATOR')) {
+      adminDashboards.push({ name: 'Coordinator Dashboard', path: '/admin/seminar', icon: ShieldCheck });
+    } else if (userRoles.includes('SEMINAR_ADMIN')) {
+      adminDashboards.push({ name: 'Seminar Admin', path: '/admin/seminar', icon: CalendarDays });
     }
 
-    if (isHostelAdmin && isDeptUser) {
-      return [
-        { name: 'Hostel Dashboard', path: '/admin/accommodation', icon: LayoutDashboard },
-        { name: 'Department Dashboard', path: '/dashboard', icon: Building },
-        { name: 'Seminar Hall Booking', path: '/seminar-booking', icon: CalendarDays },
-        { name: 'Accommodation', path: '/accommodation', icon: BedDouble },
-        { name: 'Transport', path: '/transport', icon: Bus },
-        { name: 'Stationery', path: '/stationery', icon: FileText },
-        { name: 'Snacks & Meals', path: '/snacks-meals', icon: Coffee },
-        { name: 'My Requests', path: '/my-requests', icon: ListOrdered },
-        { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
-      ];
+    if (isHostelAdmin) {
+      adminDashboards.push({ name: 'Hostel Dashboard', path: '/admin/accommodation', icon: LayoutDashboard });
     }
 
     if (userRoles.includes('TRANSPORT_ADMIN')) {
-      return [
-        { name: 'Dashboard', path: '/admin/transport', icon: LayoutDashboard },
-        { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
-      ];
+      adminDashboards.push({ name: 'Transport Dashboard', path: '/admin/transport', icon: LayoutDashboard });
     }
 
     if (userRoles.includes('STATIONERY_ADMIN')) {
-      return [
-        { name: 'Dashboard', path: '/admin/stationery', icon: LayoutDashboard },
-        { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
-      ];
+      adminDashboards.push({ name: 'Stationery Dashboard', path: '/admin/stationery', icon: LayoutDashboard });
     }
 
     if (userRoles.includes('MEALS_ADMIN')) {
-      return [
-        { name: 'Dashboard', path: '/admin/meals', icon: LayoutDashboard },
-        { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
-      ];
+      adminDashboards.push({ name: 'Meals Dashboard', path: '/admin/meals', icon: LayoutDashboard });
     }
 
-    // Check for SEMINAR_COORDINATOR (single role or combined with department role)
-    const isCoordinator = userRoles.includes('SEMINAR_COORDINATOR');
+    // Avoid duplicate links when multiple roles map to the same dashboard
+    const seenPaths = new Set();
+    const uniqueAdminDashboards = adminDashboards.filter((item) => {
+      if (seenPaths.has(item.path)) return false;
+      seenPaths.add(item.path);
+      return true;
+    });
 
-    if (isCoordinator && !isDeptUser) {
-      return [
-        { name: 'Coordinator Dashboard', path: '/admin/seminar', icon: LayoutDashboard },
-        { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
-      ];
-    }
-
-    if (isCoordinator && isDeptUser) {
-      return [
-        { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-        { name: 'Coordinator Dashboard', path: '/admin/seminar', icon: ShieldCheck },
-        { name: 'Seminar Hall Booking', path: '/seminar-booking', icon: CalendarDays },
-        { name: 'Accommodation', path: '/accommodation', icon: BedDouble },
-        { name: 'Transport', path: '/transport', icon: Bus },
-        { name: 'Stationery', path: '/stationery', icon: FileText },
-        { name: 'Snacks & Meals', path: '/snacks-meals', icon: Coffee },
-        { name: 'My Requests', path: '/my-requests', icon: ListOrdered },
-        { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
-      ];
-    }
-
-    return [
-      { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    const departmentServiceLinks = [
       { name: 'Seminar Hall Booking', path: '/seminar-booking', icon: CalendarDays },
       { name: 'Accommodation', path: '/accommodation', icon: BedDouble },
       { name: 'Transport', path: '/transport', icon: Bus },
@@ -132,6 +95,43 @@ export const Sidebar = ({ isOpen, onClose }) => {
       { name: 'Snacks & Meals', path: '/snacks-meals', icon: Coffee },
       { name: 'My Requests', path: '/my-requests', icon: ListOrdered },
       { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
+    ];
+
+    if (isDeptUser) {
+      const mainDashboardLink = uniqueAdminDashboards.length > 0
+        ? { name: 'Department Dashboard', path: '/dashboard', icon: Building }
+        : { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard };
+
+      return [
+        mainDashboardLink,
+        ...uniqueAdminDashboards,
+        ...departmentServiceLinks,
+      ];
+    }
+
+    // Standalone service admin (non-department user)
+    if (uniqueAdminDashboards.length === 1) {
+      const single = uniqueAdminDashboards[0];
+      return [
+        {
+          name: single.name === 'Coordinator Dashboard' ? 'Coordinator Dashboard' : 'Dashboard',
+          path: single.path,
+          icon: LayoutDashboard,
+        },
+        { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
+      ];
+    }
+
+    if (uniqueAdminDashboards.length > 1) {
+      return [
+        ...uniqueAdminDashboards,
+        { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
+      ];
+    }
+
+    return [
+      { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+      ...departmentServiceLinks,
     ];
   };
 

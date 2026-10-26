@@ -71,6 +71,15 @@ export const AuthProvider = ({ children }) => {
       ) {
         return '/admin/accommodation';
       }
+      if (roles.includes('TRANSPORT_ADMIN')) {
+        return '/admin/transport';
+      }
+      if (roles.includes('STATIONERY_ADMIN')) {
+        return '/admin/stationery';
+      }
+      if (roles.includes('MEALS_ADMIN')) {
+        return '/admin/meals';
+      }
     }
     switch (role) {
       case 'CREATOR':

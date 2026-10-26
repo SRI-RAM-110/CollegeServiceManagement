@@ -189,12 +189,18 @@ public class AdminUserService {
         // Build role list
         Set<String> rolesSet = new LinkedHashSet<>();
         if (dto.getRole() != null && !dto.getRole().isBlank()) {
-            rolesSet.add(dto.getRole().trim().toUpperCase());
+            String norm = dto.getRole().trim().toUpperCase();
+            if (!isServiceAdminPermission(norm)) {
+                rolesSet.add(norm);
+            }
         }
         if (dto.getRoles() != null) {
             for (String r : dto.getRoles()) {
                 if (r != null && !r.isBlank()) {
-                    rolesSet.add(r.trim().toUpperCase());
+                    String norm = r.trim().toUpperCase();
+                    if (!isServiceAdminPermission(norm)) {
+                        rolesSet.add(norm);
+                    }
                 }
             }
         }
@@ -318,24 +324,6 @@ public class AdminUserService {
             user.setDesignation(dto.getDesignation().trim());
         }
 
-        if (dto.getRoles() != null) {
-            Set<String> rolesSet = new LinkedHashSet<>();
-            for (String r : dto.getRoles()) {
-                if (r != null && !r.isBlank()) {
-                    rolesSet.add(r.trim().toUpperCase());
-                }
-            }
-            if (dto.getRole() != null && !dto.getRole().isBlank()) {
-                rolesSet.add(dto.getRole().trim().toUpperCase());
-            }
-            if (!rolesSet.isEmpty()) {
-                user.setRoles(new ArrayList<>(rolesSet));
-                user.setRole(rolesSet.iterator().next());
-            }
-        } else if (dto.getRole() != null && !dto.getRole().isBlank()) {
-            user.setRole(dto.getRole().trim().toUpperCase());
-        }
-
         if (dto.getServicePermissions() != null) {
             List<String> perms = new ArrayList<>();
             for (String sp : dto.getServicePermissions()) {
@@ -350,7 +338,65 @@ public class AdminUserService {
             user.setServicePermissions(perms);
         }
 
-        if (dto.getAssignedHallIds() != null) {
+        if (dto.getRoles() != null) {
+            Set<String> rolesSet = new LinkedHashSet<>();
+            for (String r : dto.getRoles()) {
+                if (r != null && !r.isBlank()) {
+                    String norm = r.trim().toUpperCase();
+                    if (!isServiceAdminPermission(norm)) {
+                        rolesSet.add(norm);
+                    }
+                }
+            }
+            if (dto.getRole() != null && !dto.getRole().isBlank()) {
+                String norm = dto.getRole().trim().toUpperCase();
+                if (!isServiceAdminPermission(norm)) {
+                    rolesSet.add(norm);
+                }
+            }
+
+            // CREATOR protection: target cannot lose CREATOR unless caller is CREATOR
+            if (targetIsCreator && !rolesSet.contains("CREATOR")) {
+                rolesSet.add("CREATOR");
+            }
+
+            // Last AO_ADMIN protection: cannot demote the last remaining AO_ADMIN
+            if (user.hasRole("AO_ADMIN") && !rolesSet.contains("AO_ADMIN")) {
+                long aoCount = userRepository.findAll().stream()
+                        .filter(u -> u.hasRole("AO_ADMIN"))
+                        .count();
+                if (aoCount <= 1) {
+                    throw new BadRequestException("Cannot remove AO_ADMIN from the last remaining Super Admin account in the system.");
+                }
+            }
+
+            // Handle empty role selection safely
+            if (rolesSet.isEmpty()) {
+                boolean hasServicePerm = user.getServicePermissions() != null && !user.getServicePermissions().isEmpty();
+                if (hasServicePerm) {
+                    rolesSet.add("SERVICE_ADMIN");
+                } else {
+                    rolesSet.add("DEPARTMENT_USER");
+                }
+            }
+
+            user.setRoles(new ArrayList<>(rolesSet));
+            user.setRole(rolesSet.iterator().next());
+        } else if (dto.getRole() != null && !dto.getRole().isBlank()) {
+            String norm = dto.getRole().trim().toUpperCase();
+            if (!isServiceAdminPermission(norm)) {
+                user.setRole(norm);
+                if (user.getRoles() == null || user.getRoles().isEmpty()) {
+                    user.setRoles(new ArrayList<>(List.of(norm)));
+                }
+            }
+        }
+
+        // Dependent permissions cleanup: Seminar Halls
+        boolean hasCoordinator = user.getRoles() != null && user.getRoles().contains("SEMINAR_COORDINATOR");
+        if (!hasCoordinator) {
+            user.setAssignedHallIds(new ArrayList<>());
+        } else if (dto.getAssignedHallIds() != null) {
             List<String> halls = new ArrayList<>();
             for (String h : dto.getAssignedHallIds()) {
                 if (h != null && !h.isBlank()) {
@@ -360,7 +406,11 @@ public class AdminUserService {
             user.setAssignedHallIds(halls);
         }
 
-        if (dto.getAssignedHostels() != null) {
+        // Dependent permissions cleanup: Accommodation Hostels
+        boolean hasAccommodation = user.getServicePermissions() != null && user.getServicePermissions().contains("ACCOMMODATION_ADMIN");
+        if (!hasAccommodation) {
+            user.setAssignedHostels(new ArrayList<>());
+        } else if (dto.getAssignedHostels() != null) {
             List<String> hostels = new ArrayList<>();
             for (String h : dto.getAssignedHostels()) {
                 if (h != null && !h.isBlank()) {
@@ -522,8 +572,38 @@ public class AdminUserService {
         logger.info("Administrator {} permanently removed user account: {}", currentAdmin.getUserId(), user.getUserId());
     }
 
+    private boolean isServiceAdminPermission(String role) {
+        if (role == null) return false;
+        String r = role.trim().toUpperCase();
+        if (r.equals("AO_ADMIN") || r.equals("SERVICE_ADMIN")) return false;
+        return r.endsWith("_ADMIN");
+    }
+
     public UserDTO mapToDTO(User user) {
         if (user == null) return null;
+
+        List<String> storedRoles = user.getRoles() != null && !user.getRoles().isEmpty()
+                ? user.getRoles()
+                : (user.getRole() != null && !user.getRole().isBlank() ? List.of(user.getRole()) : Collections.emptyList());
+
+        List<String> baseRoles = storedRoles.stream()
+                .filter(r -> r != null && !r.isBlank() && !isServiceAdminPermission(r))
+                .map(String::trim)
+                .map(String::toUpperCase)
+                .distinct()
+                .collect(Collectors.toList());
+
+        if (baseRoles.isEmpty()) {
+            boolean hasServicePerm = user.getServicePermissions() != null && !user.getServicePermissions().isEmpty();
+            if (hasServicePerm) {
+                baseRoles = List.of("SERVICE_ADMIN");
+            } else {
+                baseRoles = List.of("DEPARTMENT_USER");
+            }
+        }
+
+        String primaryRole = baseRoles.get(0);
+
         return UserDTO.builder()
                 .id(user.getId())
                 .userId(user.getUserId())
@@ -532,8 +612,8 @@ public class AdminUserService {
                 .phone(user.getPhone())
                 .department(user.getDepartment())
                 .designation(user.getDesignation())
-                .role(user.getRole())
-                .roles(user.getEffectiveRoles())
+                .role(primaryRole)
+                .roles(baseRoles)
                 .servicePermissions(user.getServicePermissions() != null ? user.getServicePermissions() : Collections.emptyList())
                 .assignedHallIds(user.getAssignedHallIds() != null ? user.getAssignedHallIds() : Collections.emptyList())
                 .assignedHostels(user.getAssignedHostels() != null ? user.getAssignedHostels() : Collections.emptyList())
