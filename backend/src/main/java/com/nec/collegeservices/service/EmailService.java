@@ -227,6 +227,9 @@ public class EmailService {
         if (title.contains("NEW") && (title.contains("REQUEST") || title.contains("BOOKING"))) {
             return "REQUEST_SUBMITTED";
         }
+        if (title.contains("RESCHEDULE") || title.contains("RESCHEDULED") || msg.contains("RESCHEDULE")) {
+            return "REQUEST_RESCHEDULED";
+        }
         if (title.contains("APPROVED") && (title.contains("CANCEL") || msg.contains("CANCELLATION"))) {
             return "REQUEST_CANCELLED";
         }
@@ -288,6 +291,7 @@ public class EmailService {
         if (userId != null && !userId.isBlank() && !"ALL".equalsIgnoreCase(userId)) {
             userRepository.findByUserId(userId.trim())
                     .or(() -> userRepository.findByEmailIgnoreCase(userId.trim()))
+                    .filter(u -> Boolean.TRUE.equals(u.getActive()))
                     .ifPresent(u -> {
                         if (u.getEmail() != null && !u.getEmail().isBlank()) {
                             recipientEmails.add(u.getEmail().trim().toLowerCase());
@@ -324,7 +328,9 @@ public class EmailService {
 
     public List<String> resolveCcRecipients(Notification notification, String eventCategory) {
         if (notification != null && ("SEMINAR_TECHNICIAN".equalsIgnoreCase(notification.getRecipientRole()) ||
-                "Seminar Equipment".equalsIgnoreCase(notification.getService()))) {
+                "GENERATOR_OPERATOR".equalsIgnoreCase(notification.getRecipientRole()) ||
+                "Seminar Equipment".equalsIgnoreCase(notification.getService()) ||
+                "Generator Service".equalsIgnoreCase(notification.getService()))) {
             return Collections.emptyList();
         }
         if (isSeminarNotification(notification)) {
@@ -714,6 +720,10 @@ public class EmailService {
             case "REQUEST_APPROVED":
                 badgeColor = "#16a34a"; // green
                 badgeText = "Approved";
+                break;
+            case "REQUEST_RESCHEDULED":
+                badgeColor = "#0d9488"; // teal
+                badgeText = "Rescheduled";
                 break;
             case "REQUEST_REJECTED":
                 badgeColor = "#dc2626"; // red

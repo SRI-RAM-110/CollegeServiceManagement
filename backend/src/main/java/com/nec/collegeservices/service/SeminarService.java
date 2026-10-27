@@ -1252,6 +1252,9 @@ public class SeminarService {
         // Notify assigned Seminar Equipment Technicians
         notifyAssignedTechniciansOnApproval(saved);
 
+        // Notify active Generator Operators
+        notifyGeneratorOperatorsOnApproval(saved);
+
         return saved;
     }
 
@@ -1492,6 +1495,12 @@ public class SeminarService {
                 "INFO",
                 booking.getBookingId()
         );
+
+        // Notify assigned Seminar Equipment Technicians
+        notifyAssignedTechniciansOnCancellation(booking, targetBookings);
+
+        // Notify active Generator Operators
+        notifyGeneratorOperatorsOnCancellation(booking, targetBookings);
 
         return bookingRepository.findById(booking.getId()).orElse(booking);
     }
@@ -1764,6 +1773,12 @@ public class SeminarService {
                 savedNew.getBookingId()
         );
 
+        // Notify assigned Seminar Equipment Technicians
+        notifyAssignedTechniciansOnReschedule(original, savedNew);
+
+        // Notify active Generator Operators
+        notifyGeneratorOperatorsOnReschedule(original, savedNew);
+
         return savedNew;
     }
 
@@ -1950,8 +1965,61 @@ public class SeminarService {
     }
 
     // ==========================================
-    // SEMINAR EQUIPMENT TECHNICIAN MODULE
+    // SEMINAR EQUIPMENT TECHNICIAN & GENERATOR OPERATOR NOTIFICATIONS
     // ==========================================
+
+    private String formatEventSchedule(SeminarBooking booking) {
+        if (booking == null) return "";
+        String datePart;
+        if (booking.getDates() != null && booking.getDates().size() > 1) {
+            String firstDate = booking.getStartDate() != null ? booking.getStartDate() : booking.getDates().get(0);
+            String lastDate = booking.getEndDate() != null ? booking.getEndDate() : booking.getDates().get(booking.getDates().size() - 1);
+            datePart = booking.getDates().size() + " occurrences (" + firstDate + " to " + lastDate + ")";
+        } else if (booking.getDate() != null && !booking.getDate().isBlank()) {
+            datePart = booking.getDate();
+        } else if (booking.getStartDate() != null && !booking.getStartDate().isBlank()) {
+            datePart = booking.getStartDate() +
+                    (booking.getEndDate() != null && !booking.getEndDate().equals(booking.getStartDate()) ? " to " + booking.getEndDate() : "");
+        } else {
+            datePart = "Scheduled Date";
+        }
+
+        String timePart = "";
+        if (booking.getStartTime() != null && !booking.getStartTime().isBlank() &&
+                booking.getEndTime() != null && !booking.getEndTime().isBlank()) {
+            timePart = booking.getStartTime() + " - " + booking.getEndTime();
+        } else if (booking.getSlot() != null && !booking.getSlot().isBlank()) {
+            timePart = booking.getSlot();
+        }
+        return timePart.isEmpty() ? datePart : datePart + " (" + timePart + ")";
+    }
+
+    private String formatCancelledSchedule(SeminarBooking booking, List<SeminarBooking> targetBookings) {
+        if (targetBookings != null && targetBookings.size() > 1) {
+            List<String> dates = targetBookings.stream()
+                    .map(b -> b.getDate() != null ? b.getDate() : b.getStartDate())
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .sorted()
+                    .toList();
+            if (!dates.isEmpty()) {
+                String slotPart = booking.getSlot() != null ? " (" + booking.getSlot() + ")" : "";
+                return dates.size() + " occurrences (" + dates.get(0) + " to " + dates.get(dates.size() - 1) + ")" + slotPart;
+            }
+        }
+        return formatEventSchedule(booking);
+    }
+
+    private String resolveHallDescription(String hallId, String hallName, String hallLocation) {
+        String name = (hallName != null && !hallName.isBlank()) ? hallName : (hallId != null ? hallId : "Seminar Hall");
+        String loc = hallLocation;
+        if ((loc == null || loc.isBlank()) && hallId != null) {
+            try {
+                loc = getHallById(hallId).map(SeminarHall::getLocation).orElse(null);
+            } catch (Exception ignored) {}
+        }
+        return (loc != null && !loc.isBlank()) ? name + " [" + loc + "]" : name;
+    }
 
     private void notifyAssignedTechniciansOnApproval(SeminarBooking booking) {
         if (booking == null || booking.getHallId() == null) return;
@@ -1962,17 +2030,26 @@ public class SeminarService {
                     .filter(u -> isHallAssigned(u.getAssignedHallIds(), booking.getHallId()))
                     .toList();
 
+            String hallDesc = resolveHallDescription(booking.getHallId(), booking.getHallName(), booking.getHallLocation());
+            String scheduleDesc = formatEventSchedule(booking);
+            String eventName = (booking.getEventTitle() != null && !booking.getEventTitle().isBlank())
+                    ? booking.getEventTitle()
+                    : "Seminar Event";
+            String dept = (booking.getDepartment() != null && !booking.getDepartment().isBlank())
+                    ? booking.getDepartment()
+                    : "College";
+
+            Set<String> notifiedUserIds = new HashSet<>();
             for (User tech : technicians) {
-                String eventDesc = (booking.getDates() != null && booking.getDates().size() > 1)
-                        ? booking.getHallName() + " (" + booking.getDates().size() + " occurrences, starting " + booking.getDate() + ")"
-                        : booking.getHallName() + " on " + booking.getDate() + " (" + booking.getSlot() + ")";
+                if (tech.getUserId() == null || !notifiedUserIds.add(tech.getUserId())) continue;
 
                 notificationService.sendNotification(
                         "SEMINAR_TECHNICIAN",
                         tech.getDepartment() != null ? tech.getDepartment() : "ADMIN",
                         tech.getUserId(),
                         "Seminar Equipment Setup Required",
-                        "Booking " + booking.getBookingId() + " (" + eventDesc + ") is confirmed. Please complete the equipment inspection checklist.",
+                        "Booking " + booking.getBookingId() + " (" + eventName + ", " + dept + " Dept) at " +
+                                hallDesc + " on " + scheduleDesc + " is confirmed. Please complete the equipment inspection checklist.",
                         "Seminar Equipment",
                         "INFO",
                         booking.getBookingId()
@@ -1980,6 +2057,248 @@ public class SeminarService {
             }
         } catch (Exception e) {
             logger.warn("Failed to notify technicians for booking {}: {}", booking.getBookingId(), e.getMessage());
+        }
+    }
+
+    private void notifyAssignedTechniciansOnReschedule(SeminarBooking original, SeminarBooking savedNew) {
+        if (savedNew == null) return;
+        try {
+            String newHallId = savedNew.getHallId();
+            String oldHallId = original != null ? original.getHallId() : null;
+
+            String newScheduleDesc = formatEventSchedule(savedNew);
+            String eventName = (savedNew.getEventTitle() != null && !savedNew.getEventTitle().isBlank())
+                    ? savedNew.getEventTitle()
+                    : (original != null && original.getEventTitle() != null ? original.getEventTitle() : "Seminar Event");
+            String dept = (savedNew.getDepartment() != null && !savedNew.getDepartment().isBlank())
+                    ? savedNew.getDepartment()
+                    : (original != null && original.getDepartment() != null ? original.getDepartment() : "College");
+            String newHallDesc = resolveHallDescription(savedNew.getHallId(), savedNew.getHallName(), savedNew.getHallLocation());
+
+            Set<String> notifiedUserIds = new HashSet<>();
+
+            // 1. Notify active technicians assigned to the NEW/target hall
+            List<User> newHallTechnicians = userRepository.findAll().stream()
+                    .filter(u -> Boolean.TRUE.equals(u.getActive()))
+                    .filter(u -> u.hasRole("SEMINAR_TECHNICIAN"))
+                    .filter(u -> isHallAssigned(u.getAssignedHallIds(), newHallId))
+                    .toList();
+
+            for (User tech : newHallTechnicians) {
+                if (tech.getUserId() == null || !notifiedUserIds.add(tech.getUserId())) continue;
+
+                notificationService.sendNotification(
+                        "SEMINAR_TECHNICIAN",
+                        tech.getDepartment() != null ? tech.getDepartment() : "ADMIN",
+                        tech.getUserId(),
+                        "Seminar Equipment Schedule Updated - Rescheduled",
+                        "Booking " + savedNew.getBookingId() + " (" + eventName + ", " + dept + " Dept) has been rescheduled. Updated schedule: " +
+                                newHallDesc + " on " + newScheduleDesc + ". Please review and update the equipment inspection checklist.",
+                        "Seminar Equipment",
+                        "WARNING",
+                        savedNew.getBookingId()
+                );
+            }
+
+            // 2. If venue moved away from old hall, notify technicians of old hall that setup is not required
+            if (oldHallId != null && !oldHallId.equals(newHallId)) {
+                List<User> oldHallTechnicians = userRepository.findAll().stream()
+                        .filter(u -> Boolean.TRUE.equals(u.getActive()))
+                        .filter(u -> u.hasRole("SEMINAR_TECHNICIAN"))
+                        .filter(u -> isHallAssigned(u.getAssignedHallIds(), oldHallId))
+                        .toList();
+
+                String oldScheduleDesc = formatEventSchedule(original);
+                String oldHallDesc = resolveHallDescription(original.getHallId(), original.getHallName(), original.getHallLocation());
+
+                for (User tech : oldHallTechnicians) {
+                    if (tech.getUserId() == null || !notifiedUserIds.add(tech.getUserId())) continue;
+
+                    notificationService.sendNotification(
+                            "SEMINAR_TECHNICIAN",
+                            tech.getDepartment() != null ? tech.getDepartment() : "ADMIN",
+                            tech.getUserId(),
+                            "Seminar Equipment Setup No Longer Required - Rescheduled",
+                            "Booking " + original.getBookingId() + " (" + eventName + ") previously scheduled for " +
+                                    oldHallDesc + " on " + oldScheduleDesc + " has been rescheduled to " + newHallDesc +
+                                    ". Equipment setup is no longer required at " + original.getHallName() + ".",
+                            "Seminar Equipment",
+                            "INFO",
+                            original.getBookingId()
+                    );
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to notify technicians for reschedule {}: {}", savedNew.getBookingId(), e.getMessage());
+        }
+    }
+
+    private void notifyAssignedTechniciansOnCancellation(SeminarBooking booking, List<SeminarBooking> targetBookings) {
+        if (booking == null || booking.getHallId() == null) return;
+        try {
+            List<User> technicians = userRepository.findAll().stream()
+                    .filter(u -> Boolean.TRUE.equals(u.getActive()))
+                    .filter(u -> u.hasRole("SEMINAR_TECHNICIAN"))
+                    .filter(u -> isHallAssigned(u.getAssignedHallIds(), booking.getHallId()))
+                    .toList();
+
+            String hallDesc = resolveHallDescription(booking.getHallId(), booking.getHallName(), booking.getHallLocation());
+            String cancelledScheduleDesc = formatCancelledSchedule(booking, targetBookings);
+            String eventName = (booking.getEventTitle() != null && !booking.getEventTitle().isBlank())
+                    ? booking.getEventTitle()
+                    : "Seminar Event";
+            String dept = (booking.getDepartment() != null && !booking.getDepartment().isBlank())
+                    ? booking.getDepartment()
+                    : "College";
+
+            Set<String> notifiedUserIds = new HashSet<>();
+            for (User tech : technicians) {
+                if (tech.getUserId() == null || !notifiedUserIds.add(tech.getUserId())) continue;
+
+                notificationService.sendNotification(
+                        "SEMINAR_TECHNICIAN",
+                        tech.getDepartment() != null ? tech.getDepartment() : "ADMIN",
+                        tech.getUserId(),
+                        "Seminar Booking Cancelled - Equipment Setup Not Required",
+                        "Booking " + booking.getBookingId() + " (" + eventName + ", " + dept + " Dept) at " +
+                                hallDesc + " scheduled for " + cancelledScheduleDesc +
+                                " has been cancelled. Equipment setup is no longer required for this event.",
+                        "Seminar Equipment",
+                        "INFO",
+                        booking.getBookingId()
+                );
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to notify technicians for cancellation {}: {}", booking.getBookingId(), e.getMessage());
+        }
+    }
+
+    private void notifyGeneratorOperatorsOnApproval(SeminarBooking booking) {
+        if (booking == null) return;
+        try {
+            List<User> operators = userRepository.findAll().stream()
+                    .filter(u -> Boolean.TRUE.equals(u.getActive()))
+                    .filter(u -> u.hasRole("GENERATOR_OPERATOR"))
+                    .toList();
+
+            if (operators.isEmpty()) return;
+
+            String scheduleDesc = formatEventSchedule(booking);
+            String eventName = (booking.getEventTitle() != null && !booking.getEventTitle().isBlank())
+                    ? booking.getEventTitle()
+                    : "Seminar Event";
+            String dept = (booking.getDepartment() != null && !booking.getDepartment().isBlank())
+                    ? booking.getDepartment()
+                    : "College";
+            String hallDesc = resolveHallDescription(booking.getHallId(), booking.getHallName(), booking.getHallLocation());
+
+            Set<String> notified = new HashSet<>();
+            for (User op : operators) {
+                if (op.getUserId() == null || !notified.add(op.getUserId())) continue;
+
+                notificationService.sendNotification(
+                        "GENERATOR_OPERATOR",
+                        op.getDepartment() != null ? op.getDepartment() : "ADMIN",
+                        op.getUserId(),
+                        "New Seminar Approved - Generator Schedule Updated",
+                        "New approved seminar added to generator schedule: Booking " + booking.getBookingId() +
+                                " (" + eventName + ", " + dept + " Dept) at " + hallDesc +
+                                " on " + scheduleDesc + ". Please ensure generator readiness.",
+                        "Generator Service",
+                        "SUCCESS",
+                        booking.getBookingId()
+                );
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to notify generator operators for booking {}: {}", booking.getBookingId(), e.getMessage());
+        }
+    }
+
+    private void notifyGeneratorOperatorsOnReschedule(SeminarBooking original, SeminarBooking savedNew) {
+        if (savedNew == null) return;
+        try {
+            List<User> operators = userRepository.findAll().stream()
+                    .filter(u -> Boolean.TRUE.equals(u.getActive()))
+                    .filter(u -> u.hasRole("GENERATOR_OPERATOR"))
+                    .toList();
+
+            if (operators.isEmpty()) return;
+
+            String newScheduleDesc = formatEventSchedule(savedNew);
+            String oldScheduleDesc = original != null ? formatEventSchedule(original) : "";
+            String eventName = (savedNew.getEventTitle() != null && !savedNew.getEventTitle().isBlank())
+                    ? savedNew.getEventTitle()
+                    : (original != null && original.getEventTitle() != null ? original.getEventTitle() : "Seminar Event");
+            String dept = (savedNew.getDepartment() != null && !savedNew.getDepartment().isBlank())
+                    ? savedNew.getDepartment()
+                    : (original != null && original.getDepartment() != null ? original.getDepartment() : "College");
+            String newHallDesc = resolveHallDescription(savedNew.getHallId(), savedNew.getHallName(), savedNew.getHallLocation());
+            String oldHallDesc = original != null
+                    ? resolveHallDescription(original.getHallId(), original.getHallName(), original.getHallLocation())
+                    : "";
+
+            Set<String> notified = new HashSet<>();
+            for (User op : operators) {
+                if (op.getUserId() == null || !notified.add(op.getUserId())) continue;
+
+                String prevInfo = !oldScheduleDesc.isEmpty() ? " (Previously: " + oldHallDesc + " on " + oldScheduleDesc + ")" : "";
+                notificationService.sendNotification(
+                        "GENERATOR_OPERATOR",
+                        op.getDepartment() != null ? op.getDepartment() : "ADMIN",
+                        op.getUserId(),
+                        "Seminar Schedule Changed - Generator Schedule Updated",
+                        "Approved seminar rescheduled: Booking " + savedNew.getBookingId() +
+                                " (" + eventName + ", " + dept + " Dept) has been moved to " + newHallDesc +
+                                " on " + newScheduleDesc + prevInfo + ". Please update generator operations.",
+                        "Generator Service",
+                        "WARNING",
+                        savedNew.getBookingId()
+                );
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to notify generator operators for reschedule {}: {}", savedNew.getBookingId(), e.getMessage());
+        }
+    }
+
+    private void notifyGeneratorOperatorsOnCancellation(SeminarBooking booking, List<SeminarBooking> targetBookings) {
+        if (booking == null) return;
+        try {
+            List<User> operators = userRepository.findAll().stream()
+                    .filter(u -> Boolean.TRUE.equals(u.getActive()))
+                    .filter(u -> u.hasRole("GENERATOR_OPERATOR"))
+                    .toList();
+
+            if (operators.isEmpty()) return;
+
+            String hallDesc = resolveHallDescription(booking.getHallId(), booking.getHallName(), booking.getHallLocation());
+            String cancelledScheduleDesc = formatCancelledSchedule(booking, targetBookings);
+            String eventName = (booking.getEventTitle() != null && !booking.getEventTitle().isBlank())
+                    ? booking.getEventTitle()
+                    : "Seminar Event";
+            String dept = (booking.getDepartment() != null && !booking.getDepartment().isBlank())
+                    ? booking.getDepartment()
+                    : "College";
+
+            Set<String> notified = new HashSet<>();
+            for (User op : operators) {
+                if (op.getUserId() == null || !notified.add(op.getUserId())) continue;
+
+                notificationService.sendNotification(
+                        "GENERATOR_OPERATOR",
+                        op.getDepartment() != null ? op.getDepartment() : "ADMIN",
+                        op.getUserId(),
+                        "Seminar Cancelled - Generator Schedule Updated",
+                        "Approved seminar cancelled: Booking " + booking.getBookingId() +
+                                " (" + eventName + ", " + dept + " Dept) at " + hallDesc +
+                                " scheduled for " + cancelledScheduleDesc +
+                                " has been cancelled. Generator support is no longer required.",
+                        "Generator Service",
+                        "INFO",
+                        booking.getBookingId()
+                );
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to notify generator operators for cancellation {}: {}", booking.getBookingId(), e.getMessage());
         }
     }
 
