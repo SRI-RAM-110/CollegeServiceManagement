@@ -180,11 +180,63 @@ td {
 }
 
 /* Touch-friendly table action buttons on mobile */
+.custom-table td .btn,
+.custom-table td button,
+table.custom-table td button {
+  flex-shrink: 0 !important;
+}
+
+.custom-table td:last-child > .flex,
+.custom-table td > .flex {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+/* View button & icon-only action buttons in table rows */
+.custom-table td button.p-1\.5,
+.custom-table td button.p-1,
+.custom-table td button.p-2,
+.custom-table td button[title*="View"],
+.custom-table td button[title*="Details"],
+.custom-table td .btn-view,
+.custom-table td .action-view-btn,
+table td button[title*="View"],
+table td button[title*="Details"] {
+  min-width: 32px !important;
+  min-height: 32px !important;
+  width: 32px !important;
+  height: 32px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  flex-shrink: 0 !important;
+  border-radius: var(--radius-sm, 6px) !important;
+}
+
 @media (max-width: 768px) {
+  .custom-table th:last-child,
+  .custom-table td:last-child {
+    min-width: 140px;
+    white-space: nowrap;
+  }
+
   .action-view-btn,
   .table-action-btn {
     min-height: 36px;
     padding: 8px 14px;
     font-size: 0.82rem;
+  }
+
+  .custom-table td button[title*="View"],
+  .custom-table td button[title*="Details"],
+  .custom-table td button.p-1\.5 {
+    min-width: 34px !important;
+    min-height: 34px !important;
+    width: 34px !important;
+    height: 34px !important;
+    flex-shrink: 0 !important;
   }
 }

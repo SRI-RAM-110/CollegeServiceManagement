@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { App as CapApp } from '@capacitor/app';
 import { notificationApi } from '../services/api';
 import { useAuth } from './AuthContext';
 import {
@@ -24,9 +26,20 @@ export const NotificationProvider = ({ children }) => {
   const [isPushSubscribed, setIsPushSubscribed] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
 
+  // Foreground notification tracking refs (prevent initial spam or repeated alerts)
+  const initialFetchDoneRef = useRef(false);
+  const seenNotificationIdsRef = useRef(new Set());
+
   const showToast = useCallback((message, type = 'info', duration = 4000) => {
+    if (!message) return;
     const id = Date.now() + Math.random().toString();
-    setToasts((prev) => [...prev, { id, message, type }]);
+    setToasts((prev) => {
+      // Prevent duplicate identical toast from rendering simultaneously
+      if (prev.some((t) => t.message === message && t.type === type)) {
+        return prev;
+      }
+      return [...prev, { id, message, type }];
+    });
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, duration);
@@ -106,24 +119,90 @@ export const NotificationProvider = ({ children }) => {
     if (!isAuthenticated) return;
     try {
       const res = await notificationApi.getAll();
-      if (res.data) {
-        setNotifications(res.data);
-        const unread = res.data.filter((n) => !n.read).length;
+      if (res.data && Array.isArray(res.data)) {
+        const fetchedList = res.data;
+        setNotifications(fetchedList);
+        const unread = fetchedList.filter((n) => !n.read).length;
         setUnreadCount(unread);
+
+        if (!initialFetchDoneRef.current) {
+          // Initial load: show in-app alert if there are unread notifications
+          const initialUnread = fetchedList.filter((n) => !n.read && (n.id || n._id));
+          if (initialUnread.length === 1) {
+            const item = initialUnread[0];
+            showToast(`${item.title || 'Notification'}: ${item.message || ''}`, 'info', 5000);
+          } else if (initialUnread.length > 1) {
+            showToast(`You have ${initialUnread.length} unread notifications.`, 'info', 5000);
+          }
+          fetchedList.forEach((n) => {
+            const notifId = n.id || n._id;
+            if (notifId) seenNotificationIdsRef.current.add(String(notifId));
+          });
+          initialFetchDoneRef.current = true;
+        } else {
+          // Subsequent polling / resume cycle: identify genuinely NEW unread notifications
+          const newUnreadItems = fetchedList.filter((n) => {
+            const notifId = n.id || n._id;
+            return !n.read && notifId && !seenNotificationIdsRef.current.has(String(notifId));
+          });
+
+          // Show visible foreground in-app toast for new arrival(s)
+          if (newUnreadItems.length === 1) {
+            const item = newUnreadItems[0];
+            showToast(`${item.title || 'New Notification'}: ${item.message || ''}`, 'info', 5000);
+          } else if (newUnreadItems.length > 1) {
+            showToast(`You have ${newUnreadItems.length} new notifications.`, 'info', 5000);
+          }
+
+          // Mark all fetched items as seen so they won't trigger repeated toasts
+          fetchedList.forEach((n) => {
+            const notifId = n.id || n._id;
+            if (notifId) seenNotificationIdsRef.current.add(String(notifId));
+          });
+        }
       }
     } catch (e) {
       // silently fail polling
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, showToast]);
 
   useEffect(() => {
     if (isAuthenticated) {
       fetchNotifications();
       const interval = setInterval(fetchNotifications, 15000); // 15s refresh
-      return () => clearInterval(interval);
+
+      // Resume polling immediately when app/tab becomes visible
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          fetchNotifications();
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+
+      // Listen to Capacitor native app state changes (resume from background)
+      let appListener = null;
+      if (Capacitor.isNativePlatform()) {
+        CapApp.addListener('appStateChange', (state) => {
+          if (state && state.isActive) {
+            fetchNotifications();
+          }
+        }).then((handle) => {
+          appListener = handle;
+        }).catch(() => {});
+      }
+
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        if (appListener && typeof appListener.remove === 'function') {
+          appListener.remove();
+        }
+      };
     } else {
       setNotifications([]);
       setUnreadCount(0);
+      initialFetchDoneRef.current = false;
+      seenNotificationIdsRef.current.clear();
     }
   }, [isAuthenticated, fetchNotifications]);
 

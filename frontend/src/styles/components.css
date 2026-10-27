@@ -6,7 +6,12 @@
    TOPBAR
    ------------------------------------------------------------ */
 .topbar-header {
-  height: 64px;
+  height: calc(64px + env(safe-area-inset-top, 0px));
+  min-height: calc(64px + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: max(24px, env(safe-area-inset-left, 0px));
+  padding-right: max(24px, env(safe-area-inset-right, 0px));
+  box-sizing: border-box;
   background-color: var(--bg-topbar);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
@@ -14,7 +19,6 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
   position: sticky;
   top: 0;
   z-index: 30;
@@ -1698,7 +1702,8 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  z-index: 9999;
+  z-index: 10000;
+  pointer-events: none;
 }
 
 .toast {
@@ -1716,6 +1721,7 @@
   min-width: 300px;
   max-width: 450px;
   animation: fadeIn 0.2s ease-out;
+  pointer-events: auto;
 }
 
 .toast-success {

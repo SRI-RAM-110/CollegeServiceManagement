@@ -765,10 +765,10 @@ export default function SeminarAdmin() {
                         <StatusBadge status={req.status} />
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                        <div className="flex items-center justify-end gap-1.5 flex-nowrap shrink-0">
                           <button
                             onClick={() => setSelectedRequest(req)}
-                            className="btn btn-secondary btn-sm p-1.5"
+                            className="btn btn-secondary btn-sm p-1.5 shrink-0"
                             title="View Details"
                           >
                             <Eye className="w-3.5 h-3.5" />

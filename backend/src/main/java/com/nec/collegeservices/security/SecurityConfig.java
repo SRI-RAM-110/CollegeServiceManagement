@@ -100,6 +100,8 @@ public class SecurityConfig {
                     .hasAnyRole("CREATOR", "AO_ADMIN", "SEMINAR_ADMIN")
                 .requestMatchers("/api/seminar/technician/**")
                     .hasAnyRole("CREATOR", "AO_ADMIN", "SEMINAR_ADMIN", "SEMINAR_TECHNICIAN")
+                .requestMatchers("/api/seminar/generator/**")
+                    .hasAnyRole("CREATOR", "AO_ADMIN", "SEMINAR_ADMIN", "GENERATOR_OPERATOR")
                 .requestMatchers("/api/seminar/**")
                     .hasAnyRole("CREATOR", "AO_ADMIN", "SEMINAR_ADMIN", "SEMINAR_COORDINATOR", "DEPARTMENT_USER", "DEPARTMENT_HOD", "SEMINAR_TECHNICIAN")
 

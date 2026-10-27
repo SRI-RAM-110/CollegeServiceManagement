@@ -83,6 +83,9 @@ export const AuthProvider = ({ children }) => {
       if (roles.includes('SEMINAR_TECHNICIAN') && !roles.includes('DEPARTMENT_HOD') && !roles.includes('DEPARTMENT_USER')) {
         return '/technician/seminar';
       }
+      if (roles.includes('GENERATOR_OPERATOR') && !roles.includes('DEPARTMENT_HOD') && !roles.includes('DEPARTMENT_USER')) {
+        return '/operator/generator';
+      }
     }
     switch (role) {
       case 'CREATOR':
@@ -103,6 +106,8 @@ export const AuthProvider = ({ children }) => {
         return '/admin/meals';
       case 'SEMINAR_TECHNICIAN':
         return '/technician/seminar';
+      case 'GENERATOR_OPERATOR':
+        return '/operator/generator';
       case 'DEPARTMENT_HOD':
       case 'DEPARTMENT_USER':
       default:
@@ -136,6 +141,7 @@ export const AuthProvider = ({ children }) => {
     isSeminarAdmin: userRoles.includes('SEMINAR_ADMIN'),
     isSeminarCoordinator: userRoles.includes('SEMINAR_COORDINATOR'),
     isSeminarTechnician: userRoles.includes('SEMINAR_TECHNICIAN'),
+    isGeneratorOperator: userRoles.includes('GENERATOR_OPERATOR'),
     isAccommodationAdmin: userRoles.includes('ACCOMMODATION_ADMIN') || userRoles.includes('BOYS_HOSTEL_ADMIN') || userRoles.includes('GIRLS_HOSTEL_ADMIN'),
     isTransportAdmin: userRoles.includes('TRANSPORT_ADMIN'),
     isStationeryAdmin: userRoles.includes('STATIONERY_ADMIN'),

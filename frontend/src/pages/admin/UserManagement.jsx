@@ -50,6 +50,7 @@ const ROLES_LIST = [
   { id: 'DEPARTMENT_HOD', label: 'Department HOD', desc: 'Full authority for department approvals & service requests' },
   { id: 'SEMINAR_COORDINATOR', label: 'Seminar Coordinator', desc: 'Direct coordinator authority over specifically assigned seminar halls' },
   { id: 'SEMINAR_TECHNICIAN', label: 'Seminar Equipment Technician', desc: 'Equipment inspection & setup for assigned seminar halls' },
+  { id: 'GENERATOR_OPERATOR', label: 'Generator Operator', desc: 'Read-only view of approved seminar events and generator schedule' },
   { id: 'SERVICE_ADMIN', label: 'Service Admin', desc: 'Administration over specific facility modules' },
   { id: 'AO_ADMIN', label: 'AO Admin / Super Admin', desc: 'Universal super admin rights across all services & users' },
   { id: 'DEPARTMENT_USER', label: 'Department Faculty / Staff', desc: 'Standard department service requester' },

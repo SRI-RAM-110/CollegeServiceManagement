@@ -309,20 +309,27 @@ export default function AOAdminDashboard() {
     return Utensils;
   };
 
-  // Aggregated stats from dashboardData or computed from list
-  const total = dashboardData?.totalRequests ?? allRequests.length;
-  const pending = dashboardData?.pending ?? allRequests.filter(r => r.status === 'PENDING').length;
-  const approved = dashboardData?.approved ?? allRequests.filter(r => r.status === 'APPROVED' || r.status === 'BOOKED').length;
-  const rejected = dashboardData?.rejected ?? allRequests.filter(r => r.status === 'REJECTED').length;
-  const completed = dashboardData?.completed ?? allRequests.filter(r => r.status === 'COMPLETED' || r.status === 'COLLECTED').length;
+  // Aggregated stats from dashboardData or computed from list (with defensive fallback to nested stats)
+  const statsObj = dashboardData?.stats;
+  const total = dashboardData?.totalRequests ?? (statsObj?.total ?? allRequests.length);
+  const pending = dashboardData?.pending ?? (statsObj?.pending ?? allRequests.filter(r => r.status === 'PENDING').length);
+  const approved = dashboardData?.approved ?? (statsObj?.approved ?? allRequests.filter(r => r.status === 'APPROVED' || r.status === 'BOOKED').length);
+  const rejected = dashboardData?.rejected ?? (statsObj?.rejected ?? allRequests.filter(r => r.status === 'REJECTED').length);
+  const completed = dashboardData?.completed ?? (statsObj?.completed ?? allRequests.filter(r => r.status === 'COMPLETED' || r.status === 'COLLECTED').length);
 
-  const byService = dashboardData?.byService || dashboardData?.requestsByService || {
+  const byService = dashboardData?.byService || dashboardData?.requestsByService || (statsObj ? {
+    'Seminar Hall': statsObj.seminarHalls ?? allRequests.filter(r => r.service === 'Seminar Hall').length,
+    'Accommodation': statsObj.accommodation ?? allRequests.filter(r => r.service === 'Accommodation').length,
+    'Transport': statsObj.transport ?? allRequests.filter(r => r.service === 'Transport').length,
+    'Stationery': statsObj.stationery ?? allRequests.filter(r => r.service === 'Stationery').length,
+    'Snacks & Meals': statsObj.meals ?? allRequests.filter(r => r.service === 'Snacks & Meals').length,
+  } : {
     'Seminar Hall': allRequests.filter(r => r.service === 'Seminar Hall').length,
     'Accommodation': allRequests.filter(r => r.service === 'Accommodation').length,
     'Transport': allRequests.filter(r => r.service === 'Transport').length,
     'Stationery': allRequests.filter(r => r.service === 'Stationery').length,
     'Snacks & Meals': allRequests.filter(r => r.service === 'Snacks & Meals').length,
-  };
+  });
 
   const pendingByService = dashboardData?.pendingByService || {
     'Seminar Hall': allRequests.filter(r => r.service === 'Seminar Hall' && r.status === 'PENDING').length,

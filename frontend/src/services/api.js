@@ -140,6 +140,7 @@ export const seminarApi = {
   getTechnicianBookings: () => api.get('/seminar/technician/bookings'),
   getEquipmentChecklist: (bookingId, date) => api.get(`/seminar/technician/checklist/${bookingId}`, { params: date ? { date } : {} }),
   saveEquipmentChecklist: (bookingId, date, data) => api.put(`/seminar/technician/checklist/${bookingId}`, data, { params: date ? { date } : {} }),
+  getGeneratorSchedule: () => api.get('/seminar/generator/schedule'),
 };
 
 export const adminUserApi = {

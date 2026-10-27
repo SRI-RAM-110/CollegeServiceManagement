@@ -302,6 +302,28 @@ img, svg, canvas, video {
     width: 100%;
   }
 
+  /* Table action buttons & View button mobile layout */
+  .custom-table td .btn,
+  .custom-table td button,
+  table td button {
+    flex-shrink: 0 !important;
+  }
+
+  .custom-table td button[title*="View"],
+  .custom-table td button[title*="Details"],
+  .custom-table td button.p-1\.5,
+  table td button[title*="View"],
+  table td button[title*="Details"] {
+    min-width: 34px !important;
+    min-height: 34px !important;
+    width: 34px !important;
+    height: 34px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+  }
+
   /* Service Page Panels: Avoid trapped nested vertical scrolls on mobile/tablet */
   .stationery-grid,
   .vehicle-list,
@@ -375,14 +397,39 @@ img, svg, canvas, video {
     padding: 14px 12px 32px 12px !important;
   }
 
-  /* Compact modern mobile topbar */
+  /* Compact modern mobile topbar with safe-area status-bar handling */
   .topbar-header {
-    height: 52px !important;
-    padding: 0 12px !important;
+    height: calc(56px + env(safe-area-inset-top, 0px)) !important;
+    min-height: calc(56px + env(safe-area-inset-top, 0px)) !important;
+    padding-top: env(safe-area-inset-top, 0px) !important;
+    padding-bottom: 0 !important;
+    padding-left: max(10px, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(10px, env(safe-area-inset-right, 0px)) !important;
+    box-sizing: border-box !important;
   }
 
   .topbar-left {
-    gap: 8px !important;
+    gap: 6px !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+  }
+
+  .topbar-brand {
+    gap: 6px !important;
+    min-width: 0 !important;
+  }
+
+  .topbar-brand-titles {
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .topbar-title-mobile {
+    font-size: 0.90rem !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
 
   .topbar-hamburger-btn {
@@ -392,25 +439,26 @@ img, svg, canvas, video {
   }
 
   .topbar-right {
-    gap: 6px !important;
+    gap: 4px !important;
+    flex-shrink: 0 !important;
   }
 
   .topbar-icon-btn {
-    width: 36px !important;
-    height: 36px !important;
+    width: 34px !important;
+    height: 34px !important;
     padding: 0 !important;
   }
 
   .topbar-logo-circle {
-    width: 32px !important;
-    height: 32px !important;
-    min-width: 32px !important;
-    min-height: 32px !important;
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    min-height: 30px !important;
   }
 
   .topbar-logo {
-    width: 22px !important;
-    height: 22px !important;
+    width: 20px !important;
+    height: 20px !important;
   }
 
   /* User profile pill on mobile: compact avatar + chevron, no ugly truncated text */
@@ -571,6 +619,41 @@ img, svg, canvas, video {
     gap: 8px;
   }
 
+  /* Request Details Modal Footer — narrow mobile wrapping */
+  .request-details-footer {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding: 12px 14px !important;
+  }
+
+  .request-doc-footer-meta {
+    width: 100% !important;
+    margin-right: 0 !important;
+    justify-content: flex-start !important;
+    font-size: 0.75rem !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .request-details-footer-actions {
+    width: 100% !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    justify-content: stretch !important;
+  }
+
+  .request-details-footer-actions .btn {
+    flex: 1 1 calc(50% - 4px) !important;
+    min-width: 110px !important;
+    justify-content: center !important;
+    padding: 8px 10px !important;
+    font-size: 0.82rem !important;
+    box-sizing: border-box !important;
+  }
+
   .card-panel {
     padding: 16px 14px;
     width: 100%;
@@ -658,16 +741,19 @@ img, svg, canvas, video {
 
   /* Toasts on mobile */
   .toast-container {
-    bottom: 16px !important;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
     right: 16px !important;
     left: 16px !important;
     align-items: center !important;
+    z-index: 10000 !important;
+    pointer-events: none !important;
   }
 
   .toast {
     min-width: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
+    pointer-events: auto !important;
   }
 
   /* Quick Calendar Mobile (<= 640px) */
@@ -760,7 +846,8 @@ img, svg, canvas, video {
   }
 
   .topbar-header {
-    padding: 0 8px;
+    padding-left: max(8px, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(8px, env(safe-area-inset-right, 0px)) !important;
   }
 
   .topbar-brand {
@@ -980,7 +1067,8 @@ img, svg, canvas, video {
   }
 
   .topbar-header {
-    padding: 0 6px !important;
+    padding-left: max(6px, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(6px, env(safe-area-inset-right, 0px)) !important;
   }
 
   .topbar-brand {
@@ -1205,10 +1293,10 @@ img, svg, canvas, video {
 /* Compact Smartphones (<= 390px / 375px) */
 @media (max-width: 390px) {
   .topbar-logo-circle {
-    width: 34px !important;
-    height: 34px !important;
-    min-width: 34px !important;
-    min-height: 34px !important;
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    min-height: 28px !important;
   }
 
   .banner-college-logo {
@@ -1262,4 +1350,14 @@ img, svg, canvas, video {
     min-height: 36px !important;
   }
 }
+
+/* Global Mobile Dashboard Card Spacing */
+@media (max-width: 640px) {
+  .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+    --tw-space-y-reverse: 0;
+    margin-top: calc(0.90rem * calc(1 - var(--tw-space-y-reverse))) !important;
+    margin-bottom: calc(0.90rem * var(--tw-space-y-reverse)) !important;
+  }
+}
+
 

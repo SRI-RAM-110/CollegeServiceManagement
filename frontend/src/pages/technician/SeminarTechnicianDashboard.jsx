@@ -15,6 +15,7 @@ import {
   X,
   FileText,
   User,
+  Users,
   Phone,
   Mail,
   ChevronRight,
@@ -105,9 +106,36 @@ export default function SeminarTechnicianDashboard() {
 
   const todayStr = getTodayStr();
 
+  // Robust date helpers prioritizing actual booking fields: date, startDate, and dates array
+  const getBookingEventDates = (b) => {
+    if (!b) return [];
+    if (b.isRecurring && Array.isArray(b.dates) && b.dates.length > 0) {
+      return b.dates;
+    }
+    if (Array.isArray(b.dates) && b.dates.length > 0) {
+      return b.dates;
+    }
+    if (Array.isArray(b.occurrences) && b.occurrences.length > 0) {
+      const occDates = b.occurrences.map((o) => o?.date).filter(Boolean);
+      if (occDates.length > 0) return occDates;
+    }
+    const singleDate = b.date || b.startDate || b.bookingDate;
+    return singleDate ? [singleDate] : [];
+  };
+
+  const getPrimaryBookingDate = (b) => {
+    if (!b) return '';
+    return b.date || b.startDate || b.bookingDate || (Array.isArray(b.dates) ? b.dates[0] : '');
+  };
+
   // Filtered bookings
   const filteredBookings = useMemo(() => {
     return bookings.filter((b) => {
+      // Restrict results to technician's authorized halls for non-admins
+      if (!isAOAdmin && !isSeminarAdmin && !assignedHallIds.includes(b.hallId)) {
+        return false;
+      }
+
       // Hall filter
       if (selectedHall !== 'ALL' && b.hallId !== selectedHall) return false;
 
@@ -122,9 +150,7 @@ export default function SeminarTechnicianDashboard() {
       }
 
       // Date range filter
-      const eventDates = b.isRecurring && Array.isArray(b.dates) && b.dates.length > 0
-        ? b.dates
-        : [b.bookingDate];
+      const eventDates = getBookingEventDates(b);
 
       if (dateRangeFilter === 'TODAY') {
         if (!eventDates.includes(todayStr)) return false;
@@ -135,18 +161,18 @@ export default function SeminarTechnicianDashboard() {
 
       return true;
     });
-  }, [bookings, selectedHall, searchQuery, dateRangeFilter, hallMap, todayStr]);
+  }, [bookings, selectedHall, searchQuery, dateRangeFilter, hallMap, todayStr, isAOAdmin, isSeminarAdmin, assignedHallIds]);
 
   // Open Checklist
   const handleOpenChecklist = async (booking, occurrenceDate) => {
-    const targetDate = occurrenceDate || booking.bookingDate || (booking.dates && booking.dates[0]) || todayStr;
+    const targetDate = occurrenceDate || getPrimaryBookingDate(booking) || todayStr;
     setSelectedBooking(booking);
     setSelectedOccurrenceDate(targetDate);
     setActiveChecklistModal(true);
     setChecklistLoading(true);
 
     try {
-      const res = await seminarApi.getEquipmentChecklist(booking.bookingId, targetDate);
+      const res = await seminarApi.getEquipmentChecklist(booking.bookingId || booking.id, targetDate);
       if (res?.data) {
         setCurrentChecklist(res.data);
       } else {
@@ -187,41 +213,13 @@ export default function SeminarTechnicianDashboard() {
     });
   };
 
-  // Toggle requested arrangement fulfilled
-  const handleArrangementToggle = (index) => {
-    if (!currentChecklist || !currentChecklist.requestedArrangements) return;
-    const updatedArrangements = [...currentChecklist.requestedArrangements];
-    updatedArrangements[index] = {
-      ...updatedArrangements[index],
-      fulfilled: !updatedArrangements[index].fulfilled,
-    };
-    setCurrentChecklist({
-      ...currentChecklist,
-      requestedArrangements: updatedArrangements,
-    });
-  };
-
-  // Update requested arrangement note
-  const handleArrangementNoteChange = (index, notes) => {
-    if (!currentChecklist || !currentChecklist.requestedArrangements) return;
-    const updatedArrangements = [...currentChecklist.requestedArrangements];
-    updatedArrangements[index] = {
-      ...updatedArrangements[index],
-      notes,
-    };
-    setCurrentChecklist({
-      ...currentChecklist,
-      requestedArrangements: updatedArrangements,
-    });
-  };
-
-  // Add custom item
+  // Add custom item matching backend ChecklistItem model (key, itemName, category, status, notes)
   const handleAddCustomItem = () => {
     if (!newCustomItemName.trim()) return;
     const newItem = {
-      itemId: `custom_${Date.now()}`,
+      key: `custom_${Date.now()}`,
+      itemName: newCustomItemName.trim(),
       category: newCustomItemCategory || 'CUSTOM',
-      name: newCustomItemName.trim(),
       status: 'PENDING',
       notes: '',
     };
@@ -247,10 +245,14 @@ export default function SeminarTechnicianDashboard() {
     if (!selectedBooking || !selectedOccurrenceDate || !currentChecklist) return;
     try {
       setSavingChecklist(true);
+      const payload = {
+        ...currentChecklist,
+        checklistStatus: currentChecklist.checklistStatus || 'PENDING',
+      };
       const res = await seminarApi.saveEquipmentChecklist(
-        selectedBooking.bookingId,
+        selectedBooking.bookingId || selectedBooking.id,
         selectedOccurrenceDate,
-        currentChecklist
+        payload
       );
       if (res?.data) {
         setCurrentChecklist(res.data);
@@ -267,10 +269,17 @@ export default function SeminarTechnicianDashboard() {
 
   // Computed stats
   const stats = useMemo(() => {
-    const totalEvents = bookings.length;
+    const authorizedBookings = bookings.filter((b) => {
+      if (!isAOAdmin && !isSeminarAdmin && !assignedHallIds.includes(b.hallId)) {
+        return false;
+      }
+      return true;
+    });
+
+    const totalEvents = authorizedBookings.length;
     let todayEvents = 0;
-    bookings.forEach((b) => {
-      const dates = b.isRecurring && Array.isArray(b.dates) ? b.dates : [b.bookingDate];
+    authorizedBookings.forEach((b) => {
+      const dates = getBookingEventDates(b);
       if (dates.includes(todayStr)) todayEvents++;
     });
     return {
@@ -278,7 +287,7 @@ export default function SeminarTechnicianDashboard() {
       today: todayEvents,
       assignedHallsCount: assignedHallIds.length,
     };
-  }, [bookings, todayStr, assignedHallIds]);
+  }, [bookings, todayStr, assignedHallIds, isAOAdmin, isSeminarAdmin]);
 
   return (
     <div className="space-y-6 animate-fade-in p-4 sm:p-6 max-w-7xl mx-auto">
@@ -452,10 +461,10 @@ export default function SeminarTechnicianDashboard() {
         ) : (
           filteredBookings.map((b) => {
             const hallDisplay = b.hallName || hallMap[b.hallId] || b.hallId;
-            const datesList = b.isRecurring && Array.isArray(b.dates) && b.dates.length > 0
-              ? b.dates
-              : [b.bookingDate];
+            const datesList = getBookingEventDates(b);
+            const primaryDate = getPrimaryBookingDate(b);
             const isToday = datesList.includes(todayStr);
+            const isMultiDaySpan = (b.isMultiDay || (b.startDate && b.endDate && b.startDate !== b.endDate)) && !b.isRecurring;
 
             return (
               <div
@@ -485,6 +494,12 @@ export default function SeminarTechnicianDashboard() {
                           Recurring ({datesList.length} dates)
                         </span>
                       )}
+                      {isMultiDaySpan && (
+                        <span className="text-[10px] px-2 py-0.5 rounded font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          Multi-Day
+                        </span>
+                      )}
                       {isToday && (
                         <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
                           TODAY
@@ -500,7 +515,13 @@ export default function SeminarTechnicianDashboard() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-1 gap-x-4 text-xs text-slate-400">
                       <div className="flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                        <span>Date: <strong className="text-slate-200">{formatDateDisplay(b.bookingDate)}</strong></span>
+                        <span>
+                          Date: <strong className="text-slate-200">
+                            {isMultiDaySpan && b.startDate && b.endDate
+                              ? `${formatDateDisplay(b.startDate)} - ${formatDateDisplay(b.endDate)}`
+                              : formatDateDisplay(primaryDate)}
+                          </strong>
+                        </span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
@@ -554,7 +575,7 @@ export default function SeminarTechnicianDashboard() {
                               onClick={() => handleOpenChecklist(b, dt)}
                               className={`text-[11px] px-2.5 py-1 rounded-md font-mono font-medium border flex items-center gap-1 transition ${
                                 dt === todayStr
-                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 hover:bg-amber-500/30'
+                                   ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 hover:bg-amber-500/30'
                                   : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-cyan-500 hover:text-white'
                               }`}
                             >
@@ -570,7 +591,7 @@ export default function SeminarTechnicianDashboard() {
                   {/* Action Column */}
                   <div className="flex flex-row lg:flex-col items-center justify-end gap-2 shrink-0 border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-800">
                     <button
-                      onClick={() => handleOpenChecklist(b, b.bookingDate)}
+                      onClick={() => handleOpenChecklist(b, primaryDate)}
                       className="w-full lg:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-bold shadow-md shadow-cyan-600/20 transition active:scale-95"
                     >
                       <Wrench className="w-4 h-4" />
@@ -623,43 +644,38 @@ export default function SeminarTechnicianDashboard() {
             </div>
 
             {/* Requested Arrangements Verification Section */}
-            {currentChecklist.requestedArrangements && currentChecklist.requestedArrangements.length > 0 && (
-              <div className="space-y-2 p-3 bg-blue-950/20 border border-blue-500/30 rounded-xl">
+            {currentChecklist.requestedArrangements && (
+              <div className="space-y-2.5 p-3.5 bg-blue-950/20 border border-blue-500/30 rounded-xl">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold text-blue-300 flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4 text-blue-400" />
-                    Special Requested Arrangements Verification
+                    Organizer Requested Arrangements
                   </h4>
                   <span className="text-[10px] text-blue-400 font-semibold">
-                    Organizer Requested
+                    From Booking
                   </span>
                 </div>
-                <div className="space-y-2 pt-1">
-                  {currentChecklist.requestedArrangements.map((req, idx) => (
-                    <div
-                      key={idx}
-                      className="p-2.5 rounded-lg bg-slate-900/90 border border-blue-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
-                    >
-                      <label className="flex items-start gap-2.5 cursor-pointer flex-1">
-                        <input
-                          type="checkbox"
-                          checked={!!req.fulfilled}
-                          onChange={() => handleArrangementToggle(idx)}
-                          className="mt-0.5 rounded text-blue-600 focus:ring-0"
-                        />
-                        <span className={`text-xs ${req.fulfilled ? 'line-through text-slate-400' : 'text-slate-200'}`}>
-                          {req.requirementText}
-                        </span>
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Verification notes..."
-                        value={req.notes || ''}
-                        onChange={(e) => handleArrangementNoteChange(idx, e.target.value)}
-                        className="px-2.5 py-1 bg-slate-950 border border-slate-700 rounded text-[11px] text-white focus:outline-none focus:border-blue-500 w-full sm:w-48"
-                      />
-                    </div>
-                  ))}
+                <div className="p-2.5 rounded-lg bg-slate-900/90 border border-blue-500/20 text-xs text-slate-200 whitespace-pre-wrap">
+                  {typeof currentChecklist.requestedArrangements === 'string'
+                    ? currentChecklist.requestedArrangements
+                    : JSON.stringify(currentChecklist.requestedArrangements)}
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-slate-300">
+                    Technician Verification / Setup Notes:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="E.g. Stage arrangement verified, extra podium mic placed..."
+                    value={currentChecklist.requestedArrangementsNotes || ''}
+                    onChange={(e) =>
+                      setCurrentChecklist({
+                        ...currentChecklist,
+                        requestedArrangementsNotes: e.target.value,
+                      })
+                    }
+                    className="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded text-xs text-white focus:outline-none focus:border-blue-500 placeholder-slate-600"
+                  />
                 </div>
               </div>
             )}
@@ -680,7 +696,7 @@ export default function SeminarTechnicianDashboard() {
                 {(currentChecklist.items || []).map((item, idx) => {
                   return (
                     <div
-                      key={item.itemId || idx}
+                      key={item.key || item.itemId || idx}
                       className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-2"
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -688,7 +704,7 @@ export default function SeminarTechnicianDashboard() {
                           <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold bg-slate-800 text-slate-400">
                             {item.category || 'EQUIP'}
                           </span>
-                          <span className="text-xs font-bold text-white">{item.name}</span>
+                          <span className="text-xs font-bold text-white">{item.itemName || item.name}</span>
                         </div>
 
                         {/* Status Selectors */}
@@ -740,7 +756,7 @@ export default function SeminarTechnicianDashboard() {
                           >
                             N/A
                           </button>
-                          {item.itemId && item.itemId.startsWith('custom_') && (
+                          {((item.key && item.key.startsWith('custom_')) || (item.itemId && item.itemId.startsWith('custom_'))) && (
                             <button
                               type="button"
                               onClick={() => handleRemoveItem(idx)}
@@ -809,31 +825,35 @@ export default function SeminarTechnicianDashboard() {
                     { id: 'IN_PROGRESS', label: 'In Progress', color: 'blue' },
                     { id: 'ISSUES_REPORTED', label: 'Faults / Issues', color: 'rose' },
                     { id: 'PENDING', label: 'Pending Inspection', color: 'amber' },
-                  ].map((st) => (
-                    <button
-                      key={st.id}
-                      type="button"
-                      onClick={() =>
-                        setCurrentChecklist({
-                          ...currentChecklist,
-                          overallStatus: st.id,
-                        })
-                      }
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                        currentChecklist.overallStatus === st.id
-                          ? st.color === 'emerald'
-                            ? 'bg-emerald-600 text-white shadow'
-                            : st.color === 'rose'
-                            ? 'bg-rose-600 text-white shadow'
-                            : st.color === 'blue'
-                            ? 'bg-blue-600 text-white shadow'
-                            : 'bg-amber-600 text-white shadow'
-                          : 'bg-slate-800 text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      {st.label}
-                    </button>
-                  ))}
+                  ].map((st) => {
+                    const currentStatus = currentChecklist.checklistStatus || 'PENDING';
+                    const isSelected = currentStatus === st.id;
+                    return (
+                      <button
+                        key={st.id}
+                        type="button"
+                        onClick={() =>
+                          setCurrentChecklist({
+                            ...currentChecklist,
+                            checklistStatus: st.id,
+                          })
+                        }
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                          isSelected
+                            ? st.color === 'emerald'
+                              ? 'bg-emerald-600 text-white shadow'
+                              : st.color === 'rose'
+                              ? 'bg-rose-600 text-white shadow'
+                              : st.color === 'blue'
+                              ? 'bg-blue-600 text-white shadow'
+                              : 'bg-amber-600 text-white shadow'
+                            : 'bg-slate-800 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {st.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -855,9 +875,9 @@ export default function SeminarTechnicianDashboard() {
                 />
               </div>
 
-              {currentChecklist.inspectedByName && (
+              {(currentChecklist.technicianName || currentChecklist.inspectedByName) && (
                 <div className="text-[10px] text-slate-500">
-                  Last inspected by: <strong className="text-slate-400">{currentChecklist.inspectedByName}</strong>
+                  Last inspected by: <strong className="text-slate-400">{currentChecklist.technicianName || currentChecklist.inspectedByName}</strong>
                   {currentChecklist.inspectedAt && (
                     <span> on {new Date(currentChecklist.inspectedAt).toLocaleString()}</span>
                   )}

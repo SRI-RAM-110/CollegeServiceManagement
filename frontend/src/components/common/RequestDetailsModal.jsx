@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { StatusBadge } from './StatusBadge';
 import { PdfPreviewModal } from './PdfPreviewModal';
 import { CancelApprovedModal } from './CancelApprovedModal';
+import { downloadOrOpenPdf } from '../../utils/fileDownloader';
 
 export const RequestDetailsModal = ({
   isOpen,
@@ -134,17 +135,10 @@ export const RequestDetailsModal = ({
       }
 
       const filename = getCleanFilename();
-      const downloadUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+      await downloadOrOpenPdf(blob, filename);
     } catch (err) {
       console.error('Error downloading PDF:', err);
-      alert(err.message || 'Unable to generate PDF. Please try again.');
+      alert(err.message || 'Unable to generate or open PDF. Please try again.');
     } finally {
       setDownloading(false);
     }
@@ -735,13 +729,13 @@ export const RequestDetailsModal = ({
           </div>
 
           {/* Footer Actions */}
-          <div className="modal-footer">
-            <div className="flex items-center gap-2 mr-auto">
+          <div className="modal-footer request-details-footer">
+            <div className="flex items-center gap-2 mr-auto request-doc-footer-meta">
               <span className="text-xs text-muted">Document:</span>
               <span className="text-xs font-mono text-cyan-300">{getCleanFilename()}</span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="request-details-footer-actions flex items-center gap-2">
               {isCancellable && (isAOAdmin || !!onCancelRequest) && (
                 <button
                   type="button"

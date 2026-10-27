@@ -23,6 +23,7 @@ import {
   X,
   PlusCircle,
   Wrench,
+  Zap,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getUserRoles } from '../../utils/authUtils';
@@ -41,11 +42,23 @@ export const Sidebar = ({ isOpen, onClose }) => {
         { name: 'User Management', path: '/admin/users', icon: Users },
         { name: 'Seminar Hall', path: '/admin/seminar', icon: CalendarDays },
         { name: 'Equipment Dashboard', path: '/technician/seminar', icon: Wrench },
+        { name: 'Generator Schedule', path: '/operator/generator', icon: Zap },
         { name: 'Accommodation', path: '/admin/accommodation', icon: BedDouble },
         { name: 'Transport', path: '/admin/transport', icon: Bus },
         { name: 'Snacks & Meals', path: '/admin/meals', icon: Coffee },
         { name: 'Stationery Requests', path: '/admin/stationery', icon: FileText },
         { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
+      ];
+    }
+
+    // Pure generator operator check: exactly ONE dashboard (Generator Schedule)
+    const isPureGeneratorOperator =
+      userRoles.includes('GENERATOR_OPERATOR') &&
+      !userRoles.some((r) => r.endsWith('_ADMIN') || r === 'CREATOR' || r === 'SEMINAR_COORDINATOR' || r === 'DEPARTMENT_HOD');
+
+    if (isPureGeneratorOperator) {
+      return [
+        { name: 'Generator Schedule', path: '/operator/generator', icon: Zap },
       ];
     }
 
@@ -85,6 +98,10 @@ export const Sidebar = ({ isOpen, onClose }) => {
       adminDashboards.push({ name: 'Equipment Dashboard', path: '/technician/seminar', icon: Wrench });
     }
 
+    if (userRoles.includes('GENERATOR_OPERATOR')) {
+      adminDashboards.push({ name: 'Generator Schedule', path: '/operator/generator', icon: Zap });
+    }
+
     // Avoid duplicate links when multiple roles map to the same dashboard
     const seenPaths = new Set();
     const uniqueAdminDashboards = adminDashboards.filter((item) => {
@@ -115,16 +132,28 @@ export const Sidebar = ({ isOpen, onClose }) => {
       ];
     }
 
-    // Standalone service admin (non-department user)
+    // Standalone operator / service admin (non-department user)
     if (uniqueAdminDashboards.length === 1) {
       const single = uniqueAdminDashboards[0];
+      // Generator operator without admin roles has access strictly to generator schedule
+      if (userRoles.includes('GENERATOR_OPERATOR') && !userRoles.some((r) => r.endsWith('_ADMIN') || r === 'CREATOR')) {
+        return [
+          {
+            name: 'Generator Schedule',
+            path: '/operator/generator',
+            icon: Zap,
+          },
+        ];
+      }
       return [
         {
           name: single.name === 'Coordinator Dashboard'
             ? 'Coordinator Dashboard'
             : single.name === 'Equipment Dashboard'
               ? 'Equipment Dashboard'
-              : 'Dashboard',
+              : single.name === 'Generator Schedule'
+                ? 'Generator Schedule'
+                : 'Dashboard',
           path: single.path,
           icon: single.icon || LayoutDashboard,
         },

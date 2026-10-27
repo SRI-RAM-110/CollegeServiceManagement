@@ -1390,4 +1390,46 @@ public class CollegeServicesApplicationTests {
         // Cleanup
         accommodationRequestRepository.delete(directApproved);
     }
+
+    @Test
+    @WithMockUser(username = "gen_operator", roles = {"GENERATOR_OPERATOR"})
+    public void testGeneratorOperatorAccess_Success() throws Exception {
+        userRepository.findByUserId("gen_operator").orElseGet(() -> {
+            User u = User.builder()
+                    .userId("gen_operator")
+                    .name("Generator Operator")
+                    .email("gen.operator@nec.edu.in")
+                    .role("GENERATOR_OPERATOR")
+                    .roles(List.of("GENERATOR_OPERATOR"))
+                    .active(true)
+                    .build();
+            return userRepository.save(u);
+        });
+
+        mockMvc.perform(get("/api/seminar/generator/schedule")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    @WithMockUser(username = "dept_user_blocked", roles = {"DEPARTMENT_USER"})
+    public void testGeneratorOperatorAccess_ForbiddenForDeptUser() throws Exception {
+        userRepository.findByUserId("dept_user_blocked").orElseGet(() -> {
+            User u = User.builder()
+                    .userId("dept_user_blocked")
+                    .name("Dept User Blocked")
+                    .email("dept.blocked@nec.edu.in")
+                    .role("DEPARTMENT_USER")
+                    .roles(List.of("DEPARTMENT_USER"))
+                    .active(true)
+                    .build();
+            return userRepository.save(u);
+        });
+
+        mockMvc.perform(get("/api/seminar/generator/schedule")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
 }
+

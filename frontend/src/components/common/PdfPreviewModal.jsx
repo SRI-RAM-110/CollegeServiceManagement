@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Download, X, AlertCircle, Loader2 } from 'lucide-react';
+import { Eye, Download, X, AlertCircle, Loader2, FileText, ExternalLink } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 import { requestsApi } from '../../services/api';
+import { downloadOrOpenPdf } from '../../utils/fileDownloader';
 
 export const PdfPreviewModal = ({
   isOpen,
@@ -95,17 +97,10 @@ export const PdfPreviewModal = ({
       }
 
       const filename = getCleanFilename();
-      const downloadUrl = URL.createObjectURL(blobToSave);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+      await downloadOrOpenPdf(blobToSave, filename);
     } catch (err) {
-      console.error('Download error:', err);
-      alert('Unable to download PDF. Please try again.');
+      console.error('PDF export error:', err);
+      alert(err.message || 'Unable to open or download PDF. Please try again.');
     } finally {
       setDownloading(false);
     }
@@ -175,37 +170,72 @@ export const PdfPreviewModal = ({
           )}
 
           {!loading && !error && pdfUrl && (
-            <div className="pdf-viewer-viewport">
-              <object
-                data={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0`}
-                type="application/pdf"
-                className="pdf-embed-object"
-                title={`Official PDF - ${requestId}`}
-              >
-                <iframe
-                  src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0`}
-                  className="pdf-embed-iframe"
+            Capacitor.isNativePlatform() ? (
+              <div className="pdf-native-view-card p-6 flex flex-col items-center justify-center text-center space-y-4 my-auto min-h-[280px]">
+                <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shadow-lg">
+                  <FileText size={32} />
+                </div>
+                <div className="space-y-1.5 max-w-md">
+                  <h4 className="text-lg font-bold text-white tracking-tight">Official Service Document</h4>
+                  <p className="text-xs font-mono text-cyan-300 break-all">{getCleanFilename()}</p>
+                  <p className="text-xs text-slate-400 mt-2">
+                    Document ready. Tap below to view or share the complete PDF using your preferred native app (such as Google Drive or Adobe Acrobat).
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDownload}
+                  disabled={loading || downloading}
+                  className="btn btn-primary flex items-center gap-2 px-5 py-2.5 text-sm font-semibold shadow-lg shadow-blue-500/25"
+                  id="btn-open-pdf-native"
+                >
+                  {downloading ? (
+                    <>
+                      <Loader2 className="animate-spin" size={16} />
+                      <span>Preparing Document...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink size={16} />
+                      <span>Open in Document Viewer</span>
+                    </>
+                  )}
+                </button>
+                <span className="text-[11px] text-slate-500">Android opens documents securely via the native system viewer</span>
+              </div>
+            ) : (
+              <div className="pdf-viewer-viewport">
+                <object
+                  data={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0`}
+                  type="application/pdf"
+                  className="pdf-embed-object"
                   title={`Official PDF - ${requestId}`}
                 >
-                  <p className="p-4 text-center">
-                    Your browser does not support inline PDF preview.{' '}
-                    <button onClick={handleDownload} className="btn btn-primary btn-sm ml-2">
-                      Download PDF Document
-                    </button>
-                  </p>
-                </iframe>
-              </object>
-            </div>
+                  <iframe
+                    src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0`}
+                    className="pdf-embed-iframe"
+                    title={`Official PDF - ${requestId}`}
+                  >
+                    <p className="p-4 text-center">
+                      Your browser does not support inline PDF preview.{' '}
+                      <button onClick={handleDownload} className="btn btn-primary btn-sm ml-2">
+                        Download PDF Document
+                      </button>
+                    </p>
+                  </iframe>
+                </object>
+              </div>
+            )
           )}
         </div>
 
         {/* Modal Footer */}
-        <div className="modal-footer pdf-modal-footer">
-          <div className="pdf-footer-filename">
+        <div className="modal-footer pdf-modal-footer request-details-footer">
+          <div className="pdf-footer-filename request-doc-footer-meta">
             <span className="text-xs text-muted">Document: </span>
             <span className="text-xs font-mono font-medium text-white">{getCleanFilename()}</span>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 request-details-footer-actions">
             <button
               onClick={handleDownload}
               disabled={loading || downloading}
@@ -215,12 +245,12 @@ export const PdfPreviewModal = ({
               {downloading ? (
                 <>
                   <Loader2 className="animate-spin" size={16} />
-                  <span>Generating PDF...</span>
+                  <span>Processing...</span>
                 </>
               ) : (
                 <>
                   <Download size={16} />
-                  <span>Download PDF</span>
+                  <span>{Capacitor.isNativePlatform() ? 'Open / Share PDF' : 'Download PDF'}</span>
                 </>
               )}
             </button>

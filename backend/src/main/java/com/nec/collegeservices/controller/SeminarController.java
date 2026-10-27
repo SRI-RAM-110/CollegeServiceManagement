@@ -298,4 +298,17 @@ public class SeminarController {
         SeminarEquipmentChecklist saved = seminarService.saveEquipmentChecklist(bookingId, date, checklist, user);
         return ResponseEntity.ok(ApiResponse.ok("Equipment checklist saved successfully", saved));
     }
+
+    // ==========================================
+    // GENERATOR OPERATOR ENDPOINTS
+    // ==========================================
+
+    @GetMapping("/generator/schedule")
+    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN', 'GENERATOR_OPERATOR')")
+    public ResponseEntity<ApiResponse<List<SeminarBooking>>> getGeneratorSchedule() {
+        User user = authService.getCurrentUser();
+        List<SeminarBooking> list = seminarService.getGeneratorSchedule(user);
+        return ResponseEntity.ok(ApiResponse.ok("Generator operator seminar schedule", list));
+    }
 }
+

@@ -32,6 +32,7 @@ import TransportAdmin from './pages/admin/TransportAdmin';
 import StationeryAdmin from './pages/admin/StationeryAdmin';
 import MealsAdmin from './pages/admin/MealsAdmin';
 import SeminarTechnicianDashboard from './pages/technician/SeminarTechnicianDashboard';
+import GeneratorOperatorDashboard from './pages/operator/GeneratorOperatorDashboard';
 import ForcedPasswordChangeModal from './components/common/ForcedPasswordChangeModal';
 import Reports from './pages/Reports';
 
@@ -45,6 +46,7 @@ const ROOT_PATHS = [
   '/admin/stationery',
   '/admin/meals',
   '/technician/seminar',
+  '/operator/generator',
 ];
 
 function NativeBackButtonHandler() {
@@ -286,6 +288,24 @@ export default function App() {
                 element={
                   <ProtectedRoute allowedRoles={['CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN', 'SEMINAR_TECHNICIAN']}>
                     <SeminarTechnicianDashboard />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Generator Operator */}
+              <Route
+                path="/operator/generator"
+                element={
+                  <ProtectedRoute allowedRoles={['CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN', 'GENERATOR_OPERATOR']}>
+                    <GeneratorOperatorDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/operator/generator/*"
+                element={
+                  <ProtectedRoute allowedRoles={['CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN', 'GENERATOR_OPERATOR']}>
+                    <GeneratorOperatorDashboard />
                   </ProtectedRoute>
                 }
               />

@@ -2115,4 +2115,49 @@ public class SeminarService {
 
         return checklistRepository.save(checklist);
     }
+
+    // ==========================================
+    // GENERATOR OPERATOR SERVICE
+    // ==========================================
+
+    public List<SeminarBooking> getGeneratorSchedule(User user) {
+        if (user == null) {
+            throw new AccessDeniedException("Authentication required.");
+        }
+        boolean isAuthorized = isSuperAdmin(user) || user.hasRole("SEMINAR_ADMIN") || user.hasRole("GENERATOR_OPERATOR");
+        if (!isAuthorized) {
+            throw new AccessDeniedException("Access denied: Generator Operator or Admin authority required.");
+        }
+
+        return bookingRepository.findAll().stream()
+                .filter(b -> "APPROVED".equalsIgnoreCase(b.getStatus()) || "BOOKED".equalsIgnoreCase(b.getStatus()))
+                .filter(b -> b.getRescheduledToBookingId() == null || b.getRescheduledToBookingId().isBlank())
+                .filter(b -> !"CANCELLED".equalsIgnoreCase(b.getStatus()))
+                .map(b -> {
+                    // Enrich hallLocation and hallName from SeminarHall catalog if missing
+                    if ((b.getHallLocation() == null || b.getHallLocation().isBlank()) ||
+                        (b.getHallName() == null || b.getHallName().isBlank())) {
+                        getHallById(b.getHallId()).ifPresent(h -> {
+                            if (b.getHallLocation() == null || b.getHallLocation().isBlank()) {
+                                b.setHallLocation(h.getLocation());
+                            }
+                            if (b.getHallName() == null || b.getHallName().isBlank()) {
+                                b.setHallName(h.getName());
+                            }
+                        });
+                    }
+                    return b;
+                })
+                .sorted((a, b) -> {
+                    String dateA = a.getDate() != null ? a.getDate() : (a.getStartDate() != null ? a.getStartDate() : "");
+                    String dateB = b.getDate() != null ? b.getDate() : (b.getStartDate() != null ? b.getStartDate() : "");
+                    int dateCmp = dateA.compareTo(dateB);
+                    if (dateCmp != 0) return dateCmp;
+                    String timeA = a.getStartTime() != null ? a.getStartTime() : "";
+                    String timeB = b.getStartTime() != null ? b.getStartTime() : "";
+                    return timeA.compareTo(timeB);
+                })
+                .toList();
+    }
 }
+
