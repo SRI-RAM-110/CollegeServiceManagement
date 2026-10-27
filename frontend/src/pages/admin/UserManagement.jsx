@@ -162,7 +162,7 @@ export default function UserManagement() {
     userId: '',
     email: '',
     phone: '',
-    department: 'CSE',
+    department: '',
     designation: '',
     password: '12345',
     confirmPassword: '12345',
@@ -233,7 +233,7 @@ export default function UserManagement() {
       userId: '',
       email: '',
       phone: '',
-      department: 'CSE',
+      department: '',
       designation: '',
       password: '12345',
       confirmPassword: '12345',
@@ -260,11 +260,22 @@ export default function UserManagement() {
       addToast('Password and confirmation do not match.', 'error');
       return;
     }
+
+    const requiresDept = (registerForm.roles || []).some(
+      (r) => r === 'DEPARTMENT_USER' || r === 'DEPARTMENT_HOD'
+    ) || registerForm.role === 'DEPARTMENT_USER' || registerForm.role === 'DEPARTMENT_HOD';
+
+    if (requiresDept && !registerForm.department?.trim()) {
+      addToast('Department is required for Department HOD and Faculty/Staff roles.', 'error');
+      return;
+    }
+
     try {
       setSubmitting(true);
       const submissionData = {
         ...registerForm,
         email: registerForm.email.trim().toLowerCase(),
+        department: registerForm.department?.trim() ? registerForm.department.trim() : null,
       };
       await adminUserApi.registerUser(submissionData);
       addToast(`User ${submissionData.email} successfully registered!`, 'success');
@@ -290,7 +301,7 @@ export default function UserManagement() {
       name: user.name || '',
       email: user.email || '',
       phone: user.phone || '',
-      department: user.department || 'CSE',
+      department: user.department || '',
       designation: user.designation || '',
       roles: (user.roles || []).filter((r) => ROLES_LIST.some((rl) => rl.id === r)),
       servicePermissions: user.servicePermissions || [],
@@ -319,6 +330,17 @@ export default function UserManagement() {
       if (!(submissionData.servicePermissions || []).includes('ACCOMMODATION_ADMIN')) {
         submissionData.assignedHostels = [];
       }
+
+      const editRequiresDept = (submissionData.roles || []).some(
+        (r) => r === 'DEPARTMENT_USER' || r === 'DEPARTMENT_HOD'
+      );
+      if (editRequiresDept && !submissionData.department?.trim()) {
+        addToast('Department is required for Department HOD and Faculty/Staff roles.', 'error');
+        setSubmitting(false);
+        return;
+      }
+      submissionData.department = submissionData.department?.trim() ? submissionData.department.trim() : null;
+
       await adminUserApi.updateUser(selectedUser.userId, submissionData);
       addToast(`User ${selectedUser.userId} updated successfully!`, 'success');
       setEditModalOpen(false);
@@ -343,7 +365,7 @@ export default function UserManagement() {
       name: user.name || '',
       email: user.email || '',
       phone: user.phone || '',
-      department: user.department || 'CSE',
+      department: user.department || '',
       designation: user.designation || '',
       roles: (user.roles || []).filter((r) => ROLES_LIST.some((rl) => rl.id === r)),
       servicePermissions: user.servicePermissions || [],
@@ -372,12 +394,21 @@ export default function UserManagement() {
         ? (editForm.assignedHostels || [])
         : [];
 
+      const accessRequiresDept = updatedRoles.some(
+        (r) => r === 'DEPARTMENT_USER' || r === 'DEPARTMENT_HOD'
+      );
+      if (accessRequiresDept && !editForm.department?.trim()) {
+        addToast('Department is required for Department HOD and Faculty/Staff roles.', 'error');
+        setSubmitting(false);
+        return;
+      }
+
       await adminUserApi.updateUser(selectedUser.userId, {
         roles: updatedRoles,
         servicePermissions: editForm.servicePermissions,
         assignedHallIds: assignedHalls,
         assignedHostels: assignedHostels,
-        department: editForm.department,
+        department: editForm.department?.trim() ? editForm.department.trim() : null,
       });
       addToast(`Access permissions updated for ${selectedUser.userId}!`, 'success');
       setAccessModalOpen(false);
@@ -606,6 +637,7 @@ export default function UserManagement() {
                 className="w-full px-3 py-2 bg-slate-900/90 border border-slate-700/80 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
               >
                 <option value="ALL">All Departments</option>
+                <option value="UNASSIGNED">Unassigned / No Department</option>
                 {DEPARTMENTS.map((d) => (
                   <option key={d.code} value={d.code}>
                     {d.code} – {d.name}
@@ -1026,14 +1058,16 @@ export default function UserManagement() {
 
             <div>
               <label className="block font-semibold text-slate-300 mb-1">
-                Department <span className="text-rose-400">*</span>
+                Department {(registerForm.roles || []).some(r => r === 'DEPARTMENT_USER' || r === 'DEPARTMENT_HOD') && (
+                  <span className="text-rose-400">*</span>
+                )}
               </label>
               <select
-                value={registerForm.department}
+                value={registerForm.department || ''}
                 onChange={(e) => setRegisterForm({ ...registerForm, department: e.target.value })}
                 className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-blue-500"
-                required
               >
+                <option value="">None / Not Applicable</option>
                 {DEPARTMENTS.map((d) => (
                   <option key={d.code} value={d.code}>
                     {d.code} – {d.name}
@@ -1289,12 +1323,17 @@ export default function UserManagement() {
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-300 mb-1">Department</label>
+            <label className="block font-semibold text-slate-300 mb-1">
+              Department {(editForm.roles || []).some(r => r === 'DEPARTMENT_USER' || r === 'DEPARTMENT_HOD') && (
+                <span className="text-rose-400">*</span>
+              )}
+            </label>
             <select
-              value={editForm.department}
+              value={editForm.department || ''}
               onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
               className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-blue-500"
             >
+              <option value="">None / Not Applicable</option>
               {DEPARTMENTS.map((d) => (
                 <option key={d.code} value={d.code}>
                   {d.code} – {d.name}

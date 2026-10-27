@@ -33,7 +33,7 @@ public class User {
     @Builder.Default
     private java.util.List<String> assignedHallIds = new java.util.ArrayList<>(); // e.g. ["SH-1", "SH-5"]
 
-    private String department; // CSE, ECE, EEE, ME, CIVIL, AI, MBA, PHARM, ADMIN, etc.
+    private String department; // CSE, ECE, EEE, ME, CIVIL, IT, CSDS, MBA, PHARM, ADMIN, etc.
     private String designation; // e.g. Professor, Coordinator, HOD
 
     @Indexed(unique = true)

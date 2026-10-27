@@ -88,6 +88,9 @@ public class AdminUserService {
                 })
                 .filter(u -> {
                     if (department == null || department.isBlank() || department.equalsIgnoreCase("ALL")) return true;
+                    if (department.equalsIgnoreCase("NONE") || department.equalsIgnoreCase("UNASSIGNED")) {
+                        return u.getDepartment() == null || u.getDepartment().isBlank();
+                    }
                     return u.getDepartment() != null && u.getDepartment().equalsIgnoreCase(department.trim());
                 })
                 .filter(u -> {
@@ -162,10 +165,6 @@ public class AdminUserService {
             }
         }
 
-        if (dto.getDepartment() == null || dto.getDepartment().isBlank()) {
-            throw new BadRequestException("Department is required.");
-        }
-
         // Check if any requested role is CREATOR
         boolean assigningCreator = (dto.getRole() != null && dto.getRole().trim().equalsIgnoreCase("CREATOR")) ||
                 (dto.getRoles() != null && dto.getRoles().stream().anyMatch(r -> r != null && r.trim().equalsIgnoreCase("CREATOR")));
@@ -206,6 +205,16 @@ public class AdminUserService {
         }
         if (rolesSet.isEmpty()) {
             rolesSet.add("DEPARTMENT_USER");
+        }
+
+        boolean requiresDept = rolesSet.contains("DEPARTMENT_USER") || rolesSet.contains("DEPARTMENT_HOD");
+        String userDept = null;
+        if (dto.getDepartment() != null && !dto.getDepartment().isBlank() && !"NONE".equalsIgnoreCase(dto.getDepartment().trim()) && !"N/A".equalsIgnoreCase(dto.getDepartment().trim())) {
+            userDept = dto.getDepartment().trim().toUpperCase();
+        }
+
+        if (requiresDept && userDept == null) {
+            throw new BadRequestException("Department is required for Department Faculty/Staff and Department HODs.");
         }
 
         // Service permissions
@@ -257,7 +266,7 @@ public class AdminUserService {
                 .name(dto.getName().trim())
                 .email(dto.getEmail() != null ? dto.getEmail().trim() : null)
                 .phone(dto.getPhone() != null ? dto.getPhone().trim() : null)
-                .department(dto.getDepartment().trim().toUpperCase())
+                .department(userDept)
                 .designation(dto.getDesignation() != null ? dto.getDesignation().trim() : null)
                 .role(primaryRole)
                 .roles(new ArrayList<>(rolesSet))
@@ -317,8 +326,13 @@ public class AdminUserService {
         if (dto.getPhone() != null) {
             user.setPhone(dto.getPhone().trim());
         }
-        if (dto.getDepartment() != null && !dto.getDepartment().isBlank()) {
-            user.setDepartment(dto.getDepartment().trim().toUpperCase());
+        if (dto.getDepartment() != null) {
+            String deptVal = dto.getDepartment().trim();
+            if (deptVal.isBlank() || "NONE".equalsIgnoreCase(deptVal) || "N/A".equalsIgnoreCase(deptVal)) {
+                user.setDepartment(null);
+            } else {
+                user.setDepartment(deptVal.toUpperCase());
+            }
         }
         if (dto.getDesignation() != null) {
             user.setDesignation(dto.getDesignation().trim());
@@ -390,6 +404,12 @@ public class AdminUserService {
                     user.setRoles(new ArrayList<>(List.of(norm)));
                 }
             }
+        }
+
+        // Department validation for departmental roles
+        boolean targetRequiresDept = user.hasRole("DEPARTMENT_USER") || user.hasRole("DEPARTMENT_HOD");
+        if (targetRequiresDept && (user.getDepartment() == null || user.getDepartment().isBlank())) {
+            throw new BadRequestException("Department is required for Department Faculty/Staff and Department HODs.");
         }
 
         // Dependent permissions cleanup: Seminar Halls (Coordinators & Technicians)

@@ -33,6 +33,7 @@ const DEPARTMENT_NAMES = {
   AIDS: 'Artificial Intelligence & Data Science',
   AIML: 'Artificial Intelligence & Machine Learning',
   IT: 'Information Technology',
+  CSDS: 'Cyber Security & Data Science',
   MBA: 'Master of Business Administration',
   MCA: 'Master of Computer Applications',
   PHARM: 'Pharmacy',

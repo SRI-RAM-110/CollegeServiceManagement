@@ -109,7 +109,7 @@ export default function Reports() {
           } else if (perm.availableDepartments && perm.availableDepartments.length > 0) {
             setSelectedDepartments(perm.availableDepartments);
           } else {
-            setSelectedDepartments(['CSE', 'ECE', 'EEE', 'MECH', 'CIVIL', 'IT', 'AIML', 'MBA', 'MCA', 'BS&H']);
+            setSelectedDepartments(['CSE', 'ECE', 'EEE', 'MECH', 'CIVIL', 'IT', 'CSDS', 'AIML', 'MBA', 'MCA', 'BS&H']);
           }
 
           // Seminar hall coordinator default
@@ -134,7 +134,7 @@ export default function Reports() {
   // Department options memoized from permissions
   const departmentOptions = useMemo(() => {
     const list = permissions?.availableDepartments || [
-      'CSE', 'ECE', 'EEE', 'MECH', 'CIVIL', 'IT', 'AIML', 'MBA', 'MCA', 'BS&H'
+      'CSE', 'ECE', 'EEE', 'MECH', 'CIVIL', 'IT', 'CSDS', 'AIML', 'MBA', 'MCA', 'BS&H'
     ];
     return list.map((d) => ({
       id: d,

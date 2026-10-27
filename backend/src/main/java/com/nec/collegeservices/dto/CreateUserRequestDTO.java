@@ -25,7 +25,6 @@ public class CreateUserRequestDTO {
 
     private String phone;
 
-    @NotBlank(message = "Department is required")
     private String department;
 
     private String designation;

@@ -18,7 +18,7 @@ public class Department {
     private String id;
 
     @Indexed(unique = true)
-    private String code; // CSE, ECE, EEE, ME, CIVIL, AI, MBA, PHARM
+    private String code; // CSE, ECE, EEE, ME, CIVIL, IT, CSDS, MBA, PHARM
 
     private String name;
     private String block;

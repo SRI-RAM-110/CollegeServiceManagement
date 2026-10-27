@@ -107,7 +107,7 @@ public class ReportService {
         List<String> availableDepts = new ArrayList<>();
         if (canViewAllDepts) {
             Set<String> depts = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-            depts.addAll(List.of("CSE", "ECE", "EEE", "MECH", "CIVIL", "IT", "AIML", "MBA", "MCA", "BS&H"));
+            depts.addAll(List.of("CSE", "ECE", "EEE", "MECH", "CIVIL", "IT", "CSDS", "AIML", "MBA", "MCA", "BS&H"));
             for (User u : userRepository.findAll()) {
                 if (u.getDepartment() != null && !u.getDepartment().isBlank()) {
                     depts.add(u.getDepartment().trim().toUpperCase());

@@ -339,7 +339,7 @@ export default function AOAdminDashboard() {
     'Snacks & Meals': allRequests.filter(r => r.service === 'Snacks & Meals' && r.status === 'PENDING').length,
   };
 
-  const DEPARTMENTS = ['CSE', 'ECE', 'EEE', 'ME', 'CIVIL', 'AI', 'MBA', 'PHARM'];
+  const DEPARTMENTS = ['CSE', 'ECE', 'EEE', 'ME', 'CIVIL', 'IT', 'CSDS', 'MBA', 'PHARM'];
   const byDepartment = dashboardData?.byDepartment || dashboardData?.requestsByDepartment || (() => {
     const map = {};
     DEPARTMENTS.forEach(d => {

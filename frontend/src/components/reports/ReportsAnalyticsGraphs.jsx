@@ -31,6 +31,7 @@ const DEPARTMENT_FULL_NAMES = {
   MECH: 'Mechanical Engineering',
   CIVIL: 'Civil Engineering',
   IT: 'Information Technology',
+  CSDS: 'Cyber Security & Data Science',
   AIML: 'Artificial Intelligence & Machine Learning',
   MBA: 'Master of Business Administration',
   MCA: 'Master of Computer Applications',
@@ -564,7 +565,7 @@ export default function ReportsAnalyticsGraphs({
     if (set.size > 0) {
       return Array.from(set).sort().map((d) => ({ id: d, label: d }));
     }
-    return ['CSE', 'ECE', 'EEE', 'MECH', 'CIVIL', 'IT', 'AIML', 'MBA', 'MCA', 'BS&H'].map((d) => ({ id: d, label: d }));
+    return ['CSE', 'ECE', 'EEE', 'MECH', 'CIVIL', 'IT', 'CSDS', 'AIML', 'MBA', 'MCA', 'BS&H'].map((d) => ({ id: d, label: d }));
   }, [departmentOptions, reportData]);
 
   // Section 3: Unified Service & Status Analytics Filters
