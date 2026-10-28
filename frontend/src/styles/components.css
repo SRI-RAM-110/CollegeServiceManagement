@@ -3119,3 +3119,129 @@
   border-color: var(--primary-light) !important;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
 }
+
+/* ============================================================
+   SESSION LOADING ANIMATION & COLLEGE LOGO BOUNCE
+   ============================================================ */
+
+.loading-screen {
+  position: fixed;
+  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-main, #020617);
+  z-index: 999999;
+  user-select: none;
+  -webkit-user-select: none;
+  overflow: hidden;
+}
+
+.session-loader-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.session-loading-logo-emblem,
+.college-logo-frame.frame-loader {
+  width: 80px;
+  height: 80px;
+  min-width: 80px;
+  min-height: 80px;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 25px -4px rgba(37, 99, 235, 0.4), 0 0 20px rgba(96, 165, 250, 0.35);
+  border: 2.5px solid rgba(255, 255, 255, 0.85);
+  overflow: hidden;
+  padding: 6px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  animation: sessionLogoBounce 1.8s ease-in-out infinite;
+  will-change: transform, box-shadow;
+}
+
+[data-theme="light"] .session-loading-logo-emblem,
+[data-theme="light"] .college-logo-frame.frame-loader {
+  border-color: rgba(37, 99, 235, 0.25);
+  box-shadow: 0 10px 25px -4px rgba(37, 99, 235, 0.25), 0 0 16px rgba(59, 130, 246, 0.2);
+}
+
+.session-loading-logo-img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain !important;
+  object-position: center;
+  display: block;
+  pointer-events: none;
+}
+
+.session-loader-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--text-muted, #94a3b8);
+  text-transform: uppercase;
+  animation: sessionLabelPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes sessionLogoBounce {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    box-shadow: 0 8px 20px -3px rgba(37, 99, 235, 0.35), 0 0 16px rgba(96, 165, 250, 0.25);
+  }
+  50% {
+    transform: translateY(-16px) scale(1.04);
+    box-shadow: 0 24px 32px -4px rgba(37, 99, 235, 0.5), 0 0 30px rgba(96, 165, 250, 0.45);
+  }
+}
+
+@keyframes sessionLabelPulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .session-loading-logo-emblem,
+  .college-logo-frame.frame-loader {
+    width: 68px;
+    height: 68px;
+    min-width: 68px;
+    min-height: 68px;
+    padding: 5px;
+  }
+
+  .session-loader-label {
+    font-size: 0.8125rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .session-loading-logo-emblem,
+  .college-logo-frame.frame-loader,
+  .session-loader-label {
+    animation: none !important;
+    transform: none !important;
+  }
+  .session-loader-label {
+    opacity: 0.85 !important;
+  }
+}

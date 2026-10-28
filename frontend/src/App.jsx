@@ -34,6 +34,7 @@ import MealsAdmin from './pages/admin/MealsAdmin';
 import SeminarTechnicianDashboard from './pages/technician/SeminarTechnicianDashboard';
 import GeneratorOperatorDashboard from './pages/operator/GeneratorOperatorDashboard';
 import ForcedPasswordChangeModal from './components/common/ForcedPasswordChangeModal';
+import SessionLoader from './components/common/SessionLoader';
 import Reports from './pages/Reports';
 
 const ROOT_PATHS = [
@@ -114,7 +115,10 @@ function NativeBackButtonHandler() {
 }
 
 function RootRedirect() {
-  const { user, isAuthenticated, getDefaultRouteForRole } = useAuth();
+  const { user, isAuthenticated, getDefaultRouteForRole, loading } = useAuth();
+  if (loading) {
+    return <SessionLoader />;
+  }
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }

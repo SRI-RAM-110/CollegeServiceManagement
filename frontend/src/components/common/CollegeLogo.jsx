@@ -15,6 +15,7 @@ import { COLLEGE_LOGO, COLLEGE_LOGO_FALLBACK } from '../../constants/branding';
  * - 'hero': Hero banner emblem for department dashboard (72px desktop, 60px tablet, 50px mobile)
  * - 'admin': Circular emblem for AO Admin Dashboard header (48px desktop, 40px mobile)
  * - 'state': Circular emblem for empty and loading states (52px desktop, 44px mobile)
+ * - 'loader': Circular emblem with smooth bounce animation for session loading (80px desktop, 68px mobile)
  * - 'doc': Standalone high-res rectangular logo for official PDF and document previews (64px)
  * - 'raw': Plain img tag with aspect-ratio protection and object-fit: contain
  */
@@ -76,6 +77,7 @@ export const CollegeLogo = ({
     hero: 'banner-college-logo frame-hero',
     admin: 'ao-header-logo-circle frame-admin',
     state: `empty-state-logo frame-state ${pulse ? 'pulse-subtle' : ''}`,
+    loader: 'session-loading-logo-emblem frame-loader',
   };
 
   const imgClassMap = {
@@ -85,6 +87,7 @@ export const CollegeLogo = ({
     hero: 'banner-college-logo-img',
     admin: 'ao-header-logo',
     state: 'empty-state-logo-img',
+    loader: 'session-loading-logo-img',
   };
 
   const containerClass = frameClassMap[variant] || frameClassMap.nav;
