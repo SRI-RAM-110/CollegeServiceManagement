@@ -23,27 +23,6 @@ export const NotificationProvider = ({ children }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [toasts, setToasts] = useState([]);
 
-  // Setup FCM handlers (tap navigation & foreground toasts)
-  useEffect(() => {
-    setNotificationHandlers({
-      onNavigate: (url) => {
-        if (url) {
-          navigate(url);
-        }
-      },
-      onToast: (msg, type, dur) => {
-        showToast(msg, type, dur);
-      },
-    });
-  }, [navigate, showToast]);
-
-  // Request & register FCM on signed-in user flow
-  useEffect(() => {
-    if (isAuthenticated && user && Capacitor.isNativePlatform()) {
-      registerFcmForUser(user);
-    }
-  }, [isAuthenticated, user?.userId, user?.email]);
-
   // Web Push State
   const [pushSupported, setPushSupported] = useState(false);
   const [pushPermission, setPushPermission] = useState('default');
@@ -68,6 +47,27 @@ export const NotificationProvider = ({ children }) => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, duration);
   }, []);
+
+  // Setup FCM handlers (tap navigation & foreground toasts)
+  useEffect(() => {
+    setNotificationHandlers({
+      onNavigate: (url) => {
+        if (url) {
+          navigate(url);
+        }
+      },
+      onToast: (msg, type, dur) => {
+        showToast(msg, type, dur);
+      },
+    });
+  }, [navigate, showToast]);
+
+  // Request & register FCM on signed-in user flow
+  useEffect(() => {
+    if (isAuthenticated && user && Capacitor.isNativePlatform()) {
+      registerFcmForUser(user);
+    }
+  }, [isAuthenticated, user?.userId, user?.email]);
 
   const checkPushStatus = useCallback(async () => {
     const supported = isPushSupported();

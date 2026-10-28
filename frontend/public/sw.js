@@ -9,13 +9,6 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-// Passive fetch listener required for PWA installability criteria.
-// Network-only pass-through: Never caches authenticated API calls or user data
-// to strictly prevent serving stale application code or sensitive information.
-self.addEventListener('fetch', (event) => {
-  // Let browser handle requests normally via network
-});
-
 self.addEventListener('push', (event) => {
   let data = {};
   if (event.data) {
