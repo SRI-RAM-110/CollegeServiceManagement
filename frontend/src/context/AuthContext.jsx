@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authApi } from '../services/api';
 import { getUserRoles } from '../utils/authUtils';
+import { unregisterFcmOnLogout } from '../services/fcmService';
 
 const AuthContext = createContext(null);
 
@@ -53,6 +54,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    // Safely attempt to unregister mobile FCM token with backend before wiping credentials
+    unregisterFcmOnLogout().catch(() => {});
     setToken(null);
     setUser(null);
     localStorage.removeItem('token');

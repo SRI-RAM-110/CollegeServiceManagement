@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { notificationApi } from '../services/api';
@@ -11,14 +12,37 @@ import {
   unsubscribeUserFromPush,
   sendTestPushNotification,
 } from '../services/pushService';
+import { registerFcmForUser, setNotificationHandlers } from '../services/fcmService';
 
 const NotificationContext = createContext(null);
 
 export const NotificationProvider = ({ children }) => {
   const { isAuthenticated, user } = useAuth();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [toasts, setToasts] = useState([]);
+
+  // Setup FCM handlers (tap navigation & foreground toasts)
+  useEffect(() => {
+    setNotificationHandlers({
+      onNavigate: (url) => {
+        if (url) {
+          navigate(url);
+        }
+      },
+      onToast: (msg, type, dur) => {
+        showToast(msg, type, dur);
+      },
+    });
+  }, [navigate, showToast]);
+
+  // Request & register FCM on signed-in user flow
+  useEffect(() => {
+    if (isAuthenticated && user && Capacitor.isNativePlatform()) {
+      registerFcmForUser(user);
+    }
+  }, [isAuthenticated, user?.userId, user?.email]);
 
   // Web Push State
   const [pushSupported, setPushSupported] = useState(false);

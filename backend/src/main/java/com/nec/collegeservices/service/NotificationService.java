@@ -18,6 +18,9 @@ public class NotificationService {
     private PushService pushService;
 
     @Autowired
+    private FcmService fcmService;
+
+    @Autowired
     private EmailService emailService;
 
     public Notification sendNotification(String recipientRole, String recipientDept, String recipientUserId,
@@ -45,6 +48,17 @@ public class NotificationService {
             }
         } catch (Exception e) {
             // Push delivery failure must never break core notification or business logic
+        }
+
+        // Dispatch FCM mobile push notification asynchronously (non-blocking, failure isolated)
+        try {
+            if (recipientUserId != null && !recipientUserId.isBlank() && !"ALL".equalsIgnoreCase(recipientUserId)) {
+                fcmService.sendPushToUser(recipientUserId, title, message, "/notifications", referenceId, service, type);
+            } else {
+                fcmService.sendPushToRoleAndDept(recipientRole, recipientDept, title, message, "/notifications", referenceId, service, type);
+            }
+        } catch (Exception e) {
+            // FCM push delivery failure must never break core notification or business logic
         }
 
         // Dispatch email notification asynchronously (non-blocking, failure isolated)

@@ -247,6 +247,8 @@ export const pushApi = {
   subscribe: (data) => api.post('/push/subscribe', data),
   unsubscribe: (data) => api.post('/push/unsubscribe', data),
   sendTest: () => api.post('/push/test'),
+  registerDeviceToken: (data) => api.post('/push/device-token', data),
+  unregisterDeviceToken: (token) => api.delete('/push/device-token', { data: { token } }),
 };
 
 export const reportsApi = {

@@ -1,9 +1,11 @@
 package com.nec.collegeservices.controller;
 
 import com.nec.collegeservices.dto.ApiResponse;
+import com.nec.collegeservices.model.DeviceToken;
 import com.nec.collegeservices.model.PushSubscription;
 import com.nec.collegeservices.model.User;
 import com.nec.collegeservices.service.AuthService;
+import com.nec.collegeservices.service.FcmService;
 import com.nec.collegeservices.service.PushService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +21,9 @@ public class PushController {
 
     @Autowired
     private PushService pushService;
+
+    @Autowired
+    private FcmService fcmService;
 
     @Autowired
     private AuthService authService;
@@ -65,5 +70,32 @@ public class PushController {
                 "TEST-" + System.currentTimeMillis()
         );
         return ResponseEntity.ok(ApiResponse.ok("Test push notification queued for user " + user.getUserId()));
+    }
+
+    @PostMapping("/device-token")
+    public ResponseEntity<ApiResponse<DeviceToken>> registerDeviceToken(@RequestBody Map<String, String> payload) {
+        User user = authService.getCurrentUser();
+        if (user == null || user.getUserId() == null) {
+            return ResponseEntity.status(401).body(ApiResponse.error("Authentication required to register device token"));
+        }
+        String token = payload.get("token");
+        String platform = payload.get("platform");
+        String deviceModel = payload.get("deviceModel");
+
+        DeviceToken dt = fcmService.registerDeviceToken(user.getUserId(), token, platform, deviceModel);
+        return ResponseEntity.ok(ApiResponse.ok("Device token registered successfully", dt));
+    }
+
+    @DeleteMapping("/device-token")
+    public ResponseEntity<ApiResponse<Void>> unregisterDeviceToken(
+            @RequestBody(required = false) Map<String, String> payload,
+            @RequestParam(value = "token", required = false) String paramToken) {
+        User user = authService.getCurrentUser();
+        if (user == null || user.getUserId() == null) {
+            return ResponseEntity.status(401).body(ApiResponse.error("Authentication required"));
+        }
+        String token = (payload != null && payload.containsKey("token")) ? payload.get("token") : paramToken;
+        fcmService.unregisterDeviceToken(user.getUserId(), token);
+        return ResponseEntity.ok(ApiResponse.ok("Device token unregistered successfully"));
     }
 }

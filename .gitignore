@@ -13,3 +13,11 @@ backend/application-local.properties
 .env.local
 backend/.env
 backend/.env.local
+
+# Firebase & Google Services credentials
+google-services.json
+**/google-services.json
+*firebase*.json
+*service-account*.json
+firebase-service-account*.json
+secrets/
