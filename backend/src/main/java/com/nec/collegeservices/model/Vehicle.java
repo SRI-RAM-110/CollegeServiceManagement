@@ -28,4 +28,27 @@ public class Vehicle {
     private String driverName;
     private String driverPhone;
     private String image;
+    @Builder.Default
+    private Boolean active = true;
+
+    // Audit metadata
+    private String createdAt;
+    private String createdBy;
+    private String updatedAt;
+    private String updatedBy;
+
+    public boolean isActive() {
+        return active == null || active;
+    }
+
+    // Backward-compatibility accessors for legacy consumers
+    public String getVehicleNumber() {
+        return registrationNumber != null && !registrationNumber.isBlank() ? registrationNumber : vehicleId;
+    }
+
+    public void setVehicleNumber(String vehicleNumber) {
+        if (this.registrationNumber == null || this.registrationNumber.isBlank()) {
+            this.registrationNumber = vehicleNumber;
+        }
+    }
 }

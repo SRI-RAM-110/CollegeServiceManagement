@@ -28,11 +28,27 @@ public class SeminarController {
     @Autowired
     private AuthService authService;
 
+    @GetMapping("/halls/active")
+    public ResponseEntity<ApiResponse<List<SeminarHall>>> getActiveHalls() {
+        return ResponseEntity.ok(ApiResponse.ok("Active seminar halls list", seminarService.getActiveHalls()));
+    }
+
+    @GetMapping("/halls/all")
+    @PreAuthorize("hasRole('AO_ADMIN')")
+    public ResponseEntity<ApiResponse<List<SeminarHall>>> getAllHallsAdmin() {
+        User user = authService.getCurrentUser();
+        return ResponseEntity.ok(ApiResponse.ok("All seminar halls (Admin view)", seminarService.getAllHallsForAdmin(user)));
+    }
+
     @GetMapping("/halls")
     public ResponseEntity<ApiResponse<List<SeminarHall>>> getAllHalls(
-            @RequestParam(required = false) Boolean assignedOnly) {
+            @RequestParam(required = false) Boolean assignedOnly,
+            @RequestParam(required = false) Boolean includeInactive) {
         User user = null;
         try { user = authService.getCurrentUser(); } catch (Exception ignored) {}
+        if (Boolean.TRUE.equals(includeInactive)) {
+            return ResponseEntity.ok(ApiResponse.ok("All seminar halls", seminarService.getAllHallsForAdmin(user)));
+        }
         return ResponseEntity.ok(ApiResponse.ok("Seminar halls list", seminarService.getAllHalls(user, assignedOnly)));
     }
 
@@ -201,11 +217,19 @@ public class SeminarController {
     }
 
     // ==========================================
-    // SUPER ADMIN HALL MANAGEMENT ENDPOINTS (Section 37)
+    // AO ADMIN DYNAMIC HALL MANAGEMENT ENDPOINTS
     // ==========================================
 
+    @PostMapping("/halls")
+    @PreAuthorize("hasRole('AO_ADMIN')")
+    public ResponseEntity<ApiResponse<SeminarHall>> createHall(@RequestBody SeminarHall hall) {
+        User user = authService.getCurrentUser();
+        SeminarHall created = seminarService.createHall(hall, user);
+        return ResponseEntity.ok(ApiResponse.ok("Seminar hall created successfully", created));
+    }
+
     @PutMapping("/halls/{hallId}/status")
-    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN', 'SEMINAR_COORDINATOR')")
+    @PreAuthorize("hasRole('AO_ADMIN')")
     public ResponseEntity<ApiResponse<SeminarHall>> updateHallStatus(
             @PathVariable String hallId,
             @RequestBody Object statusBody) {
@@ -221,8 +245,16 @@ public class SeminarController {
         return ResponseEntity.ok(ApiResponse.ok("Seminar hall status updated", updated));
     }
 
+    @PatchMapping("/halls/{hallId}/toggle-status")
+    @PreAuthorize("hasRole('AO_ADMIN')")
+    public ResponseEntity<ApiResponse<SeminarHall>> toggleHallStatus(@PathVariable String hallId) {
+        User user = authService.getCurrentUser();
+        SeminarHall updated = seminarService.toggleHallActive(hallId, user);
+        return ResponseEntity.ok(ApiResponse.ok("Seminar hall active state toggled", updated));
+    }
+
     @PutMapping("/halls/{hallId}")
-    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN')")
+    @PreAuthorize("hasRole('AO_ADMIN')")
     public ResponseEntity<ApiResponse<SeminarHall>> updateHall(
             @PathVariable String hallId,
             @RequestBody SeminarHall hall) {
@@ -231,8 +263,16 @@ public class SeminarController {
         return ResponseEntity.ok(ApiResponse.ok("Seminar hall updated", updated));
     }
 
+    @DeleteMapping("/halls/{hallId}")
+    @PreAuthorize("hasRole('AO_ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteHall(@PathVariable String hallId) {
+        User user = authService.getCurrentUser();
+        seminarService.deleteHall(hallId, user);
+        return ResponseEntity.ok(ApiResponse.ok("Seminar hall deleted successfully", null));
+    }
+
     @PutMapping("/halls/{hallId}/cc-emails")
-    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN')")
+    @PreAuthorize("hasRole('AO_ADMIN')")
     public ResponseEntity<ApiResponse<SeminarHall>> updateHallCcEmails(
             @PathVariable String hallId,
             @RequestBody Map<String, List<String>> body) {
@@ -243,7 +283,7 @@ public class SeminarController {
     }
 
     @PostMapping("/halls/{hallId}/coordinators")
-    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN')")
+    @PreAuthorize("hasRole('AO_ADMIN')")
     public ResponseEntity<ApiResponse<SeminarHall>> assignCoordinators(
             @PathVariable String hallId,
             @RequestBody Map<String, List<String>> body) {
@@ -300,15 +340,23 @@ public class SeminarController {
     }
 
     // ==========================================
-    // GENERATOR OPERATOR ENDPOINTS
+    // GENERATOR OPERATOR & ELECTRICIAN ENDPOINTS
     // ==========================================
 
     @GetMapping("/generator/schedule")
-    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN', 'GENERATOR_OPERATOR')")
+    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN', 'GENERATOR_OPERATOR', 'ELECTRICIAN')")
     public ResponseEntity<ApiResponse<List<SeminarBooking>>> getGeneratorSchedule() {
         User user = authService.getCurrentUser();
         List<SeminarBooking> list = seminarService.getGeneratorSchedule(user);
         return ResponseEntity.ok(ApiResponse.ok("Generator operator seminar schedule", list));
+    }
+
+    @GetMapping("/electrician/schedule")
+    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN', 'GENERATOR_OPERATOR', 'ELECTRICIAN')")
+    public ResponseEntity<ApiResponse<List<SeminarBooking>>> getElectricianSchedule() {
+        User user = authService.getCurrentUser();
+        List<SeminarBooking> list = seminarService.getGeneratorSchedule(user);
+        return ResponseEntity.ok(ApiResponse.ok("Electrician seminar schedule", list));
     }
 }
 

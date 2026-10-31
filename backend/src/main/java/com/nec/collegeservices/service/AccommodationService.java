@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
@@ -49,6 +50,12 @@ public class AccommodationService {
     @Autowired
     private RequestIdService requestIdService;
 
+    public void requireAOAdmin(User user, String operation) {
+        if (user == null || (!user.hasRole("AO_ADMIN") && !"AO_ADMIN".equalsIgnoreCase(user.getRole()))) {
+            throw new AccessDeniedException("Unauthorized: Only AO_ADMIN can perform resource management operations (" + operation + ").");
+        }
+    }
+
     public List<AccommodationRoom> getAllRooms() {
         List<AccommodationRoom> rooms = roomRepository.findAll();
         for (AccommodationRoom r : rooms) {
@@ -57,6 +64,21 @@ public class AccommodationService {
             }
         }
         return rooms;
+    }
+
+    public List<AccommodationRoom> getActiveRooms(String hostel) {
+        List<AccommodationRoom> rooms = (hostel != null && !hostel.isBlank() && !"ALL".equalsIgnoreCase(hostel))
+                ? getRoomsByHostel(hostel)
+                : getAllRooms();
+        return rooms.stream().filter(AccommodationRoom::isResourceActive).toList();
+    }
+
+    public List<AccommodationRoom> getAllRoomsForAdmin(User user, String hostel) {
+        requireAOAdmin(user, "retrieve all rooms");
+        if (hostel != null && !hostel.isBlank() && !"ALL".equalsIgnoreCase(hostel)) {
+            return getRoomsByHostel(hostel);
+        }
+        return roomRepository.findAll();
     }
 
     public List<AccommodationRoom> getRoomsByHostel(String hostel) {
@@ -82,11 +104,75 @@ public class AccommodationService {
 
     public Optional<AccommodationRoom> getRoomById(String roomId) {
         if (roomId == null) return Optional.empty();
-        return roomRepository.findByRoomId(roomId);
+        return roomRepository.findByRoomId(roomId).or(() -> roomRepository.findByRoomIdIgnoreCase(roomId));
+    }
+
+    public AccommodationRoom createRoom(AccommodationRoom room, User user) {
+        requireAOAdmin(user, "create accommodation room");
+        if (room.getRoomId() == null || room.getRoomId().isBlank()) {
+            throw new BadRequestException("Room ID is required (e.g. GH-AC-02).");
+        }
+        if (room.getHostel() == null || room.getHostel().isBlank()) {
+            throw new BadRequestException("Hostel category is required (e.g. Girls Hostel, Boys Hostel, Guest House).");
+        }
+        String roomId = room.getRoomId().trim().toUpperCase();
+        if (roomRepository.existsByRoomIdIgnoreCase(roomId)) {
+            throw new ConflictException("Accommodation room with ID '" + roomId + "' already exists.");
+        }
+        room.setRoomId(roomId);
+        if (room.getStatus() == null || room.getStatus().isBlank()) {
+            room.setStatus("Available");
+        }
+        room.setAvailable("Available".equalsIgnoreCase(room.getStatus()));
+        if (room.getActive() == null) {
+            room.setActive(true);
+        }
+        String now = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        room.setCreatedAt(now);
+        room.setCreatedBy(user != null ? user.getUserId() : "ADMIN");
+        room.setUpdatedAt(now);
+        room.setUpdatedBy(user != null ? user.getUserId() : "ADMIN");
+        return roomRepository.save(room);
+    }
+
+    public AccommodationRoom updateRoom(String roomId, AccommodationRoom updated, User user) {
+        requireAOAdmin(user, "update accommodation room");
+        AccommodationRoom room = roomRepository.findByRoomIdIgnoreCase(roomId)
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found: " + roomId));
+
+        if (updated.getHostel() != null) room.setHostel(updated.getHostel().trim());
+        if (updated.getRoomType() != null) room.setRoomType(updated.getRoomType().trim());
+        if (updated.getCapacity() != null) room.setCapacity(updated.getCapacity());
+        if (updated.getAmenities() != null) room.setAmenities(updated.getAmenities());
+        if (updated.getLocation() != null) room.setLocation(updated.getLocation().trim());
+        if (updated.getImage() != null) room.setImage(updated.getImage());
+        if (updated.getStatus() != null) {
+            room.setStatus(updated.getStatus());
+            room.setAvailable("Available".equalsIgnoreCase(updated.getStatus()));
+        }
+        if (updated.getActive() != null) room.setActive(updated.getActive());
+
+        String now = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        room.setUpdatedAt(now);
+        room.setUpdatedBy(user != null ? user.getUserId() : "ADMIN");
+        return roomRepository.save(room);
+    }
+
+    public AccommodationRoom toggleRoomActive(String roomId, User user) {
+        requireAOAdmin(user, "toggle accommodation room active state");
+        AccommodationRoom room = roomRepository.findByRoomIdIgnoreCase(roomId)
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found: " + roomId));
+        boolean current = room.getActive() == null || room.getActive();
+        room.setActive(!current);
+        String now = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        room.setUpdatedAt(now);
+        room.setUpdatedBy(user != null ? user.getUserId() : "ADMIN");
+        return roomRepository.save(room);
     }
 
     public AccommodationRoom updateRoomStatus(String roomId, String status, User user) {
-        AccommodationRoom room = roomRepository.findByRoomId(roomId)
+        requireAOAdmin(user, "update accommodation room status");
+        AccommodationRoom room = roomRepository.findByRoomIdIgnoreCase(roomId)
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found: " + roomId));
 
         String normalizedStatus = "Available";
@@ -98,7 +184,23 @@ public class AccommodationService {
 
         room.setStatus(normalizedStatus);
         room.setAvailable(normalizedStatus.equalsIgnoreCase("Available"));
+        String now = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        room.setUpdatedAt(now);
+        room.setUpdatedBy(user != null ? user.getUserId() : "ADMIN");
         return roomRepository.save(room);
+    }
+
+    public void deleteRoom(String roomId, User user) {
+        requireAOAdmin(user, "delete accommodation room");
+        AccommodationRoom room = roomRepository.findByRoomIdIgnoreCase(roomId)
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found: " + roomId));
+
+        boolean hasBookings = requestRepository.existsByRoomId(room.getRoomId())
+                || !requestRepository.findByRoomId(room.getRoomId()).isEmpty();
+        if (hasBookings) {
+            throw new BadRequestException("Cannot delete accommodation room '" + room.getRoomId() + "' because historical request records reference it. Deactivate the room instead to preserve audit records.");
+        }
+        roomRepository.delete(room);
     }
 
     /**

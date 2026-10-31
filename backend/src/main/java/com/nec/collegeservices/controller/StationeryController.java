@@ -28,9 +28,61 @@ public class StationeryController {
     @Autowired
     private AuthService authService;
 
+    @GetMapping("/items/active")
+    public ResponseEntity<ApiResponse<List<StationeryItem>>> getActiveItems() {
+        return ResponseEntity.ok(ApiResponse.ok("Active stationery items catalog", stationeryService.getActiveItems()));
+    }
+
+    @GetMapping("/items/all")
+    @PreAuthorize("hasRole('AO_ADMIN')")
+    public ResponseEntity<ApiResponse<List<StationeryItem>>> getAllItemsAdmin() {
+        User user = authService.getCurrentUser();
+        return ResponseEntity.ok(ApiResponse.ok("All stationery items (Admin view)", stationeryService.getAllItemsForAdmin(user)));
+    }
+
     @GetMapping("/items")
-    public ResponseEntity<ApiResponse<List<StationeryItem>>> getAllItems() {
+    public ResponseEntity<ApiResponse<List<StationeryItem>>> getAllItems(
+            @RequestParam(required = false) Boolean includeInactive) {
+        User user = null;
+        try { user = authService.getCurrentUser(); } catch (Exception ignored) {}
+        if (Boolean.TRUE.equals(includeInactive)) {
+            return ResponseEntity.ok(ApiResponse.ok("All stationery items", stationeryService.getAllItemsForAdmin(user)));
+        }
         return ResponseEntity.ok(ApiResponse.ok("Stationery items catalog", stationeryService.getAllItems()));
+    }
+
+    @PostMapping({"/items", "/items/add"})
+    @PreAuthorize("hasRole('AO_ADMIN')")
+    public ResponseEntity<ApiResponse<StationeryItem>> createItem(@RequestBody StationeryItem item) {
+        User user = authService.getCurrentUser();
+        StationeryItem created = stationeryService.createItem(item, user);
+        return ResponseEntity.ok(ApiResponse.ok("Stationery item created successfully", created));
+    }
+
+    @PutMapping("/items/{itemId}")
+    @PreAuthorize("hasRole('AO_ADMIN')")
+    public ResponseEntity<ApiResponse<StationeryItem>> updateItem(
+            @PathVariable String itemId,
+            @RequestBody StationeryItem item) {
+        User user = authService.getCurrentUser();
+        StationeryItem updated = stationeryService.updateItem(itemId, item, user);
+        return ResponseEntity.ok(ApiResponse.ok("Stationery item updated successfully", updated));
+    }
+
+    @PatchMapping({"/items/{itemId}/toggle-active", "/items/{itemId}/toggle-status"})
+    @PreAuthorize("hasRole('AO_ADMIN')")
+    public ResponseEntity<ApiResponse<StationeryItem>> toggleItemActive(@PathVariable String itemId) {
+        User user = authService.getCurrentUser();
+        StationeryItem updated = stationeryService.toggleItemActive(itemId, user);
+        return ResponseEntity.ok(ApiResponse.ok("Stationery item active state toggled", updated));
+    }
+
+    @DeleteMapping("/items/{itemId}")
+    @PreAuthorize("hasRole('AO_ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteItem(@PathVariable String itemId) {
+        User user = authService.getCurrentUser();
+        stationeryService.deleteItem(itemId, user);
+        return ResponseEntity.ok(ApiResponse.ok("Stationery item deleted successfully", null));
     }
 
     @PostMapping("/requests")

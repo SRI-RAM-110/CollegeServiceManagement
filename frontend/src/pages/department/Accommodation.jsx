@@ -26,7 +26,7 @@ import {
   Repeat,
   X,
 } from 'lucide-react';
-import { accommodationApi } from '../../services/api';
+import { accommodationApi, resourceApi } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
 import { StatCard } from '../../components/common/StatCard';
@@ -176,16 +176,33 @@ const HostelSectionConfig = ({
         <div className="column-stack">
           {/* Room Dropdown */}
           <div className="form-group">
-            <label className="form-label text-xs">Select Room ({hostelName}) *</label>
+            <div className="flex justify-between items-center mb-1">
+              <label className="form-label text-xs mb-0">Select Room ({hostelName}) *</label>
+              {loading && <span className="text-[11px] text-slate-400">Loading rooms...</span>}
+            </div>
             {apiError ? (
-              <div className="p-2 rounded bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-1.5">
-                <AlertTriangle size={13} />
-                <span>Error loading rooms: {apiError}</span>
+              <div className="p-2.5 rounded bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center justify-between gap-1.5">
+                <div className="flex items-center gap-1.5">
+                  <AlertTriangle size={13} />
+                  <span>Error loading rooms: {apiError}</span>
+                </div>
+                {onRetry && (
+                  <button type="button" onClick={onRetry} className="btn btn-secondary btn-sm text-[11px] py-0.5 px-2">
+                    <RefreshCw size={12} className="mr-1" /> Retry
+                  </button>
+                )}
               </div>
-            ) : rooms.length === 0 ? (
-              <div className="p-2.5 rounded bg-slate-900 border border-slate-800 text-slate-400 text-xs flex items-center gap-1.5">
-                <AlertTriangle size={13} className="text-amber-400" />
-                <span>No rooms available for {hostelName}.</span>
+            ) : rooms.length === 0 && !loading ? (
+              <div className="p-2.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between gap-1.5">
+                <div className="flex items-center gap-1.5">
+                  <AlertTriangle size={13} className="text-amber-400" />
+                  <span>No active rooms available for {hostelName}.</span>
+                </div>
+                {onRetry && (
+                  <button type="button" onClick={onRetry} className="btn btn-secondary btn-sm text-[11px] py-0.5 px-2">
+                    <RefreshCw size={12} className="mr-1" /> Refresh
+                  </button>
+                )}
               </div>
             ) : (
               <select
@@ -195,6 +212,7 @@ const HostelSectionConfig = ({
                   if (selected) handleSelectRoom(selected);
                 }}
                 className="w-full text-xs"
+                disabled={loading || rooms.length === 0}
               >
                 {rooms.map((r) => {
                   const idVal = r.roomId || r.id;
@@ -541,6 +559,7 @@ export const Accommodation = () => {
   const { showToast } = useNotifications();
 
   const [rooms, setRooms] = useState([]);
+  const [loadingRooms, setLoadingRooms] = useState(true);
   const [requests, setRequests] = useState([]);
   const [activeTab, setActiveTab] = useState('available'); // 'available' | 'my-requests'
   const [selectedReqModal, setSelectedReqModal] = useState(null);
@@ -556,7 +575,7 @@ export const Accommodation = () => {
   const [boysState, setBoysState] = useState({
     hostel: 'Boys Hostel',
     roomType: 'AC Room',
-    roomId: 'BH-AC-1',
+    roomId: '',
     checkInDate: getTodayStr(),
     checkOutDate: getDateOffsetStr(2),
     guestsCount: 1,
@@ -574,7 +593,7 @@ export const Accommodation = () => {
   const [girlsState, setGirlsState] = useState({
     hostel: 'Girls Hostel',
     roomType: 'AC Room',
-    roomId: 'GH-AC-1',
+    roomId: '',
     checkInDate: getTodayStr(),
     checkOutDate: getDateOffsetStr(2),
     guestsCount: 1,
@@ -605,7 +624,7 @@ export const Accommodation = () => {
   const [rescheduleItem, setRescheduleItem] = useState(null);
   const [targetHostel, setTargetHostel] = useState('Girls Hostel');
   const [targetRoomType, setTargetRoomType] = useState('AC Room');
-  const [targetRoomId, setTargetRoomId] = useState('GH-AC-1');
+  const [targetRoomId, setTargetRoomId] = useState('');
   const [targetCheckIn, setTargetCheckIn] = useState(getTodayStr());
   const [targetCheckOut, setTargetCheckOut] = useState(getDateOffsetStr(2));
   const [rescheduleReason, setRescheduleReason] = useState('');
@@ -621,8 +640,9 @@ export const Accommodation = () => {
     setRoomApiError(null);
     try {
       // 1. Fetch accommodation rooms
+      setLoadingRooms(true);
       try {
-        const roomsRes = await accommodationApi.getRooms();
+        const roomsRes = await resourceApi.getActiveRooms();
         let loadedRooms = [];
         if (Array.isArray(roomsRes)) {
           loadedRooms = roomsRes;
@@ -649,6 +669,8 @@ export const Accommodation = () => {
             roomType: boys[0].roomType || 'AC Room',
             hostel: boys[0].hostel || 'Boys Hostel',
           }));
+        } else {
+          setBoysState((prev) => ({ ...prev, roomId: '' }));
         }
         if (girls.length > 0) {
           setGirlsState((prev) => ({
@@ -657,12 +679,16 @@ export const Accommodation = () => {
             roomType: girls[0].roomType || 'AC Room',
             hostel: girls[0].hostel || 'Girls Hostel',
           }));
+        } else {
+          setGirlsState((prev) => ({ ...prev, roomId: '' }));
         }
       } catch (err) {
-        console.error('Failed to load accommodation rooms:', err);
+        console.error('Failed to load active accommodation rooms:', err);
         const errMsg = err.message || 'Failed to load accommodation rooms';
         setRoomApiError(errMsg);
         showToast(errMsg, 'error');
+      } finally {
+        setLoadingRooms(false);
       }
 
       // 2. Fetch requests independently so request permission issues never block rooms
@@ -899,6 +925,10 @@ export const Accommodation = () => {
       showToast(`${title}: Number of guests cannot exceed 50`, 'warning');
       return false;
     }
+    if (!state.roomId || !roomList.some((r) => (r.roomId || r.id) === state.roomId)) {
+      showToast(`${title}: Please select an available room`, 'warning');
+      return false;
+    }
     const roomObj = roomList.find((r) => (r.roomId || r.id) === state.roomId);
     if (roomObj?.status === 'Maintenance' || roomObj?.status === 'Unavailable' || roomObj?.isUnderMaintenance) {
       showToast(`${title}: Room ${state.roomId} is currently under maintenance. Please select another room.`, 'error');
@@ -914,6 +944,10 @@ export const Accommodation = () => {
   // Step 8: Trigger Preview Modal before final submission
   const handleReviewRequest = (e) => {
     if (e && e.preventDefault) e.preventDefault();
+    if (loadingRooms) {
+      showToast('Please wait while accommodation rooms are loading', 'warning');
+      return;
+    }
     if (hostelSelectionMode === 'BOYS' || hostelSelectionMode === 'BOTH') {
       if (!validateHostel('BOYS', boysState, boysTargetDates, boysBulkConflictInfo, boysRooms)) return;
     }
@@ -1025,9 +1059,12 @@ export const Accommodation = () => {
   // Open Reschedule Modal
   const handleOpenReschedule = (req) => {
     setRescheduleItem(req);
-    setTargetHostel(req.hostel || 'Girls Hostel');
+    const initialHostel = req.hostel || 'Girls Hostel';
+    setTargetHostel(initialHostel);
     setTargetRoomType(req.roomType || 'AC Room');
-    setTargetRoomId(req.roomId || (req.hostel?.includes('Girls') ? 'GH-AC-1' : 'BH-AC-1'));
+    const matching = rooms.filter((r) => (r.hostel || '').toLowerCase().includes(initialHostel.toLowerCase().includes('boy') ? 'boy' : 'girl'));
+    const initialRoom = rooms.find((r) => (r.roomId || r.id) === req.roomId) || matching[0] || rooms[0];
+    setTargetRoomId(initialRoom ? (initialRoom.roomId || initialRoom.id) : (req.roomId || ''));
     setTargetCheckIn(req.checkInDate || getTodayStr());
     setTargetCheckOut(req.checkOutDate || getDateOffsetStr(2));
     setRescheduleReason('');
@@ -1311,6 +1348,8 @@ export const Accommodation = () => {
                 onRemoveDate={handleRemoveBoysDate}
                 onToggleRecurrenceDay={toggleBoysRecurrenceDay}
                 apiError={roomApiError}
+                loading={loadingRooms}
+                onRetry={loadData}
               />
             )}
 
@@ -1329,6 +1368,8 @@ export const Accommodation = () => {
                 onRemoveDate={handleRemoveGirlsDate}
                 onToggleRecurrenceDay={toggleGirlsRecurrenceDay}
                 apiError={roomApiError}
+                loading={loadingRooms}
+                onRetry={loadData}
               />
             )}
 
@@ -1346,7 +1387,7 @@ export const Accommodation = () => {
                 type="button"
                 onClick={handleReviewRequest}
                 className="btn btn-primary text-xs flex items-center gap-1.5 w-full sm:w-auto"
-                disabled={submitting}
+                disabled={submitting || loadingRooms}
               >
                 <Send size={14} /> Review & Submit Request
               </button>
@@ -1769,39 +1810,38 @@ export const Accommodation = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1">Target Hostel</label>
+                <label className="text-xs font-medium text-slate-300 block mb-1">Target Room *</label>
                 <select
-                  value={targetHostel}
+                  value={targetRoomId}
                   onChange={(e) => {
-                    const h = e.target.value;
-                    setTargetHostel(h);
-                    const prefix = h.includes('Girls') ? 'GH' : 'BH';
-                    const suffix = targetRoomType.includes('Non-AC') ? 'NAC-1' : 'AC-1';
-                    setTargetRoomId(`${prefix}-${suffix}`);
+                    const rId = e.target.value;
+                    setTargetRoomId(rId);
+                    const found = rooms.find((r) => (r.roomId || r.id) === rId);
+                    if (found) {
+                      setTargetHostel(found.hostel || targetHostel);
+                      setTargetRoomType(found.roomType || targetRoomType);
+                    }
                   }}
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200"
                 >
-                  <option value="Girls Hostel">Girls Hostel</option>
-                  <option value="Boys Hostel">Boys Hostel</option>
+                  {rooms.length === 0 ? (
+                    <option value="">No active rooms available</option>
+                  ) : (
+                    rooms.map((r) => (
+                      <option key={r.roomId || r.id} value={r.roomId || r.id}>
+                        {r.roomId || r.id} — {r.hostel} ({r.roomType})
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 
               <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1">Target Room Type</label>
-                <select
-                  value={targetRoomType}
-                  onChange={(e) => {
-                    const t = e.target.value;
-                    setTargetRoomType(t);
-                    const prefix = targetHostel.includes('Girls') ? 'GH' : 'BH';
-                    const suffix = t.includes('Non-AC') ? 'NAC-1' : 'AC-1';
-                    setTargetRoomId(`${prefix}-${suffix}`);
-                  }}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200"
-                >
-                  <option value="AC Room">AC Room</option>
-                  <option value="Non-AC Room">Non-AC Room</option>
-                </select>
+                <label className="text-xs font-medium text-slate-300 block mb-1">Facility & Room Type</label>
+                <div className="p-2 bg-slate-950/80 border border-slate-800 rounded-lg text-xs text-slate-300 flex items-center justify-between">
+                  <span>{targetHostel}</span>
+                  <span className="text-arctic-blue font-semibold">{targetRoomType}</span>
+                </div>
               </div>
             </div>
 

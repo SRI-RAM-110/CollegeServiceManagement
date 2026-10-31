@@ -1,0 +1,110 @@
+[
+  {
+    "_id": {
+      "$oid": "6ab3eeae344f5a1ef4f8ef9d"
+    },
+    "roomId": "GH-AC-1",
+    "hostel": "Girls Hostel",
+    "roomType": "AC Room",
+    "capacity": 2,
+    "amenities": [
+      "AC",
+      "Attached Bath",
+      "Wi-Fi",
+      "TV"
+    ],
+    "available": true,
+    "status": "Available",
+    "currentOccupancy": 2,
+    "image": "/assets/rooms/room_ac.jpg",
+    "location": "Girls Hostel - Block A, Ground Floor",
+    "_class": "com.nec.collegeservices.model.AccommodationRoom"
+  },
+  {
+    "_id": {
+      "$oid": "6ab3eeae344f5a1ef4f8ef9e"
+    },
+    "roomId": "GH-NAC-1",
+    "hostel": "Girls Hostel",
+    "roomType": "Non-AC Room",
+    "capacity": 2,
+    "amenities": [
+      "Attached Bath",
+      "Wi-Fi"
+    ],
+    "available": true,
+    "status": "Available",
+    "currentOccupancy": 1,
+    "image": "/assets/rooms/room_non_ac.jpg",
+    "location": "Girls Hostel - Block A, First Floor",
+    "_class": "com.nec.collegeservices.model.AccommodationRoom"
+  },
+  {
+    "_id": {
+      "$oid": "6ab3eeae344f5a1ef4f8ef9f"
+    },
+    "roomId": "BH-AC-1",
+    "hostel": "Boys Hostel",
+    "roomType": "AC Room",
+    "capacity": 2,
+    "amenities": [
+      "AC",
+      "Attached Bath",
+      "Wi-Fi",
+      "TV"
+    ],
+    "available": true,
+    "status": "Available",
+    "currentOccupancy": 1,
+    "image": "/assets/rooms/room_ac.jpg",
+    "location": "Boys Hostel - Block B, Ground Floor",
+    "_class": "com.nec.collegeservices.model.AccommodationRoom"
+  },
+  {
+    "_id": {
+      "$oid": "6ab3eeae344f5a1ef4f8efa0"
+    },
+    "roomId": "BH-NAC-1",
+    "hostel": "Boys Hostel",
+    "roomType": "Non-AC Room",
+    "capacity": 2,
+    "amenities": [
+      "Attached Bath",
+      "Wi-Fi"
+    ],
+    "available": true,
+    "status": "Available",
+    "currentOccupancy": 1,
+    "image": "/assets/rooms/room_non_ac.jpg",
+    "location": "Boys Hostel - Block B, First Floor",
+    "_class": "com.nec.collegeservices.model.AccommodationRoom"
+  },
+  {
+    "_id": {
+      "$oid": "6ac78bce30940c1ab396f5db"
+    },
+    "roomId": "BH-TEST-101",
+    "hostel": "Boys Hostel",
+    "roomType": "AC Room",
+    "capacity": 2,
+    "available": true,
+    "status": "Available",
+    "currentOccupancy": 1,
+    "location": "Boys Hostel - Floor 1",
+    "_class": "com.nec.collegeservices.model.AccommodationRoom"
+  },
+  {
+    "_id": {
+      "$oid": "6ac78bce30940c1ab396f5dc"
+    },
+    "roomId": "GH-TEST-101",
+    "hostel": "Girls Hostel",
+    "roomType": "AC Room",
+    "capacity": 2,
+    "available": true,
+    "status": "Available",
+    "currentOccupancy": 1,
+    "location": "Girls Hostel - Floor 1",
+    "_class": "com.nec.collegeservices.model.AccommodationRoom"
+  }
+]

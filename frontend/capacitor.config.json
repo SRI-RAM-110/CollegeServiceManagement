@@ -1,6 +1,6 @@
 {
   "appId": "in.nrtec.collegeservices",
-  "appName": "NEC Services",
+  "appName": "College Services",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"

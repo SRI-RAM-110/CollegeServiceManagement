@@ -40,6 +40,19 @@ public class SeminarHall {
     @Builder.Default
     private List<String> ccEmails = new java.util.ArrayList<>();
 
+    @Builder.Default
+    private Boolean active = true;
+
+    // Audit metadata
+    private String createdAt;
+    private String createdBy;
+    private String updatedAt;
+    private String updatedBy;
+
+    public boolean isActive() {
+        return (active == null || active) && !"Disabled".equalsIgnoreCase(status) && !"Inactive".equalsIgnoreCase(status);
+    }
+
     public String getLocation() {
         if (location != null && !location.isBlank()) {
             return location;

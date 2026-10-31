@@ -35,11 +35,19 @@ export const Sidebar = ({ isOpen, onClose }) => {
 
   const getNavLinks = () => {
     if (userRoles.includes('CREATOR') || userRoles.includes('AO_ADMIN')) {
-      return [
+      const links = [
         { name: 'Dashboard', path: '/admin/ao', icon: LayoutDashboard },
         { name: 'Create Request', path: '/admin/create-request', icon: PlusCircle },
         { name: 'My Requests', path: '/admin/my-requests', icon: ListOrdered },
         { name: 'User Management', path: '/admin/users', icon: Users },
+      ];
+
+      // Resource Management is accessible only to users with the AO_ADMIN role (CREATOR alone is denied)
+      if (userRoles.includes('AO_ADMIN')) {
+        links.push({ name: 'Resource Management', path: '/admin/resources', icon: Layers });
+      }
+
+      links.push(
         { name: 'Seminar Hall', path: '/admin/seminar', icon: CalendarDays },
         { name: 'Equipment Dashboard', path: '/technician/seminar', icon: Wrench },
         { name: 'Generator Schedule', path: '/operator/generator', icon: Zap },
@@ -47,16 +55,18 @@ export const Sidebar = ({ isOpen, onClose }) => {
         { name: 'Transport', path: '/admin/transport', icon: Bus },
         { name: 'Snacks & Meals', path: '/admin/meals', icon: Coffee },
         { name: 'Stationery Requests', path: '/admin/stationery', icon: FileText },
-        { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
-      ];
+        { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 }
+      );
+
+      return links;
     }
 
-    // Pure generator operator check: exactly ONE dashboard (Generator Schedule)
-    const isPureGeneratorOperator =
-      userRoles.includes('GENERATOR_OPERATOR') &&
+    // Pure generator operator / electrician check: exactly ONE dashboard (Generator Schedule)
+    const isPureOperator =
+      (userRoles.includes('GENERATOR_OPERATOR') || userRoles.includes('ELECTRICIAN')) &&
       !userRoles.some((r) => r.endsWith('_ADMIN') || r === 'CREATOR' || r === 'SEMINAR_COORDINATOR' || r === 'DEPARTMENT_HOD');
 
-    if (isPureGeneratorOperator) {
+    if (isPureOperator) {
       return [
         { name: 'Generator Schedule', path: '/operator/generator', icon: Zap },
       ];
@@ -98,7 +108,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
       adminDashboards.push({ name: 'Equipment Dashboard', path: '/technician/seminar', icon: Wrench });
     }
 
-    if (userRoles.includes('GENERATOR_OPERATOR')) {
+    if (userRoles.includes('GENERATOR_OPERATOR') || userRoles.includes('ELECTRICIAN')) {
       adminDashboards.push({ name: 'Generator Schedule', path: '/operator/generator', icon: Zap });
     }
 
@@ -135,8 +145,8 @@ export const Sidebar = ({ isOpen, onClose }) => {
     // Standalone operator / service admin (non-department user)
     if (uniqueAdminDashboards.length === 1) {
       const single = uniqueAdminDashboards[0];
-      // Generator operator without admin roles has access strictly to generator schedule
-      if (userRoles.includes('GENERATOR_OPERATOR') && !userRoles.some((r) => r.endsWith('_ADMIN') || r === 'CREATOR')) {
+      // Generator operator / electrician without admin roles has access strictly to generator schedule
+      if ((userRoles.includes('GENERATOR_OPERATOR') || userRoles.includes('ELECTRICIAN')) && !userRoles.some((r) => r.endsWith('_ADMIN') || r === 'CREATOR')) {
         return [
           {
             name: 'Generator Schedule',

@@ -31,9 +31,28 @@ public class TransportController {
     @Autowired
     private AuthService authService;
 
+    @GetMapping("/vehicles/active")
+    public ResponseEntity<ApiResponse<List<Vehicle>>> getActiveVehicles(
+            @RequestParam(required = false) String date) {
+        return ResponseEntity.ok(ApiResponse.ok("Active vehicles fleet", transportService.getActiveVehicles(date)));
+    }
+
+    @GetMapping("/vehicles/all")
+    @PreAuthorize("hasRole('AO_ADMIN')")
+    public ResponseEntity<ApiResponse<List<Vehicle>>> getAllVehiclesAdmin() {
+        User user = authService.getCurrentUser();
+        return ResponseEntity.ok(ApiResponse.ok("All vehicles fleet (Admin view)", transportService.getAllVehiclesForAdmin(user)));
+    }
+
     @GetMapping("/vehicles")
     public ResponseEntity<ApiResponse<List<Vehicle>>> getAllVehicles(
-            @RequestParam(required = false) String date) {
+            @RequestParam(required = false) String date,
+            @RequestParam(required = false) Boolean includeInactive) {
+        User user = null;
+        try { user = authService.getCurrentUser(); } catch (Exception ignored) {}
+        if (Boolean.TRUE.equals(includeInactive)) {
+            return ResponseEntity.ok(ApiResponse.ok("All vehicles fleet", transportService.getAllVehiclesForAdmin(user)));
+        }
         return ResponseEntity.ok(ApiResponse.ok("Vehicles fleet", transportService.getVehiclesWithDateAvailability(date)));
     }
 
@@ -49,11 +68,55 @@ public class TransportController {
         return ResponseEntity.ok(ApiResponse.ok("Transport trips for date", list));
     }
 
-    @PostMapping("/vehicles/add")
-    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN', 'TRANSPORT_ADMIN')")
+    @PostMapping({"/vehicles", "/vehicles/add"})
+    @PreAuthorize("hasRole('AO_ADMIN')")
     public ResponseEntity<ApiResponse<Vehicle>> addVehicle(@RequestBody Vehicle vehicle) {
-        Vehicle saved = transportService.addVehicle(vehicle);
+        User user = authService.getCurrentUser();
+        Vehicle saved = transportService.addVehicle(vehicle, user);
         return ResponseEntity.ok(ApiResponse.ok("Vehicle added successfully", saved));
+    }
+
+    @PutMapping("/vehicles/{vehicleId}")
+    @PreAuthorize("hasRole('AO_ADMIN')")
+    public ResponseEntity<ApiResponse<Vehicle>> updateVehicle(
+            @PathVariable String vehicleId,
+            @RequestBody Vehicle vehicle) {
+        User user = authService.getCurrentUser();
+        Vehicle updated = transportService.updateVehicle(vehicleId, vehicle, user);
+        return ResponseEntity.ok(ApiResponse.ok("Vehicle updated successfully", updated));
+    }
+
+    @PatchMapping("/vehicles/{vehicleId}/status")
+    @PreAuthorize("hasRole('AO_ADMIN')")
+    public ResponseEntity<ApiResponse<Vehicle>> updateVehicleStatus(
+            @PathVariable String vehicleId,
+            @RequestBody Object statusBody) {
+        User user = authService.getCurrentUser();
+        String status = "AVAILABLE";
+        if (statusBody instanceof Map<?, ?> map) {
+            Object s = map.get("status");
+            if (s != null) status = s.toString();
+        } else if (statusBody instanceof String str) {
+            status = str.replace("\"", "").trim();
+        }
+        Vehicle updated = transportService.updateVehicleStatus(vehicleId, status, user);
+        return ResponseEntity.ok(ApiResponse.ok("Vehicle status updated successfully", updated));
+    }
+
+    @PatchMapping("/vehicles/{vehicleId}/toggle-status")
+    @PreAuthorize("hasRole('AO_ADMIN')")
+    public ResponseEntity<ApiResponse<Vehicle>> toggleVehicleActive(@PathVariable String vehicleId) {
+        User user = authService.getCurrentUser();
+        Vehicle updated = transportService.toggleVehicleActive(vehicleId, user);
+        return ResponseEntity.ok(ApiResponse.ok("Vehicle active state toggled", updated));
+    }
+
+    @DeleteMapping("/vehicles/{vehicleId}")
+    @PreAuthorize("hasRole('AO_ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteVehicle(@PathVariable String vehicleId) {
+        User user = authService.getCurrentUser();
+        transportService.deleteVehicle(vehicleId, user);
+        return ResponseEntity.ok(ApiResponse.ok("Vehicle deleted successfully", null));
     }
 
     @PostMapping("/check-bulk-availability")

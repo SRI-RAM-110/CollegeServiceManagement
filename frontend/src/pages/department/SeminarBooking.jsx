@@ -20,7 +20,7 @@ import {
   RefreshCw,
   Info,
 } from 'lucide-react';
-import { seminarApi } from '../../services/api';
+import { seminarApi, resourceApi } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
 import { StatusBadge } from '../../components/common/StatusBadge';
@@ -73,7 +73,9 @@ export const SeminarBooking = () => {
   const [activeTab, setActiveTab] = useState('booking');
 
   const [halls, setHalls] = useState([]);
-  const [selectedHallId, setSelectedHallId] = useState('SH-1');
+  const [selectedHallId, setSelectedHallId] = useState('');
+  const [loadingHalls, setLoadingHalls] = useState(true);
+  const [hallsError, setHallsError] = useState(null);
   const [selectedDate, setSelectedDate] = useState(getTodayStr());
   const [toDate, setToDate] = useState(getTodayStr());
   const [selectedReqModal, setSelectedReqModal] = useState(null);
@@ -137,14 +139,23 @@ export const SeminarBooking = () => {
   };
 
   const loadHalls = async () => {
+    setLoadingHalls(true);
+    setHallsError(null);
     try {
-      const res = await seminarApi.getHalls();
-      if (res.data && res.data.length > 0) {
-        setHalls(res.data);
-        setSelectedHallId(res.data[0].hallId);
+      const res = await resourceApi.getActiveHalls();
+      const list = Array.isArray(res?.data) ? res.data : [];
+      setHalls(list);
+      if (list.length > 0) {
+        setSelectedHallId((prev) => (list.some((h) => h.hallId === prev) ? prev : list[0].hallId));
+      } else {
+        setSelectedHallId('');
       }
-    } catch {
+    } catch (err) {
+      console.error('Failed to load active seminar halls:', err);
+      setHallsError('Failed to load seminar halls. Please try again.');
       showToast('Failed to load seminar halls', 'error');
+    } finally {
+      setLoadingHalls(false);
     }
   };
 
@@ -311,6 +322,14 @@ export const SeminarBooking = () => {
     e.preventDefault();
     const today = getTodayStr();
 
+    if (loadingHalls) {
+      showToast('Please wait while seminar halls are loading', 'warning');
+      return;
+    }
+    if (!selectedHallId || halls.length === 0) {
+      showToast('No active seminar hall selected or available', 'warning');
+      return;
+    }
     if (selectedDate < today) {
       showToast('This booking time has already passed. Please select a future date and time.', 'warning');
       return;
@@ -1056,22 +1075,50 @@ export const SeminarBooking = () => {
               <div className="column-stack">
                 {/* 1. Seminar Hall Dropdown */}
                 <div className="form-group">
-                  <label className="form-label text-xs">Seminar Hall *</label>
-                  <select
-                    value={selectedHallId}
-                    onChange={(e) => setSelectedHallId(e.target.value)}
-                    className="w-full text-xs"
-                  >
-                    {halls.map((hall) => (
-                      <option key={hall.hallId} value={hall.hallId}>
-                        {hall.name} — {hall.capacity} Seats — {hall.location}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="form-label text-xs mb-0">Seminar Hall *</label>
+                    {loadingHalls && <span className="text-[11px] text-slate-400">Loading halls...</span>}
+                  </div>
+                  {hallsError ? (
+                    <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between gap-2">
+                      <span>{hallsError}</span>
+                      <button
+                        type="button"
+                        onClick={loadHalls}
+                        className="btn btn-secondary btn-sm text-[11px] py-0.5 px-2"
+                      >
+                        <RefreshCw size={12} className="mr-1" /> Retry
+                      </button>
+                    </div>
+                  ) : halls.length === 0 && !loadingHalls ? (
+                    <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between gap-2">
+                      <span>No active seminar halls available at this time.</span>
+                      <button
+                        type="button"
+                        onClick={loadHalls}
+                        className="btn btn-secondary btn-sm text-[11px] py-0.5 px-2"
+                      >
+                        <RefreshCw size={12} className="mr-1" /> Refresh
+                      </button>
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedHallId}
+                      onChange={(e) => setSelectedHallId(e.target.value)}
+                      className="w-full text-xs"
+                      disabled={loadingHalls || halls.length === 0}
+                    >
+                      {halls.map((hall) => (
+                        <option key={hall.hallId} value={hall.hallId}>
+                          {hall.name} — {hall.capacity} Seats — {hall.location}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 {/* 2. Selected Hall Information */}
-                {currentHall && (
+                {currentHall && currentHall.hallId && (
                   <div className="p-3 rounded-lg bg-slate-900/80 border border-slate-800 text-xs space-y-1.5">
                     <div className="flex justify-between items-center">
                       <span className="text-slate-400">Hall ID:</span>
@@ -1506,7 +1553,7 @@ export const SeminarBooking = () => {
                     <button
                       type="submit"
                       className="btn btn-primary btn-flex-2 text-xs"
-                      disabled={submitting || !isHallOperational || isCapacityExceeded}
+                      disabled={submitting || loadingHalls || halls.length === 0 || !selectedHallId || !isHallOperational || isCapacityExceeded}
                     >
                       <Send size={14} /> Review & Submit
                     </button>

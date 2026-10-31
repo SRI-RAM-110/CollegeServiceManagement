@@ -2,6 +2,7 @@ package com.nec.collegeservices.repository;
 
 import com.nec.collegeservices.model.StationeryRequest;
 import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -14,4 +15,7 @@ public interface StationeryRequestRepository extends MongoRepository<StationeryR
     List<StationeryRequest> findByDepartment(String department);
 
     List<StationeryRequest> findByStatus(String status);
+
+    @Query(value = "{'itemsRequested.itemId': ?0}", exists = true)
+    boolean existsByItemsRequestedItemId(String itemId);
 }

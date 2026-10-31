@@ -48,6 +48,8 @@ public class SeminarNotificationLifecycleTest {
     private User unassignedTech;
     private User activeGenOp;
     private User inactiveGenOp;
+    private User activeElectrician;
+    private User inactiveElectrician;
 
     private SeminarHall hall1;
     private SeminarHall hall2;
@@ -113,6 +115,22 @@ public class SeminarNotificationLifecycleTest {
                 .active(false)
                 .build();
 
+        activeElectrician = User.builder()
+                .userId("elec_01")
+                .name("Campus Electrician")
+                .email("elec@nrtec.in")
+                .roles(List.of("ELECTRICIAN"))
+                .active(true)
+                .build();
+
+        inactiveElectrician = User.builder()
+                .userId("elec_inactive")
+                .name("Inactive Campus Electrician")
+                .email("elec_inactive@nrtec.in")
+                .roles(List.of("ELECTRICIAN"))
+                .active(false)
+                .build();
+
         hall1 = SeminarHall.builder()
                 .id("H1_ID")
                 .hallId("HALL_01")
@@ -136,7 +154,8 @@ public class SeminarNotificationLifecycleTest {
         when(seminarHallRepository.findAll()).thenReturn(List.of(hall1, hall2));
 
         when(userRepository.findAll()).thenReturn(List.of(
-                adminUser, activeTechH1, activeTechH2, inactiveTechH1, unassignedTech, activeGenOp, inactiveGenOp
+                adminUser, activeTechH1, activeTechH2, inactiveTechH1, unassignedTech, activeGenOp, inactiveGenOp,
+                activeElectrician, inactiveElectrician
         ));
 
         when(bookingRepository.save(any(SeminarBooking.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -381,6 +400,132 @@ public class SeminarNotificationLifecycleTest {
 
         verify(notificationService, never()).sendNotification(
                 eq("GENERATOR_OPERATOR"), any(), any(), any(), any(), any(), any(), any()
+        );
+    }
+
+    @Test
+    @DisplayName("7b. Active Electricians are notified when an approved booking is added to schedule")
+    void testActiveElectricianNotifiedOnApproval() {
+        SeminarBooking booking = SeminarBooking.builder()
+                .id("B_APPR_ELEC_ID")
+                .bookingId("SEM-1009")
+                .hallId("HALL_01")
+                .hallName(hall1.getName())
+                .hallLocation(hall1.getLocation())
+                .date("2026-11-18")
+                .slot("FORENOON")
+                .status("PENDING")
+                .department("IT")
+                .eventTitle("AI/ML Hands-on")
+                .requestedBy("Prof. Varma")
+                .requesterUserId("varma_01")
+                .build();
+
+        when(bookingRepository.findById("SEM-1009")).thenReturn(Optional.of(booking));
+
+        seminarService.approveBooking("SEM-1009", adminUser);
+
+        // Active electrician receives notification
+        verify(notificationService).sendNotification(
+                eq("ELECTRICIAN"),
+                any(),
+                eq("elec_01"),
+                eq("New Seminar Approved - Electrical Schedule Updated"),
+                contains("New approved seminar added to electrical schedule"),
+                eq("Electrical Service"),
+                eq("SUCCESS"),
+                eq("SEM-1009")
+        );
+
+        // Inactive electrician must NOT receive notification
+        verify(notificationService, never()).sendNotification(
+                eq("ELECTRICIAN"), any(), eq("elec_inactive"), any(), any(), any(), any(), any()
+        );
+    }
+
+    @Test
+    @DisplayName("7c. Electricians are notified when an approved booking is rescheduled")
+    void testElectricianNotifiedOnReschedule() {
+        SeminarBooking original = SeminarBooking.builder()
+                .id("B_ORIG_ELEC_ID")
+                .bookingId("SEM-1010")
+                .hallId("HALL_01")
+                .hallName(hall1.getName())
+                .date("2026-11-10")
+                .slot("FORENOON")
+                .status("RESCHEDULE_REQUESTED")
+                .rescheduledHallId("HALL_02")
+                .rescheduledDate("2026-11-20")
+                .rescheduledSlot("AFTERNOON")
+                .department("MECH")
+                .eventTitle("Robotics Workshop")
+                .build();
+
+        when(bookingRepository.findById("SEM-1010")).thenReturn(Optional.of(original));
+
+        seminarService.approveReschedule("SEM-1010", adminUser);
+
+        verify(notificationService).sendNotification(
+                eq("ELECTRICIAN"),
+                any(),
+                eq("elec_01"),
+                eq("Seminar Schedule Changed - Electrical Schedule Updated"),
+                contains("Approved seminar rescheduled"),
+                eq("Electrical Service"),
+                eq("WARNING"),
+                anyString()
+        );
+    }
+
+    @Test
+    @DisplayName("7d. Electricians are notified when an approved booking is cancelled")
+    void testElectricianNotifiedOnCancellation() {
+        SeminarBooking booking = SeminarBooking.builder()
+                .id("B_CANCEL_ELEC_ID")
+                .bookingId("SEM-1011")
+                .hallId("HALL_01")
+                .hallName(hall1.getName())
+                .date("2026-11-25")
+                .slot("FULL_DAY")
+                .status("CANCELLATION_REQUESTED")
+                .department("CIVIL")
+                .eventTitle("Green Building Conference")
+                .build();
+
+        when(bookingRepository.findById("SEM-1011")).thenReturn(Optional.of(booking));
+
+        seminarService.approveCancellation("SEM-1011", adminUser);
+
+        verify(notificationService).sendNotification(
+                eq("ELECTRICIAN"),
+                any(),
+                eq("elec_01"),
+                eq("Seminar Cancelled - Electrical Schedule Updated"),
+                contains("Electrical support is no longer required"),
+                eq("Electrical Service"),
+                eq("INFO"),
+                eq("SEM-1011")
+        );
+    }
+
+    @Test
+    @DisplayName("7e. Pending and rejected bookings do not trigger Electrician notifications")
+    void testPendingAndRejectedBookingsDoNotNotifyElectrician() {
+        SeminarBooking booking = SeminarBooking.builder()
+                .id("B_REJ_ELEC_ID")
+                .bookingId("SEM-1012")
+                .hallId("HALL_01")
+                .status("PENDING")
+                .department("CSE")
+                .build();
+
+        when(bookingRepository.findById("SEM-1012")).thenReturn(Optional.of(booking));
+
+        // Reject booking
+        seminarService.rejectBooking("SEM-1012", "Capacity exceeded", adminUser);
+
+        verify(notificationService, never()).sendNotification(
+                eq("ELECTRICIAN"), any(), any(), any(), any(), any(), any(), any()
         );
     }
 

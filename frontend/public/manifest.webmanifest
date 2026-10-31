@@ -1,6 +1,6 @@
 {
-  "name": "College Department Services Management System — NEC",
-  "short_name": "NEC Services",
+  "name": "College Services",
+  "short_name": "College Services",
   "description": "Narasaraopeta Engineering College — Faculty Service Management and Requisitions Portal",
   "start_url": "/",
   "scope": "/",

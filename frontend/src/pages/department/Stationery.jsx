@@ -15,7 +15,7 @@ import {
   XCircle,
   Eye,
 } from 'lucide-react';
-import { stationeryApi } from '../../services/api';
+import { stationeryApi, resourceApi } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
 import { StatCard } from '../../components/common/StatCard';
@@ -42,6 +42,8 @@ export const Stationery = () => {
   const { showToast } = useNotifications();
 
   const [items, setItems] = useState([]);
+  const [loadingItems, setLoadingItems] = useState(true);
+  const [itemsError, setItemsError] = useState(null);
   const [requests, setRequests] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
@@ -60,15 +62,22 @@ export const Stationery = () => {
   }, [user?.userId]);
 
   const loadData = async () => {
+    setLoadingItems(true);
+    setItemsError(null);
     try {
       const [itemsRes, reqsRes] = await Promise.all([
-        stationeryApi.getItems(),
+        resourceApi.getActiveStationeryItems(),
         stationeryApi.getRequests(),
       ]);
-      if (itemsRes.data) setItems(itemsRes.data);
+      const list = Array.isArray(itemsRes?.data) ? itemsRes.data : [];
+      setItems(list);
       if (reqsRes.data) setRequests(reqsRes.data);
     } catch (e) {
+      console.error('Failed to load active stationery items:', e);
+      setItemsError('Failed to load stationery items. Please try again.');
       showToast('Failed to load stationery items', 'error');
+    } finally {
+      setLoadingItems(false);
     }
   };
 
@@ -165,6 +174,15 @@ export const Stationery = () => {
       setSubmitting(false);
     }
   };
+
+  // Dynamic categories derived from active catalog items
+  const categories = useMemo(() => {
+    const set = new Set();
+    items.forEach((i) => {
+      if (i.category) set.add(i.category);
+    });
+    return Array.from(set).sort();
+  }, [items]);
 
   const filteredItems = items.filter((item) => {
     const q = searchQuery.toLowerCase().trim();
@@ -319,49 +337,77 @@ export const Stationery = () => {
                   className="filter-select text-xs"
                 >
                   <option value="ALL">All Categories</option>
-                  <option value="Paper">Paper</option>
-                  <option value="Writing">Writing</option>
-                  <option value="Filing">Filing</option>
-                  <option value="Office Tools">Office Tools</option>
+                  {categories.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
                 </select>
               </div>
             </div>
 
             {/* Items Grid */}
-            <div className="stationery-grid">
-              {filteredItems.length === 0 ? (
-                <div className="empty-state-branded" style={{ gridColumn: '1 / -1', padding: '24px' }}>
-                  <PackageCheck size={28} className="text-muted" />
-                  <span className="text-xs">No stationery items match your search.</span>
-                </div>
-              ) : (
-                filteredItems.map((item) => (
-                  <div
-                    key={item.itemId}
-                    className="stationery-item-card"
-                  >
-                    <div className="stationery-icon-box">
-                      <FileText size={18} className="text-arctic-blue" />
-                    </div>
-
-                    <div className="stationery-item-name text-xs">
-                      {item.name}
-                    </div>
-                    <div className="stationery-unit-text text-[10px]">
-                      {item.description || item.unit || 'Standard Item'}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => handleAddToCart(item)}
-                      className="btn btn-primary btn-sm w-full mt-2 text-xs py-1"
-                    >
-                      <Plus size={12} /> Add to Request
-                    </button>
+            {itemsError ? (
+              <div className="p-4 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between gap-2">
+                <span>{itemsError}</span>
+                <button
+                  type="button"
+                  onClick={loadData}
+                  className="btn btn-secondary btn-sm text-[11px] py-1 px-3"
+                >
+                  <RefreshCw size={12} className="mr-1" /> Retry
+                </button>
+              </div>
+            ) : loadingItems ? (
+              <div className="text-center py-8 text-slate-400 text-xs flex items-center justify-center gap-2">
+                <RefreshCw size={16} className="animate-spin text-arctic-blue" />
+                <span>Loading catalog items...</span>
+              </div>
+            ) : items.length === 0 ? (
+              <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between gap-2">
+                <span>No active stationery items available in the catalog.</span>
+                <button
+                  type="button"
+                  onClick={loadData}
+                  className="btn btn-secondary btn-sm text-[11px] py-1 px-3"
+                >
+                  <RefreshCw size={12} className="mr-1" /> Refresh
+                </button>
+              </div>
+            ) : (
+              <div className="stationery-grid">
+                {filteredItems.length === 0 ? (
+                  <div className="empty-state-branded" style={{ gridColumn: '1 / -1', padding: '24px' }}>
+                    <PackageCheck size={28} className="text-muted" />
+                    <span className="text-xs">No stationery items match your search.</span>
                   </div>
-                ))
-              )}
-            </div>
+                ) : (
+                  filteredItems.map((item) => (
+                    <div
+                      key={item.itemId}
+                      className="stationery-item-card"
+                    >
+                      <div className="stationery-icon-box">
+                        <FileText size={18} className="text-arctic-blue" />
+                      </div>
+
+                      <div className="stationery-item-name text-xs">
+                        {item.name}
+                      </div>
+                      <div className="stationery-unit-text text-[10px]">
+                        {item.description || item.unit || 'Standard Item'}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleAddToCart(item)}
+                        className="btn btn-primary btn-sm w-full mt-2 text-xs py-1"
+                      >
+                        <Plus size={12} /> Add to Request
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
 
           {/* Right Column: Request Cart Form */}
@@ -411,6 +457,7 @@ export const Stationery = () => {
                     value={selectedDropdownItemId}
                     onChange={(e) => setSelectedDropdownItemId(e.target.value)}
                     className="w-full text-xs"
+                    disabled={loadingItems || items.length === 0}
                     style={{
                       height: '36px',
                       background: 'var(--input-bg, #0b1329)',
@@ -563,7 +610,7 @@ export const Stationery = () => {
                   <button
                     type="submit"
                     className="btn btn-primary btn-flex-2 text-xs"
-                    disabled={submitting || cart.length === 0}
+                    disabled={submitting || loadingItems || cart.length === 0}
                   >
                     <Send size={14} /> {submitting ? 'Submitting...' : 'Submit Request'}
                   </button>

@@ -1,0 +1,77 @@
+[
+  {
+    "_id": {
+      "$oid": "6ab3eeae344f5a1ef4f8efa1"
+    },
+    "vehicleId": "V-01",
+    "name": "College Bus 1 (50 Seater)",
+    "type": "College Bus",
+    "registrationNumber": "AP39 AB 1234",
+    "capacity": 50,
+    "status": "AVAILABLE",
+    "driverName": "R. Prasad",
+    "driverPhone": "+91 98481 12345",
+    "image": "/assets/vehicles/bus1.jpg",
+    "_class": "com.nec.collegeservices.model.Vehicle"
+  },
+  {
+    "_id": {
+      "$oid": "6ab3eeae344f5a1ef4f8efa2"
+    },
+    "vehicleId": "V-02",
+    "name": "College Bus 2 (40 Seater)",
+    "type": "College Bus",
+    "registrationNumber": "AP39 AB 5678",
+    "capacity": 40,
+    "status": "AVAILABLE",
+    "driverName": "K. Srinivas",
+    "driverPhone": "+91 98481 23456",
+    "image": "/assets/vehicles/bus2.jpg",
+    "_class": "com.nec.collegeservices.model.Vehicle"
+  },
+  {
+    "_id": {
+      "$oid": "6ab3eeae344f5a1ef4f8efa3"
+    },
+    "vehicleId": "V-03",
+    "name": "Mini Bus (25 Seater)",
+    "type": "Mini Bus",
+    "registrationNumber": "AP39 AC 9012",
+    "capacity": 25,
+    "status": "AVAILABLE",
+    "driverName": "M. Venkatesh",
+    "driverPhone": "+91 98481 34567",
+    "image": "/assets/vehicles/minibus.jpg",
+    "_class": "com.nec.collegeservices.model.Vehicle"
+  },
+  {
+    "_id": {
+      "$oid": "6ab3eeae344f5a1ef4f8efa4"
+    },
+    "vehicleId": "V-04",
+    "name": "Tempo Traveller (12 Seater)",
+    "type": "Tempo Traveller",
+    "registrationNumber": "AP39 AC 3456",
+    "capacity": 12,
+    "status": "AVAILABLE",
+    "driverName": "S. Kumar",
+    "driverPhone": "+91 98481 45678",
+    "image": "/assets/vehicles/tempo.jpg",
+    "_class": "com.nec.collegeservices.model.Vehicle"
+  },
+  {
+    "_id": {
+      "$oid": "6ab3eeae344f5a1ef4f8efa5"
+    },
+    "vehicleId": "V-05",
+    "name": "Innova (7 Seater)",
+    "type": "Innova",
+    "registrationNumber": "AP39 AC 7890",
+    "capacity": 7,
+    "status": "AVAILABLE",
+    "driverName": "B. Nagesh",
+    "driverPhone": "+91 98481 56789",
+    "image": "/assets/vehicles/innova.jpg",
+    "_class": "com.nec.collegeservices.model.Vehicle"
+  }
+]

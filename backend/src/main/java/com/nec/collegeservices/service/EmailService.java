@@ -329,8 +329,10 @@ public class EmailService {
     public List<String> resolveCcRecipients(Notification notification, String eventCategory) {
         if (notification != null && ("SEMINAR_TECHNICIAN".equalsIgnoreCase(notification.getRecipientRole()) ||
                 "GENERATOR_OPERATOR".equalsIgnoreCase(notification.getRecipientRole()) ||
+                "ELECTRICIAN".equalsIgnoreCase(notification.getRecipientRole()) ||
                 "Seminar Equipment".equalsIgnoreCase(notification.getService()) ||
-                "Generator Service".equalsIgnoreCase(notification.getService()))) {
+                "Generator Service".equalsIgnoreCase(notification.getService()) ||
+                "Electrical Service".equalsIgnoreCase(notification.getService()))) {
             return Collections.emptyList();
         }
         if (isSeminarNotification(notification)) {

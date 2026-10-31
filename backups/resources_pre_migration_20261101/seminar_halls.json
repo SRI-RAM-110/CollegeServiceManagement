@@ -1,0 +1,146 @@
+[
+  {
+    "_id": {
+      "$oid": "6ab3eeae344f5a1ef4f8ef98"
+    },
+    "hallId": "SH-1",
+    "name": "Block 3 Seminar Hall",
+    "location": "3102-Ground Floor",
+    "block": "Block 3",
+    "floor": "Ground Floor",
+    "capacity": 300,
+    "facilities": [
+      "Projector",
+      "AC",
+      "Audio System",
+      "Wi-Fi"
+    ],
+    "image": "/assets/halls/hall1.jpg",
+    "status": "Functional",
+    "coordinatorUserIds": [
+      "seminarcoordinator1"
+    ],
+    "ccEmails": [
+      "sh1-coord@nrtec.in",
+      "sh1-dept@nrtec.in"
+    ],
+    "_class": "com.nec.collegeservices.model.SeminarHall"
+  },
+  {
+    "_id": {
+      "$oid": "6ab3eeae344f5a1ef4f8ef99"
+    },
+    "hallId": "SH-2",
+    "name": "Block 3 Seminar Hall",
+    "location": "3404-Third Floor",
+    "block": "Block 3",
+    "floor": "Third Floor",
+    "capacity": 200,
+    "facilities": [
+      "Projector",
+      "AC",
+      "Audio System",
+      "Wi-Fi"
+    ],
+    "image": "/assets/halls/hall2.jpg",
+    "status": "Functional",
+    "coordinatorUserIds": [
+      "seminarcoordinator2"
+    ],
+    "ccEmails": [
+      "sh2-coord@nrtec.in"
+    ],
+    "_class": "com.nec.collegeservices.model.SeminarHall"
+  },
+  {
+    "_id": {
+      "$oid": "6ab3eeae344f5a1ef4f8ef9a"
+    },
+    "hallId": "SH-3",
+    "name": "Block 4 Seminar Hall",
+    "location": "GF02-Ground Floor",
+    "block": "Block 4",
+    "floor": "Ground Floor",
+    "capacity": 350,
+    "facilities": [
+      "Projector",
+      "AC",
+      "Audio System",
+      "Wi-Fi"
+    ],
+    "image": "/assets/halls/hall3.jpg",
+    "status": "Functional",
+    "coordinatorUserIds": [
+      "seminarcoordinator3"
+    ],
+    "ccEmails": [],
+    "_class": "com.nec.collegeservices.model.SeminarHall"
+  },
+  {
+    "_id": {
+      "$oid": "6ab3eeae344f5a1ef4f8ef9b"
+    },
+    "hallId": "SH-4",
+    "name": "Pharma Block Seminar Hall",
+    "location": "Pharma Block",
+    "block": "Pharma Block",
+    "floor": "Ground Floor",
+    "capacity": 200,
+    "facilities": [
+      "Projector",
+      "AC",
+      "Audio System",
+      "Wi-Fi"
+    ],
+    "image": "/assets/halls/hall4.jpg",
+    "status": "Functional",
+    "coordinatorUserIds": [
+      "seminarcoordinator4"
+    ],
+    "_class": "com.nec.collegeservices.model.SeminarHall"
+  },
+  {
+    "_id": {
+      "$oid": "6abe5d41570f59112e4d95e4"
+    },
+    "hallId": "SH-5",
+    "name": "Tech Hub Wifi center",
+    "location": "3401-Third Floor",
+    "block": "Block 3",
+    "floor": "Third Floor",
+    "capacity": 150,
+    "facilities": [
+      "Projector",
+      "AC",
+      "Audio System",
+      "Wi-Fi"
+    ],
+    "image": "/assets/halls/techhub.jpg",
+    "status": "Available",
+    "coordinatorUserIds": [
+      "seminarcoordinator5"
+    ],
+    "_class": "com.nec.collegeservices.model.SeminarHall"
+  },
+  {
+    "_id": {
+      "$oid": "6ac34221d6a2bd430b609f40"
+    },
+    "hallId": "SH-6",
+    "name": "Block 2 Seminar hall",
+    "location": "2104-Ground Floor",
+    "block": "Block 2",
+    "floor": "Ground Floor",
+    "capacity": 250,
+    "facilities": [
+      "Projector",
+      "AC",
+      "Audio System",
+      "Wi-Fi"
+    ],
+    "image": "/assets/halls/hall2.jpg",
+    "status": "Available",
+    "coordinatorUserIds": [],
+    "_class": "com.nec.collegeservices.model.SeminarHall"
+  }
+]

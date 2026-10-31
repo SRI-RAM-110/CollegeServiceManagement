@@ -44,11 +44,29 @@ public class AccommodationController {
     // ROOM ENDPOINTS
     // ==========================================
 
+    @GetMapping("/rooms/active")
+    public ResponseEntity<ApiResponse<List<AccommodationRoom>>> getActiveRooms(
+            @RequestParam(required = false) String hostel) {
+        return ResponseEntity.ok(ApiResponse.ok("Active accommodation rooms", accommodationService.getActiveRooms(hostel)));
+    }
+
+    @GetMapping("/rooms/all")
+    @PreAuthorize("hasRole('AO_ADMIN')")
+    public ResponseEntity<ApiResponse<List<AccommodationRoom>>> getAllRoomsAdmin(
+            @RequestParam(required = false) String hostel) {
+        User user = authService.getCurrentUser();
+        return ResponseEntity.ok(ApiResponse.ok("All accommodation rooms (Admin view)", accommodationService.getAllRoomsForAdmin(user, hostel)));
+    }
+
     @GetMapping("/rooms")
     public ResponseEntity<ApiResponse<List<AccommodationRoom>>> getAllRooms(
             @RequestParam(required = false) String hostel,
-            @RequestParam(required = false, defaultValue = "false") boolean assignedOnly) {
+            @RequestParam(required = false, defaultValue = "false") boolean assignedOnly,
+            @RequestParam(required = false) Boolean includeInactive) {
         User user = authService.getCurrentUser();
+        if (Boolean.TRUE.equals(includeInactive)) {
+            return ResponseEntity.ok(ApiResponse.ok("All accommodation rooms", accommodationService.getAllRoomsForAdmin(user, hostel)));
+        }
         if (assignedOnly && user != null && !accommodationService.isSuperAdmin(user) && accommodationService.isAccommodationAdmin(user)) {
             if (user.getAssignedHostels() != null && !user.getAssignedHostels().isEmpty()) {
                 hostel = user.getAssignedHostels().get(0);
@@ -60,8 +78,34 @@ public class AccommodationController {
         return ResponseEntity.ok(ApiResponse.ok("Accommodation rooms", rooms));
     }
 
+    @PostMapping("/rooms")
+    @PreAuthorize("hasRole('AO_ADMIN')")
+    public ResponseEntity<ApiResponse<AccommodationRoom>> createRoom(@RequestBody AccommodationRoom room) {
+        User user = authService.getCurrentUser();
+        AccommodationRoom created = accommodationService.createRoom(room, user);
+        return ResponseEntity.ok(ApiResponse.ok("Accommodation room created successfully", created));
+    }
+
+    @PutMapping("/rooms/{roomId}")
+    @PreAuthorize("hasRole('AO_ADMIN')")
+    public ResponseEntity<ApiResponse<AccommodationRoom>> updateRoom(
+            @PathVariable String roomId,
+            @RequestBody AccommodationRoom room) {
+        User user = authService.getCurrentUser();
+        AccommodationRoom updated = accommodationService.updateRoom(roomId, room, user);
+        return ResponseEntity.ok(ApiResponse.ok("Accommodation room updated successfully", updated));
+    }
+
+    @PatchMapping("/rooms/{roomId}/toggle-status")
+    @PreAuthorize("hasRole('AO_ADMIN')")
+    public ResponseEntity<ApiResponse<AccommodationRoom>> toggleRoomActive(@PathVariable String roomId) {
+        User user = authService.getCurrentUser();
+        AccommodationRoom updated = accommodationService.toggleRoomActive(roomId, user);
+        return ResponseEntity.ok(ApiResponse.ok("Accommodation room active state toggled", updated));
+    }
+
     @PutMapping("/rooms/{roomId}/status")
-    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN', 'ACCOMMODATION_ADMIN')")
+    @PreAuthorize("hasRole('AO_ADMIN')")
     public ResponseEntity<ApiResponse<AccommodationRoom>> updateRoomStatus(
             @PathVariable String roomId,
             @RequestBody Object statusBody) {
@@ -75,6 +119,14 @@ public class AccommodationController {
         }
         AccommodationRoom updated = accommodationService.updateRoomStatus(roomId, status, user);
         return ResponseEntity.ok(ApiResponse.ok("Room status updated successfully", updated));
+    }
+
+    @DeleteMapping("/rooms/{roomId}")
+    @PreAuthorize("hasRole('AO_ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteRoom(@PathVariable String roomId) {
+        User user = authService.getCurrentUser();
+        accommodationService.deleteRoom(roomId, user);
+        return ResponseEntity.ok(ApiResponse.ok("Accommodation room deleted successfully", null));
     }
 
     @GetMapping("/rooms/{roomId}/availability")

@@ -28,4 +28,8 @@ public interface SeminarBookingRepository extends MongoRepository<SeminarBooking
     List<SeminarBooking> findByDepartment(String department);
 
     List<SeminarBooking> findByStatus(String status);
+
+    boolean existsByHallId(String hallId);
+
+    boolean existsByHallIdIn(List<String> hallIds);
 }

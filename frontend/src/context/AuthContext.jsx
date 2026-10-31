@@ -86,7 +86,7 @@ export const AuthProvider = ({ children }) => {
       if (roles.includes('SEMINAR_TECHNICIAN') && !roles.includes('DEPARTMENT_HOD') && !roles.includes('DEPARTMENT_USER')) {
         return '/technician/seminar';
       }
-      if (roles.includes('GENERATOR_OPERATOR') && !roles.includes('DEPARTMENT_HOD') && !roles.includes('DEPARTMENT_USER')) {
+      if ((roles.includes('GENERATOR_OPERATOR') || roles.includes('ELECTRICIAN')) && !roles.includes('DEPARTMENT_HOD') && !roles.includes('DEPARTMENT_USER')) {
         return '/operator/generator';
       }
     }
@@ -110,6 +110,7 @@ export const AuthProvider = ({ children }) => {
       case 'SEMINAR_TECHNICIAN':
         return '/technician/seminar';
       case 'GENERATOR_OPERATOR':
+      case 'ELECTRICIAN':
         return '/operator/generator';
       case 'DEPARTMENT_HOD':
       case 'DEPARTMENT_USER':
@@ -140,11 +141,13 @@ export const AuthProvider = ({ children }) => {
     getDefaultRouteForRole,
     isCreator: userRoles.includes('CREATOR'),
     isAOAdmin: userRoles.includes('CREATOR') || userRoles.includes('AO_ADMIN'),
+    canManageResources: userRoles.includes('AO_ADMIN'),
     isDepartmentHOD: userRoles.includes('DEPARTMENT_HOD'),
     isSeminarAdmin: userRoles.includes('SEMINAR_ADMIN'),
     isSeminarCoordinator: userRoles.includes('SEMINAR_COORDINATOR'),
     isSeminarTechnician: userRoles.includes('SEMINAR_TECHNICIAN'),
     isGeneratorOperator: userRoles.includes('GENERATOR_OPERATOR'),
+    isElectrician: userRoles.includes('ELECTRICIAN'),
     isAccommodationAdmin: userRoles.includes('ACCOMMODATION_ADMIN') || userRoles.includes('BOYS_HOSTEL_ADMIN') || userRoles.includes('GIRLS_HOSTEL_ADMIN'),
     isTransportAdmin: userRoles.includes('TRANSPORT_ADMIN'),
     isStationeryAdmin: userRoles.includes('STATIONERY_ADMIN'),

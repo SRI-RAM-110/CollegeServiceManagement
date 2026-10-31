@@ -45,7 +45,24 @@ public class TransportService {
     @Autowired
     private RequestIdService requestIdService;
 
+    public void requireAOAdmin(User user, String operation) {
+        if (user == null || (!user.hasRole("AO_ADMIN") && !"AO_ADMIN".equalsIgnoreCase(user.getRole()))) {
+            throw new AccessDeniedException("Unauthorized: Only AO_ADMIN can perform resource management operations (" + operation + ").");
+        }
+    }
+
     public List<Vehicle> getAllVehicles() {
+        return vehicleRepository.findAll();
+    }
+
+    public List<Vehicle> getActiveVehicles(String date) {
+        return getVehiclesWithDateAvailability(date).stream()
+                .filter(v -> v.getActive() == null || v.getActive())
+                .toList();
+    }
+
+    public List<Vehicle> getAllVehiclesForAdmin(User user) {
+        requireAOAdmin(user, "retrieve all vehicles");
         return vehicleRepository.findAll();
     }
 
@@ -69,8 +86,8 @@ public class TransportService {
         // Return copy with calculated status for requested date
         return allVehicles.stream().map(v -> {
             String calculatedStatus;
-            if ("MAINTENANCE".equalsIgnoreCase(v.getStatus())) {
-                calculatedStatus = "MAINTENANCE";
+            if ("MAINTENANCE".equalsIgnoreCase(v.getStatus()) || "UNDER_MAINTENANCE".equalsIgnoreCase(v.getStatus())) {
+                calculatedStatus = "UNDER_MAINTENANCE";
             } else if (busyVehicleIds.contains(v.getVehicleId())) {
                 calculatedStatus = "BOOKED";
             } else {
@@ -86,6 +103,12 @@ public class TransportService {
                     .driverName(v.getDriverName())
                     .driverPhone(v.getDriverPhone())
                     .status(calculatedStatus)
+                    .active(v.getActive() == null || v.getActive())
+                    .image(v.getImage())
+                    .createdAt(v.getCreatedAt())
+                    .createdBy(v.getCreatedBy())
+                    .updatedAt(v.getUpdatedAt())
+                    .updatedBy(v.getUpdatedBy())
                     .build();
         }).toList();
     }
@@ -97,10 +120,100 @@ public class TransportService {
     }
 
     public Vehicle addVehicle(Vehicle vehicle) {
+        return addVehicle(vehicle, null);
+    }
+
+    public Vehicle addVehicle(Vehicle vehicle, User user) {
+        requireAOAdmin(user, "create vehicle");
         if (vehicle.getVehicleId() == null || vehicle.getVehicleId().isBlank()) {
             vehicle.setVehicleId("V-" + String.format("%02d", vehicleRepository.count() + 1));
+        } else {
+            vehicle.setVehicleId(vehicle.getVehicleId().trim().toUpperCase());
         }
+        if (vehicleRepository.existsByVehicleIdIgnoreCase(vehicle.getVehicleId())) {
+            throw new ConflictException("Vehicle with ID '" + vehicle.getVehicleId() + "' already exists.");
+        }
+        if (vehicle.getRegistrationNumber() != null && !vehicle.getRegistrationNumber().isBlank()) {
+            String reg = vehicle.getRegistrationNumber().trim().toUpperCase();
+            if (vehicleRepository.existsByRegistrationNumberIgnoreCase(reg)) {
+                throw new ConflictException("Vehicle with registration number '" + reg + "' already exists.");
+            }
+            vehicle.setRegistrationNumber(reg);
+        }
+        if (vehicle.getStatus() == null || vehicle.getStatus().isBlank()) {
+            vehicle.setStatus("AVAILABLE");
+        }
+        if (vehicle.getActive() == null) {
+            vehicle.setActive(true);
+        }
+        String now = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        vehicle.setCreatedAt(now);
+        vehicle.setCreatedBy(user != null ? user.getUserId() : "ADMIN");
+        vehicle.setUpdatedAt(now);
+        vehicle.setUpdatedBy(user != null ? user.getUserId() : "ADMIN");
         return vehicleRepository.save(vehicle);
+    }
+
+    public Vehicle updateVehicle(String vehicleId, Vehicle updated, User user) {
+        requireAOAdmin(user, "update vehicle");
+        Vehicle vehicle = vehicleRepository.findByVehicleIdIgnoreCase(vehicleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Vehicle not found: " + vehicleId));
+
+        if (updated.getName() != null) vehicle.setName(updated.getName().trim());
+        if (updated.getType() != null) vehicle.setType(updated.getType().trim());
+        if (updated.getRegistrationNumber() != null && !updated.getRegistrationNumber().trim().equalsIgnoreCase(vehicle.getRegistrationNumber())) {
+            String reg = updated.getRegistrationNumber().trim().toUpperCase();
+            if (vehicleRepository.existsByRegistrationNumberIgnoreCase(reg)) {
+                throw new ConflictException("Vehicle with registration number '" + reg + "' already exists.");
+            }
+            vehicle.setRegistrationNumber(reg);
+        }
+        if (updated.getCapacity() != null) vehicle.setCapacity(updated.getCapacity());
+        if (updated.getStatus() != null) vehicle.setStatus(updated.getStatus());
+        if (updated.getActive() != null) vehicle.setActive(updated.getActive());
+        if (updated.getDriverName() != null) vehicle.setDriverName(updated.getDriverName());
+        if (updated.getDriverPhone() != null) vehicle.setDriverPhone(updated.getDriverPhone());
+        if (updated.getImage() != null) vehicle.setImage(updated.getImage());
+
+        String now = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        vehicle.setUpdatedAt(now);
+        vehicle.setUpdatedBy(user != null ? user.getUserId() : "ADMIN");
+        return vehicleRepository.save(vehicle);
+    }
+
+    public Vehicle toggleVehicleActive(String vehicleId, User user) {
+        requireAOAdmin(user, "toggle vehicle active state");
+        Vehicle vehicle = vehicleRepository.findByVehicleIdIgnoreCase(vehicleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Vehicle not found: " + vehicleId));
+        boolean current = vehicle.getActive() == null || vehicle.getActive();
+        vehicle.setActive(!current);
+        String now = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        vehicle.setUpdatedAt(now);
+        vehicle.setUpdatedBy(user != null ? user.getUserId() : "ADMIN");
+        return vehicleRepository.save(vehicle);
+    }
+
+    public Vehicle updateVehicleStatus(String vehicleId, String status, User user) {
+        requireAOAdmin(user, "update vehicle operational status");
+        Vehicle vehicle = vehicleRepository.findByVehicleIdIgnoreCase(vehicleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Vehicle not found: " + vehicleId));
+        vehicle.setStatus(status.toUpperCase().trim());
+        String now = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        vehicle.setUpdatedAt(now);
+        vehicle.setUpdatedBy(user != null ? user.getUserId() : "ADMIN");
+        return vehicleRepository.save(vehicle);
+    }
+
+    public void deleteVehicle(String vehicleId, User user) {
+        requireAOAdmin(user, "delete vehicle");
+        Vehicle vehicle = vehicleRepository.findByVehicleIdIgnoreCase(vehicleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Vehicle not found: " + vehicleId));
+
+        boolean hasTrips = requestRepository.existsByVehicleId(vehicle.getVehicleId());
+        if (hasTrips) {
+            throw new BadRequestException("Cannot delete vehicle '" + vehicle.getName() + " (" + vehicle.getVehicleId() + ")' because historical transport requests exist. Deactivate the vehicle instead to preserve audit records.");
+        }
+        vehicleRepository.delete(vehicle);
     }
 
     public static int parseTimeToMinutes(String timeStr) {

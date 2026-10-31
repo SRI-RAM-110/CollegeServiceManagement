@@ -29,4 +29,6 @@ public interface AccommodationRequestRepository extends MongoRepository<Accommod
     List<AccommodationRequest> findBySeriesId(String seriesId);
 
     List<AccommodationRequest> findByParentRequestId(String parentRequestId);
+
+    boolean existsByRoomId(String roomId);
 }

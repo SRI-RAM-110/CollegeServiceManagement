@@ -92,6 +92,23 @@ public class AdminUserDepartmentValidationTest {
     }
 
     @Test
+    @DisplayName("3b. Creating ELECTRICIAN without department succeeds with department=null")
+    void testElectricianAllowsNoDepartment() {
+        CreateUserRequestDTO dto = CreateUserRequestDTO.builder()
+                .name("Campus Electrician")
+                .email("electrician@test.com")
+                .role("ELECTRICIAN")
+                .roles(List.of("ELECTRICIAN"))
+                .department("")
+                .build();
+
+        UserDTO created = adminUserService.createUser(dto);
+        assertNotNull(created);
+        assertNull(created.getDepartment());
+        assertEquals("ELECTRICIAN", created.getRole());
+    }
+
+    @Test
     @DisplayName("4. Creating SEMINAR_TECHNICIAN without department succeeds with department=null")
     void testSeminarTechnicianAllowsNoDepartment() {
         CreateUserRequestDTO dto = CreateUserRequestDTO.builder()

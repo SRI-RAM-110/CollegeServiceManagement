@@ -9,4 +9,8 @@ import java.util.Optional;
 @Repository
 public interface SeminarHallRepository extends MongoRepository<SeminarHall, String> {
     Optional<SeminarHall> findByHallId(String hallId);
+    Optional<SeminarHall> findByHallIdIgnoreCase(String hallId);
+    Optional<SeminarHall> findByNameIgnoreCase(String name);
+    boolean existsByHallIdIgnoreCase(String hallId);
+    boolean existsByNameIgnoreCase(String name);
 }

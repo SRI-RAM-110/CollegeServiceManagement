@@ -36,6 +36,7 @@ import GeneratorOperatorDashboard from './pages/operator/GeneratorOperatorDashbo
 import ForcedPasswordChangeModal from './components/common/ForcedPasswordChangeModal';
 import SessionLoader from './components/common/SessionLoader';
 import Reports from './pages/Reports';
+import ResourceManagement from './pages/admin/ResourceManagement';
 
 const ROOT_PATHS = [
   '/login',
@@ -46,8 +47,10 @@ const ROOT_PATHS = [
   '/admin/transport',
   '/admin/stationery',
   '/admin/meals',
+  '/admin/resources',
   '/technician/seminar',
   '/operator/generator',
+  '/operator/electrician',
 ];
 
 function NativeBackButtonHandler() {
@@ -260,6 +263,24 @@ export default function App() {
                 }
               />
 
+              {/* AO Admin Central Dynamic Resource Management (Strictly AO_ADMIN only; CREATOR alone is denied) */}
+              <Route
+                path="/admin/resources"
+                element={
+                  <ProtectedRoute allowedRoles={['AO_ADMIN']} strictRoles={true}>
+                    <ResourceManagement />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/resources/*"
+                element={
+                  <ProtectedRoute allowedRoles={['AO_ADMIN']} strictRoles={true}>
+                    <ResourceManagement />
+                  </ProtectedRoute>
+                }
+              />
+
               {/* Seminar Admin */}
               <Route
                 path="/admin/seminar"
@@ -296,11 +317,11 @@ export default function App() {
                 }
               />
 
-              {/* Generator Operator */}
+              {/* Generator Operator & Electrician */}
               <Route
                 path="/operator/generator"
                 element={
-                  <ProtectedRoute allowedRoles={['CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN', 'GENERATOR_OPERATOR']}>
+                  <ProtectedRoute allowedRoles={['CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN', 'GENERATOR_OPERATOR', 'ELECTRICIAN']}>
                     <GeneratorOperatorDashboard />
                   </ProtectedRoute>
                 }
@@ -308,7 +329,23 @@ export default function App() {
               <Route
                 path="/operator/generator/*"
                 element={
-                  <ProtectedRoute allowedRoles={['CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN', 'GENERATOR_OPERATOR']}>
+                  <ProtectedRoute allowedRoles={['CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN', 'GENERATOR_OPERATOR', 'ELECTRICIAN']}>
+                    <GeneratorOperatorDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/operator/electrician"
+                element={
+                  <ProtectedRoute allowedRoles={['CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN', 'GENERATOR_OPERATOR', 'ELECTRICIAN']}>
+                    <GeneratorOperatorDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/operator/electrician/*"
+                element={
+                  <ProtectedRoute allowedRoles={['CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN', 'GENERATOR_OPERATOR', 'ELECTRICIAN']}>
                     <GeneratorOperatorDashboard />
                   </ProtectedRoute>
                 }

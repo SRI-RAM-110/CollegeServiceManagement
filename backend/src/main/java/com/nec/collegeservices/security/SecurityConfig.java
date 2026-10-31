@@ -87,6 +87,41 @@ public class SecurityConfig {
                 .requestMatchers("/api/push/public-key").permitAll()
                 .requestMatchers("/error").permitAll()
 
+                // =========================================================================
+                // Dynamic Resource Management (Strictly AO_ADMIN only)
+                // =========================================================================
+                .requestMatchers("/api/seminar/halls/all").hasRole("AO_ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/seminar/halls").hasRole("AO_ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/seminar/halls/*").hasRole("AO_ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/seminar/halls/*").hasRole("AO_ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/seminar/halls/*").hasRole("AO_ADMIN")
+                .requestMatchers("/api/seminar/halls/*/status", "/api/seminar/halls/*/toggle-status", "/api/seminar/halls/*/coordinators", "/api/seminar/halls/*/cc-emails").hasRole("AO_ADMIN")
+
+                .requestMatchers("/api/accommodation/rooms/all").hasRole("AO_ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/accommodation/rooms").hasRole("AO_ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/accommodation/rooms/*").hasRole("AO_ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/accommodation/rooms/*").hasRole("AO_ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/accommodation/rooms/*").hasRole("AO_ADMIN")
+                .requestMatchers("/api/accommodation/rooms/*/status", "/api/accommodation/rooms/*/toggle-status").hasRole("AO_ADMIN")
+
+                .requestMatchers("/api/transport/vehicles/all").hasRole("AO_ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/transport/vehicles", "/api/transport/vehicles/add").hasRole("AO_ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/transport/vehicles/*").hasRole("AO_ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/transport/vehicles/*").hasRole("AO_ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/transport/vehicles/*").hasRole("AO_ADMIN")
+                .requestMatchers("/api/transport/vehicles/*/status", "/api/transport/vehicles/*/toggle-status").hasRole("AO_ADMIN")
+
+                .requestMatchers("/api/stationery/items/all").hasRole("AO_ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/stationery/items", "/api/stationery/items/add").hasRole("AO_ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/stationery/items/*").hasRole("AO_ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/stationery/items/*").hasRole("AO_ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/stationery/items/*").hasRole("AO_ADMIN")
+                .requestMatchers("/api/stationery/items/*/toggle-active", "/api/stationery/items/*/toggle-status").hasRole("AO_ADMIN")
+
+                // =========================================================================
+                // Module Operational Endpoints (Approvals, Requests, Checklists)
+                // =========================================================================
+
                 // Seminar Module: Accessible by CREATOR, AO_ADMIN, SEMINAR_ADMIN, SEMINAR_COORDINATOR, and DEPARTMENT_USER / DEPARTMENT_HOD
                 .requestMatchers("/api/seminar/requests/*/approve", "/api/seminar/requests/*/reject",
                                  "/api/seminar/requests/*/cancel/approve", "/api/seminar/requests/*/cancel/reject",
@@ -94,14 +129,12 @@ public class SecurityConfig {
                                  "/api/seminar/requests/*/reschedule/approve", "/api/seminar/requests/*/reschedule/reject",
                                  "/api/seminar/requests/*/approve-reschedule", "/api/seminar/requests/*/reject-reschedule")
                     .hasAnyRole("CREATOR", "AO_ADMIN", "SEMINAR_ADMIN", "SEMINAR_COORDINATOR")
-                .requestMatchers("/api/seminar/halls/*/status")
-                    .hasAnyRole("CREATOR", "AO_ADMIN", "SEMINAR_ADMIN", "SEMINAR_COORDINATOR")
-                .requestMatchers("/api/seminar/halls/*/coordinators", "/api/seminar/test-fixture/**")
-                    .hasAnyRole("CREATOR", "AO_ADMIN", "SEMINAR_ADMIN")
+                .requestMatchers("/api/seminar/test-fixture/**")
+                    .hasAnyRole("CREATOR", "AO_ADMIN")
                 .requestMatchers("/api/seminar/technician/**")
                     .hasAnyRole("CREATOR", "AO_ADMIN", "SEMINAR_ADMIN", "SEMINAR_TECHNICIAN")
-                .requestMatchers("/api/seminar/generator/**")
-                    .hasAnyRole("CREATOR", "AO_ADMIN", "SEMINAR_ADMIN", "GENERATOR_OPERATOR")
+                .requestMatchers("/api/seminar/generator/**", "/api/seminar/electrician/**")
+                    .hasAnyRole("CREATOR", "AO_ADMIN", "SEMINAR_ADMIN", "GENERATOR_OPERATOR", "ELECTRICIAN")
                 .requestMatchers("/api/seminar/**")
                     .hasAnyRole("CREATOR", "AO_ADMIN", "SEMINAR_ADMIN", "SEMINAR_COORDINATOR", "DEPARTMENT_USER", "DEPARTMENT_HOD", "SEMINAR_TECHNICIAN")
 
@@ -111,19 +144,19 @@ public class SecurityConfig {
                                  "/api/accommodation/requests/*/approve-cancellation", "/api/accommodation/requests/*/reject-cancellation",
                                  "/api/accommodation/requests/*/reschedule/approve", "/api/accommodation/requests/*/reschedule/reject",
                                  "/api/accommodation/requests/*/approve-reschedule", "/api/accommodation/requests/*/reject-reschedule",
-                                 "/api/accommodation/rooms/*/status", "/api/accommodation/test-fixture/**")
+                                 "/api/accommodation/test-fixture/**")
                     .hasAnyRole("CREATOR", "AO_ADMIN", "ACCOMMODATION_ADMIN")
                 .requestMatchers("/api/accommodation/**")
                     .hasAnyRole("CREATOR", "AO_ADMIN", "ACCOMMODATION_ADMIN", "DEPARTMENT_USER", "DEPARTMENT_HOD")
 
                 // Transport Module: Accessible by CREATOR, AO_ADMIN, TRANSPORT_ADMIN, and DEPARTMENT_USER / DEPARTMENT_HOD
-                .requestMatchers("/api/transport/requests/*/approve", "/api/transport/requests/*/reject", "/api/transport/vehicles/add")
+                .requestMatchers("/api/transport/requests/*/approve", "/api/transport/requests/*/reject")
                     .hasAnyRole("CREATOR", "AO_ADMIN", "TRANSPORT_ADMIN")
                 .requestMatchers("/api/transport/**")
                     .hasAnyRole("CREATOR", "AO_ADMIN", "TRANSPORT_ADMIN", "DEPARTMENT_USER", "DEPARTMENT_HOD")
 
                 // Stationery Module: Accessible by CREATOR, AO_ADMIN, STATIONERY_ADMIN, and DEPARTMENT_USER / DEPARTMENT_HOD
-                .requestMatchers("/api/stationery/requests/*/approve", "/api/stationery/requests/*/reject", "/api/stationery/requests/*/review", "/api/stationery/requests/*/ready", "/api/stationery/requests/*/collect", "/api/stationery/requests/*/status", "/api/stationery/items/add")
+                .requestMatchers("/api/stationery/requests/*/approve", "/api/stationery/requests/*/reject", "/api/stationery/requests/*/review", "/api/stationery/requests/*/ready", "/api/stationery/requests/*/collect", "/api/stationery/requests/*/status")
                     .hasAnyRole("CREATOR", "AO_ADMIN", "STATIONERY_ADMIN")
                 .requestMatchers("/api/stationery/**")
                     .hasAnyRole("CREATOR", "AO_ADMIN", "STATIONERY_ADMIN", "DEPARTMENT_USER", "DEPARTMENT_HOD")

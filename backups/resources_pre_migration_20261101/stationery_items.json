@@ -1,0 +1,171 @@
+[
+  {
+    "_id": {
+      "$oid": "6ab697fd24d424384056de53"
+    },
+    "itemId": "ST-01",
+    "name": "A4 Paper (500 sheets)",
+    "category": "Paper",
+    "description": "Standard 75 GSM multipurpose white A4 copier paper",
+    "unit": "packs",
+    "active": true,
+    "image": "/assets/stationery/a4.jpg",
+    "_class": "com.nec.collegeservices.model.StationeryItem"
+  },
+  {
+    "_id": {
+      "$oid": "6ab697fd24d424384056de54"
+    },
+    "itemId": "ST-02",
+    "name": "A3 Paper (100 sheets)",
+    "category": "Paper",
+    "description": "Heavyweight 80 GSM white A3 sheets for drawings and charts",
+    "unit": "packs",
+    "active": true,
+    "image": "/assets/stationery/a3.jpg",
+    "_class": "com.nec.collegeservices.model.StationeryItem"
+  },
+  {
+    "_id": {
+      "$oid": "6ab697fd24d424384056de55"
+    },
+    "itemId": "ST-03",
+    "name": "Pens (Blue)",
+    "category": "Writing",
+    "description": "Smooth flow 0.7mm blue ballpoint faculty pens",
+    "unit": "pcs",
+    "active": true,
+    "image": "/assets/stationery/pen_blue.jpg",
+    "_class": "com.nec.collegeservices.model.StationeryItem"
+  },
+  {
+    "_id": {
+      "$oid": "6ab697fd24d424384056de56"
+    },
+    "itemId": "ST-04",
+    "name": "Pens (Black)",
+    "category": "Writing",
+    "description": "Fine tip 0.7mm black archival ink pens",
+    "unit": "pcs",
+    "active": true,
+    "image": "/assets/stationery/pen_black.jpg",
+    "_class": "com.nec.collegeservices.model.StationeryItem"
+  },
+  {
+    "_id": {
+      "$oid": "6ab697fd24d424384056de57"
+    },
+    "itemId": "ST-05",
+    "name": "Pencils",
+    "category": "Writing",
+    "description": "HB bonded lead drawing and examination pencils",
+    "unit": "pcs",
+    "active": true,
+    "image": "/assets/stationery/pencils.jpg",
+    "_class": "com.nec.collegeservices.model.StationeryItem"
+  },
+  {
+    "_id": {
+      "$oid": "6ab697fd24d424384056de58"
+    },
+    "itemId": "ST-06",
+    "name": "Markers",
+    "category": "Writing",
+    "description": "Dry-erase whiteboard bullet tip markers",
+    "unit": "pcs",
+    "active": true,
+    "image": "/assets/stationery/markers.jpg",
+    "_class": "com.nec.collegeservices.model.StationeryItem"
+  },
+  {
+    "_id": {
+      "$oid": "6ab697fd24d424384056de59"
+    },
+    "itemId": "ST-07",
+    "name": "Highlighters",
+    "category": "Writing",
+    "description": "Fluorescent chisel-tip document highlighters",
+    "unit": "pcs",
+    "active": true,
+    "image": "/assets/stationery/highlighters.jpg",
+    "_class": "com.nec.collegeservices.model.StationeryItem"
+  },
+  {
+    "_id": {
+      "$oid": "6ab697fd24d424384056de5a"
+    },
+    "itemId": "ST-08",
+    "name": "Stapler",
+    "category": "Office Tools",
+    "description": "Heavy-duty desktop 24/6 stapler",
+    "unit": "pcs",
+    "active": true,
+    "image": "/assets/stationery/stapler.jpg",
+    "_class": "com.nec.collegeservices.model.StationeryItem"
+  },
+  {
+    "_id": {
+      "$oid": "6ab697fd24d424384056de5b"
+    },
+    "itemId": "ST-09",
+    "name": "Staple Pins",
+    "category": "Office Tools",
+    "description": "Standard No. 10 / 24/6 galvanized staple pin boxes",
+    "unit": "boxes",
+    "active": true,
+    "image": "/assets/stationery/pins.jpg",
+    "_class": "com.nec.collegeservices.model.StationeryItem"
+  },
+  {
+    "_id": {
+      "$oid": "6ab697fd24d424384056de5c"
+    },
+    "itemId": "ST-10",
+    "name": "Files & Folders",
+    "category": "Filing",
+    "description": "Durable polypropylene ring binders and office document folders",
+    "unit": "pcs",
+    "active": true,
+    "image": "/assets/stationery/folders.jpg",
+    "_class": "com.nec.collegeservices.model.StationeryItem"
+  },
+  {
+    "_id": {
+      "$oid": "6ab697fd24d424384056de5d"
+    },
+    "itemId": "ST-11",
+    "name": "Chart Paper",
+    "category": "Paper",
+    "description": "Assorted bright poster chart paper sheets for seminars",
+    "unit": "sheets",
+    "active": true,
+    "image": "/assets/stationery/chart.jpg",
+    "_class": "com.nec.collegeservices.model.StationeryItem"
+  },
+  {
+    "_id": {
+      "$oid": "6ab697fd24d424384056de5e"
+    },
+    "itemId": "ST-12",
+    "name": "Notebooks",
+    "category": "Paper",
+    "description": "Hardcover ruled departmental records register notebooks",
+    "unit": "pcs",
+    "active": true,
+    "image": "/assets/stationery/notebook.jpg",
+    "_class": "com.nec.collegeservices.model.StationeryItem"
+  },
+  {
+    "_id": {
+      "$oid": "6ab697fd24d424384056de5f"
+    },
+    "itemId": "ST-13",
+    "name": "Envelopes",
+    "category": "Office Tools",
+    "description": "Official institutional letterhead mailing envelopes",
+    "unit": "pcs",
+    "active": true,
+    "image": "/assets/stationery/envelope.jpg",
+    "_class": "com.nec.collegeservices.model.StationeryItem"
+  }
+]

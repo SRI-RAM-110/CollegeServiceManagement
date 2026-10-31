@@ -27,4 +27,25 @@ public class StationeryItem {
     @Builder.Default
     private Boolean active = true;
     private String image;
+
+    // Audit metadata
+    private String createdAt;
+    private String createdBy;
+    private String updatedAt;
+    private String updatedBy;
+
+    public boolean isResourceActive() {
+        return active == null || active;
+    }
+
+    // Backward-compatibility accessors for legacy consumers
+    public String getItemCode() {
+        return itemId;
+    }
+
+    public void setItemCode(String itemCode) {
+        if (this.itemId == null || this.itemId.isBlank()) {
+            this.itemId = itemCode;
+        }
+    }
 }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Zap, RefreshCw, Calendar, Clock, MapPin, Building2 } from 'lucide-react';
 import { seminarApi } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { formatDateDisplay, getSlotTimes } from '../../utils/dateUtils';
 
@@ -34,6 +35,7 @@ function formatTimeDisplay(timeStr, fallbackSlot, isEnd = false) {
  */
 export default function GeneratorOperatorDashboard() {
   const { addToast } = useNotifications();
+  const { user, isElectrician } = useAuth();
 
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,7 +44,7 @@ export default function GeneratorOperatorDashboard() {
   const fetchSchedule = useCallback(async (isCancelledCheck = () => false) => {
     try {
       setRefreshing(true);
-      const res = await seminarApi.getGeneratorSchedule();
+      const res = isElectrician ? await seminarApi.getElectricianSchedule() : await seminarApi.getGeneratorSchedule();
       if (!isCancelledCheck()) {
         if (res?.data && Array.isArray(res.data)) {
           setBookings(res.data);
@@ -52,7 +54,7 @@ export default function GeneratorOperatorDashboard() {
       }
     } catch (err) {
       if (!isCancelledCheck()) {
-        addToast(err.message || 'Failed to fetch generator schedule.', 'error');
+        addToast(err.message || 'Failed to fetch schedule.', 'error');
       }
     } finally {
       if (!isCancelledCheck()) {
@@ -60,7 +62,7 @@ export default function GeneratorOperatorDashboard() {
         setRefreshing(false);
       }
     }
-  }, [addToast]);
+  }, [addToast, isElectrician]);
 
   useEffect(() => {
     let cancelled = false;
@@ -214,7 +216,7 @@ export default function GeneratorOperatorDashboard() {
                 Generator Schedule
               </h1>
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                OPERATOR
+                {isElectrician && !user?.roles?.includes('GENERATOR_OPERATOR') ? 'ELECTRICIAN' : 'OPERATOR'}
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">

@@ -2,6 +2,7 @@ package com.nec.collegeservices.service;
 
 import com.nec.collegeservices.dto.StationeryRequestDTO;
 import com.nec.collegeservices.exception.BadRequestException;
+import com.nec.collegeservices.exception.ConflictException;
 import com.nec.collegeservices.exception.ResourceNotFoundException;
 import com.nec.collegeservices.model.StationeryItem;
 import com.nec.collegeservices.model.StationeryRequest;
@@ -13,6 +14,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,15 +39,114 @@ public class StationeryService {
     @Autowired
     private RequestIdService requestIdService;
 
+    public void requireAOAdmin(User user, String operation) {
+        if (user == null || (!user.hasRole("AO_ADMIN") && !"AO_ADMIN".equalsIgnoreCase(user.getRole()))) {
+            throw new AccessDeniedException("Unauthorized: Only AO_ADMIN can perform resource management operations (" + operation + ").");
+        }
+    }
+
     public List<StationeryItem> getAllItems() {
+        return getActiveItems();
+    }
+
+    public List<StationeryItem> getActiveItems() {
         return itemRepository.findAll().stream()
                 .filter(i -> i.getActive() == null || i.getActive())
                 .toList();
     }
 
+    public List<StationeryItem> getAllItemsForAdmin(User user) {
+        requireAOAdmin(user, "retrieve all stationery items");
+        return itemRepository.findAll();
+    }
+
     public StationeryItem getItemById(String itemId) {
-        return itemRepository.findByItemId(itemId)
+        if (itemId == null || itemId.isBlank()) {
+            throw new ResourceNotFoundException("Item ID cannot be empty.");
+        }
+        return itemRepository.findByItemIdIgnoreCase(itemId.trim())
+                .or(() -> itemRepository.findByItemId(itemId))
                 .orElseThrow(() -> new ResourceNotFoundException("Stationery item not found: " + itemId));
+    }
+
+    public StationeryItem createItem(StationeryItem item, User user) {
+        requireAOAdmin(user, "create stationery item");
+        if (item.getItemId() == null || item.getItemId().isBlank()) {
+            item.setItemId("ST-" + String.format("%02d", itemRepository.count() + 1));
+        } else {
+            item.setItemId(item.getItemId().trim().toUpperCase());
+        }
+        if (item.getName() == null || item.getName().isBlank()) {
+            throw new BadRequestException("Item name is required.");
+        }
+        if (itemRepository.existsByItemIdIgnoreCase(item.getItemId())) {
+            throw new ConflictException("Stationery item with ID '" + item.getItemId() + "' already exists.");
+        }
+        if (itemRepository.existsByNameIgnoreCase(item.getName().trim())) {
+            throw new ConflictException("Stationery item with name '" + item.getName().trim() + "' already exists.");
+        }
+        item.setName(item.getName().trim());
+        if (item.getCategory() != null) item.setCategory(item.getCategory().trim());
+        if (item.getUnit() == null || item.getUnit().isBlank()) {
+            item.setUnit("pcs");
+        }
+        if (item.getActive() == null) {
+            item.setActive(true);
+        }
+        String now = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        item.setCreatedAt(now);
+        item.setCreatedBy(user != null ? user.getUserId() : "ADMIN");
+        item.setUpdatedAt(now);
+        item.setUpdatedBy(user != null ? user.getUserId() : "ADMIN");
+        return itemRepository.save(item);
+    }
+
+    public StationeryItem updateItem(String itemId, StationeryItem updated, User user) {
+        requireAOAdmin(user, "update stationery item");
+        StationeryItem item = itemRepository.findByItemIdIgnoreCase(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Stationery item not found: " + itemId));
+
+        if (updated.getName() != null && !updated.getName().trim().equalsIgnoreCase(item.getName())) {
+            String newName = updated.getName().trim();
+            if (itemRepository.existsByNameIgnoreCase(newName)) {
+                throw new ConflictException("Stationery item with name '" + newName + "' already exists.");
+            }
+            item.setName(newName);
+        }
+        if (updated.getCategory() != null) item.setCategory(updated.getCategory().trim());
+        if (updated.getDescription() != null) item.setDescription(updated.getDescription());
+        if (updated.getUnit() != null) item.setUnit(updated.getUnit().trim());
+        if (updated.getImage() != null) item.setImage(updated.getImage());
+        if (updated.getActive() != null) item.setActive(updated.getActive());
+
+        String now = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        item.setUpdatedAt(now);
+        item.setUpdatedBy(user != null ? user.getUserId() : "ADMIN");
+        return itemRepository.save(item);
+    }
+
+    public StationeryItem toggleItemActive(String itemId, User user) {
+        requireAOAdmin(user, "toggle stationery item active state");
+        StationeryItem item = itemRepository.findByItemIdIgnoreCase(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Stationery item not found: " + itemId));
+        boolean current = item.getActive() == null || item.getActive();
+        item.setActive(!current);
+        String now = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        item.setUpdatedAt(now);
+        item.setUpdatedBy(user != null ? user.getUserId() : "ADMIN");
+        return itemRepository.save(item);
+    }
+
+    public void deleteItem(String itemId, User user) {
+        requireAOAdmin(user, "delete stationery item");
+        StationeryItem item = itemRepository.findByItemIdIgnoreCase(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Stationery item not found: " + itemId));
+
+        boolean hasRequests = requestRepository.existsByItemsRequestedItemId(item.getItemId());
+        if (hasRequests) {
+            throw new BadRequestException("Cannot delete stationery item '" + item.getName() + " (" + item.getItemId() + ")' because historical requisition requests reference it. Deactivate the item instead to preserve audit records.");
+        }
+        itemRepository.delete(item);
     }
 
     public StationeryRequest createRequest(StationeryRequestDTO dto, User user) {

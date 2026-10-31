@@ -134,6 +134,9 @@ export const seminarApi = {
   approveReschedule: (id) => api.put(`/seminar/requests/${id}/approve-reschedule`),
   rejectReschedule: (id, reason) => api.put(`/seminar/requests/${id}/reject-reschedule`, { reason }),
   updateHallStatus: (hallId, status) => api.put(`/seminar/halls/${hallId}/status`, { status }),
+  toggleHallStatus: (hallId) => api.patch(`/seminar/halls/${hallId}/toggle-status`),
+  createHall: (data) => api.post('/seminar/halls', data),
+  deleteHall: (hallId) => api.delete(`/seminar/halls/${hallId}`),
   updateHall: (hallId, data) => api.put(`/seminar/halls/${hallId}`, data),
   updateHallCcEmails: (hallId, ccEmails) => api.put(`/seminar/halls/${hallId}/cc-emails`, { ccEmails }),
   assignCoordinators: (hallId, coordinators) => api.post(`/seminar/halls/${hallId}/coordinators`, { coordinators }),
@@ -141,6 +144,7 @@ export const seminarApi = {
   getEquipmentChecklist: (bookingId, date) => api.get(`/seminar/technician/checklist/${bookingId}`, { params: date ? { date } : {} }),
   saveEquipmentChecklist: (bookingId, date, data) => api.put(`/seminar/technician/checklist/${bookingId}`, data, { params: date ? { date } : {} }),
   getGeneratorSchedule: () => api.get('/seminar/generator/schedule'),
+  getElectricianSchedule: () => api.get('/seminar/electrician/schedule'),
 };
 
 export const adminUserApi = {
@@ -156,7 +160,12 @@ export const adminUserApi = {
 
 export const accommodationApi = {
   getRooms: (hostel) => api.get('/accommodation/rooms', { params: hostel ? { hostel } : {} }),
+  getAllRoomsAdmin: (hostel) => api.get('/accommodation/rooms/all', { params: hostel ? { hostel } : {} }),
+  createRoom: (data) => api.post('/accommodation/rooms', data),
+  updateRoom: (roomId, data) => api.put(`/accommodation/rooms/${roomId}`, data),
+  toggleRoomStatus: (roomId) => api.patch(`/accommodation/rooms/${roomId}/toggle-status`),
   updateRoomStatus: (roomId, status) => api.put(`/accommodation/rooms/${roomId}/status`, { status }),
+  deleteRoom: (roomId) => api.delete(`/accommodation/rooms/${roomId}`),
   getRoomAvailability: (roomId, params) => api.get(`/accommodation/rooms/${roomId}/availability`, { params }),
   checkBulkAvailability: (data) => api.post('/accommodation/check-bulk-availability', data),
   createRequest: (data) => api.post('/accommodation/requests', data),
@@ -182,9 +191,14 @@ export const accommodationApi = {
 
 export const transportApi = {
   getVehicles: (date) => api.get('/transport/vehicles', { params: date ? { date } : {} }),
+  getAllVehiclesAdmin: () => api.get('/transport/vehicles/all'),
+  addVehicle: (data) => api.post('/transport/vehicles', data),
+  updateVehicle: (vehicleId, data) => api.put(`/transport/vehicles/${vehicleId}`, data),
+  toggleVehicleStatus: (vehicleId) => api.patch(`/transport/vehicles/${vehicleId}/toggle-status`),
+  updateVehicleStatus: (vehicleId, status) => api.patch(`/transport/vehicles/${vehicleId}/status`, { status }),
+  deleteVehicle: (vehicleId) => api.delete(`/transport/vehicles/${vehicleId}`),
   getTrips: (date) => api.get('/transport/trips', { params: date ? { date } : {} }),
   checkBulkAvailability: (data) => api.post('/transport/check-bulk-availability', data),
-  addVehicle: (data) => api.post('/transport/vehicles/add', data),
   createRequest: (data) => api.post('/transport/requests', data),
   getRequests: (params = {}) => api.get('/transport/requests', { params }),
   approve: (id) => api.put(`/transport/requests/${id}/approve`),
@@ -193,6 +207,11 @@ export const transportApi = {
 
 export const stationeryApi = {
   getItems: () => api.get('/stationery/items'),
+  getAllItemsAdmin: () => api.get('/stationery/items/all'),
+  createItem: (data) => api.post('/stationery/items', data),
+  updateItem: (itemId, data) => api.put(`/stationery/items/${itemId}`, data),
+  toggleItemStatus: (itemId) => api.patch(`/stationery/items/${itemId}/toggle-active`),
+  deleteItem: (itemId) => api.delete(`/stationery/items/${itemId}`),
   createRequest: (data) => api.post('/stationery/requests', data),
   getRequests: (params = {}) => api.get('/stationery/requests', { params }),
   getRequestById: (id) => api.get(`/stationery/requests/${id}`),
@@ -262,6 +281,45 @@ export const reportsApi = {
     api.post('/reports/export/excel', filters, {
       responseType: 'blob',
     }),
+};
+
+export const resourceApi = {
+  // Seminar Halls
+  getHalls: () => api.get('/seminar/halls/all'),
+  getActiveHalls: () => api.get('/seminar/halls/active'),
+  createHall: (data) => api.post('/seminar/halls', data),
+  updateHall: (hallId, data) => api.put(`/seminar/halls/${hallId}`, data),
+  toggleHallStatus: (hallId) => api.patch(`/seminar/halls/${hallId}/toggle-status`),
+  updateHallOperationalStatus: (hallId, status) => api.put(`/seminar/halls/${hallId}/status`, { status }),
+  deleteHall: (hallId) => api.delete(`/seminar/halls/${hallId}`),
+  updateHallCcEmails: (hallId, ccEmails) => api.put(`/seminar/halls/${hallId}/cc-emails`, { ccEmails }),
+  assignHallCoordinators: (hallId, coordinators) => api.post(`/seminar/halls/${hallId}/coordinators`, { coordinators }),
+
+  // Accommodation Rooms
+  getRooms: (hostel) => api.get('/accommodation/rooms/all', { params: hostel ? { hostel } : {} }),
+  getActiveRooms: (hostel) => api.get('/accommodation/rooms/active', { params: hostel ? { hostel } : {} }),
+  createRoom: (data) => api.post('/accommodation/rooms', data),
+  updateRoom: (roomId, data) => api.put(`/accommodation/rooms/${roomId}`, data),
+  toggleRoomStatus: (roomId) => api.patch(`/accommodation/rooms/${roomId}/toggle-status`),
+  updateRoomOperationalStatus: (roomId, status) => api.put(`/accommodation/rooms/${roomId}/status`, { status }),
+  deleteRoom: (roomId) => api.delete(`/accommodation/rooms/${roomId}`),
+
+  // Transport Vehicles
+  getVehicles: () => api.get('/transport/vehicles/all'),
+  getActiveVehicles: (date) => api.get('/transport/vehicles/active', { params: date ? { date } : {} }),
+  addVehicle: (data) => api.post('/transport/vehicles', data),
+  updateVehicle: (vehicleId, data) => api.put(`/transport/vehicles/${vehicleId}`, data),
+  toggleVehicleStatus: (vehicleId) => api.patch(`/transport/vehicles/${vehicleId}/toggle-status`),
+  updateVehicleOperationalStatus: (vehicleId, status) => api.patch(`/transport/vehicles/${vehicleId}/status`, { status }),
+  deleteVehicle: (vehicleId) => api.delete(`/transport/vehicles/${vehicleId}`),
+
+  // Stationery Items
+  getStationeryItems: () => api.get('/stationery/items/all'),
+  getActiveStationeryItems: () => api.get('/stationery/items/active'),
+  createStationeryItem: (data) => api.post('/stationery/items', data),
+  updateStationeryItem: (itemId, data) => api.put(`/stationery/items/${itemId}`, data),
+  toggleStationeryItemStatus: (itemId) => api.patch(`/stationery/items/${itemId}/toggle-active`),
+  deleteStationeryItem: (itemId) => api.delete(`/stationery/items/${itemId}`),
 };
 
 export default api;

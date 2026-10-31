@@ -115,6 +115,17 @@ public class SeminarService {
         return halls;
     }
 
+    public List<SeminarHall> getActiveHalls() {
+        return hallRepository.findAll().stream()
+                .filter(SeminarHall::isActive)
+                .toList();
+    }
+
+    public List<SeminarHall> getAllHallsForAdmin(User user) {
+        requireAOAdmin(user, "retrieve all seminar halls");
+        return hallRepository.findAll();
+    }
+
     public List<SeminarHall> getMyAssignedHalls(User user) {
         List<SeminarHall> halls = hallRepository.findAll();
         if (user == null) return Collections.emptyList();
@@ -129,17 +140,36 @@ public class SeminarService {
         return Collections.emptyList();
     }
 
-    public Optional<SeminarHall> getHallById(String hallId) {
-        if (hallId == null) return Optional.empty();
-        Optional<SeminarHall> opt = hallRepository.findByHallId(hallId);
-        if (opt.isPresent()) return opt;
-        opt = hallRepository.findById(hallId);
-        if (opt.isPresent()) return opt;
-        if ("SH-5".equalsIgnoreCase(hallId) || "5".equals(hallId)) {
-            return hallRepository.findByHallId("TECH-HUB");
+    public void requireAOAdmin(User user, String operation) {
+        if (user == null || (!user.hasRole("AO_ADMIN") && !"AO_ADMIN".equalsIgnoreCase(user.getRole()))) {
+            throw new AccessDeniedException("Unauthorized: Only AO_ADMIN can perform resource management operations (" + operation + ").");
         }
-        if ("TECH-HUB".equalsIgnoreCase(hallId) || "TECHHUB".equalsIgnoreCase(hallId)) {
-            return hallRepository.findByHallId("SH-5");
+    }
+
+    public Optional<SeminarHall> getHallById(String hallId) {
+        if (hallId == null || hallId.isBlank()) return Optional.empty();
+        String trimmed = hallId.trim();
+        Optional<SeminarHall> opt = hallRepository.findByHallIdIgnoreCase(trimmed);
+        if (opt.isPresent()) return opt;
+        opt = hallRepository.findById(trimmed);
+        if (opt.isPresent()) return opt;
+        opt = hallRepository.findByNameIgnoreCase(trimmed);
+        if (opt.isPresent()) return opt;
+        if ("SH-5".equalsIgnoreCase(trimmed) || "5".equals(trimmed)) {
+            return hallRepository.findByHallIdIgnoreCase("TECH-HUB");
+        }
+        if ("TECH-HUB".equalsIgnoreCase(trimmed) || "TECHHUB".equalsIgnoreCase(trimmed)) {
+            Optional<SeminarHall> th = hallRepository.findByHallIdIgnoreCase("SH-5");
+            if (th.isPresent()) return th;
+            return hallRepository.findByHallIdIgnoreCase("TECH-HUB");
+        }
+        // Dynamic search across all halls in MongoDB
+        List<SeminarHall> allHalls = hallRepository.findAll();
+        String norm = normalizeHallKey(trimmed);
+        for (SeminarHall h : allHalls) {
+            if (normalizeHallKey(h.getHallId()).equalsIgnoreCase(norm) || normalizeHallKey(h.getName()).equalsIgnoreCase(norm)) {
+                return Optional.of(h);
+            }
         }
         return Optional.empty();
     }
@@ -1255,6 +1285,9 @@ public class SeminarService {
         // Notify active Generator Operators
         notifyGeneratorOperatorsOnApproval(saved);
 
+        // Notify active Electricians
+        notifyElectriciansOnApproval(saved);
+
         return saved;
     }
 
@@ -1501,6 +1534,9 @@ public class SeminarService {
 
         // Notify active Generator Operators
         notifyGeneratorOperatorsOnCancellation(booking, targetBookings);
+
+        // Notify active Electricians
+        notifyElectriciansOnCancellation(booking, targetBookings);
 
         return bookingRepository.findById(booking.getId()).orElse(booking);
     }
@@ -1779,6 +1815,9 @@ public class SeminarService {
         // Notify active Generator Operators
         notifyGeneratorOperatorsOnReschedule(original, savedNew);
 
+        // Notify active Electricians
+        notifyElectriciansOnReschedule(original, savedNew);
+
         return savedNew;
     }
 
@@ -1860,62 +1899,131 @@ public class SeminarService {
         return new ArrayList<>(validCleanEmails);
     }
 
-    public SeminarHall updateHall(String hallId, SeminarHall updatedHall, User user) {
-        if (!isSuperAdmin(user) && (user == null || !user.hasRole("SEMINAR_ADMIN"))) {
-            throw new AccessDeniedException("Only authorized administrators can update seminar halls.");
+    public SeminarHall createHall(SeminarHall hall, User user) {
+        requireAOAdmin(user, "create seminar hall");
+        if (hall.getHallId() == null || hall.getHallId().isBlank()) {
+            throw new BadRequestException("Hall ID is required (e.g. SH-01).");
         }
+        if (hall.getName() == null || hall.getName().isBlank()) {
+            throw new BadRequestException("Hall name is required.");
+        }
+        String hallId = hall.getHallId().trim().toUpperCase();
+        if (hallRepository.existsByHallIdIgnoreCase(hallId)) {
+            throw new ConflictException("Seminar Hall with ID '" + hallId + "' already exists.");
+        }
+        if (hallRepository.existsByNameIgnoreCase(hall.getName().trim())) {
+            throw new ConflictException("Seminar Hall with name '" + hall.getName().trim() + "' already exists.");
+        }
+        hall.setHallId(hallId);
+        hall.setName(hall.getName().trim());
+        if (hall.getStatus() == null || hall.getStatus().isBlank()) {
+            hall.setStatus("Available");
+        }
+        if (hall.getActive() == null) {
+            hall.setActive(true);
+        }
+        String now = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        hall.setCreatedAt(now);
+        hall.setCreatedBy(user != null ? user.getUserId() : "ADMIN");
+        hall.setUpdatedAt(now);
+        hall.setUpdatedBy(user != null ? user.getUserId() : "ADMIN");
+        return hallRepository.save(hall);
+    }
+
+    public SeminarHall updateHall(String hallId, SeminarHall updatedHall, User user) {
+        requireAOAdmin(user, "update seminar hall");
         SeminarHall hall = getHallById(hallId)
                 .orElseThrow(() -> new ResourceNotFoundException("Seminar Hall not found: " + hallId));
 
-        if (updatedHall.getName() != null) hall.setName(updatedHall.getName());
+        if (updatedHall.getName() != null && !updatedHall.getName().trim().equalsIgnoreCase(hall.getName())) {
+            String newName = updatedHall.getName().trim();
+            if (hallRepository.existsByNameIgnoreCase(newName)) {
+                throw new ConflictException("Seminar Hall with name '" + newName + "' already exists.");
+            }
+            hall.setName(newName);
+        }
         if (updatedHall.getLocation() != null) hall.setLocation(updatedHall.getLocation());
         if (updatedHall.getBlock() != null) hall.setBlock(updatedHall.getBlock());
         if (updatedHall.getFloor() != null) hall.setFloor(updatedHall.getFloor());
         if (updatedHall.getCapacity() != null) hall.setCapacity(updatedHall.getCapacity());
         if (updatedHall.getFacilities() != null) hall.setFacilities(updatedHall.getFacilities());
+        if (updatedHall.getImage() != null) hall.setImage(updatedHall.getImage());
         if (updatedHall.getStatus() != null) hall.setStatus(updatedHall.getStatus());
+        if (updatedHall.getActive() != null) hall.setActive(updatedHall.getActive());
         if (updatedHall.getCoordinatorUserIds() != null) hall.setCoordinatorUserIds(updatedHall.getCoordinatorUserIds());
+        if (updatedHall.getTechnicianUserIds() != null) hall.setTechnicianUserIds(updatedHall.getTechnicianUserIds());
         if (updatedHall.getCcEmails() != null) {
             hall.setCcEmails(sanitizeAndValidateCcEmails(updatedHall.getCcEmails()));
         }
 
+        String now = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        hall.setUpdatedAt(now);
+        hall.setUpdatedBy(user != null ? user.getUserId() : "ADMIN");
+
+        return hallRepository.save(hall);
+    }
+
+    public SeminarHall toggleHallActive(String hallId, User user) {
+        requireAOAdmin(user, "toggle seminar hall active state");
+        SeminarHall hall = getHallById(hallId)
+                .orElseThrow(() -> new ResourceNotFoundException("Seminar Hall not found: " + hallId));
+        boolean current = hall.getActive() == null || hall.getActive();
+        hall.setActive(!current);
+        String now = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        hall.setUpdatedAt(now);
+        hall.setUpdatedBy(user != null ? user.getUserId() : "ADMIN");
         return hallRepository.save(hall);
     }
 
     public SeminarHall updateHallCcEmails(String hallId, List<String> ccEmails, User user) {
-        if (!isSuperAdmin(user) && (user == null || !user.hasRole("SEMINAR_ADMIN"))) {
-            throw new AccessDeniedException("Only authorized administrators can configure hall CC emails.");
-        }
+        requireAOAdmin(user, "configure hall CC emails");
         SeminarHall hall = getHallById(hallId)
                 .orElseThrow(() -> new ResourceNotFoundException("Seminar Hall not found: " + hallId));
 
         List<String> validated = sanitizeAndValidateCcEmails(ccEmails);
         hall.setCcEmails(validated);
+        String now = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        hall.setUpdatedAt(now);
+        hall.setUpdatedBy(user != null ? user.getUserId() : "ADMIN");
         return hallRepository.save(hall);
     }
 
     public SeminarHall updateHallStatus(String hallId, String status, User user) {
-        if (user == null) {
-            try { user = authService.getCurrentUser(); } catch (Exception ignored) {}
-        }
-        if (!isSuperAdmin(user) && !user.hasRole("SEMINAR_ADMIN")) {
-            validateHallAuthorization(user, hallId, "update hall status");
-        }
+        requireAOAdmin(user, "update seminar hall status");
         SeminarHall hall = getHallById(hallId)
                 .orElseThrow(() -> new ResourceNotFoundException("Seminar Hall not found: " + hallId));
 
         hall.setStatus(status);
+        String now = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        hall.setUpdatedAt(now);
+        hall.setUpdatedBy(user != null ? user.getUserId() : "ADMIN");
         return hallRepository.save(hall);
     }
 
-    public SeminarHall assignCoordinators(String hallId, List<String> coordinatorUserIds, User user) {
-        if (!isSuperAdmin(user)) {
-            throw new AccessDeniedException("Only Super Admin can assign coordinators.");
+    public void deleteHall(String hallId, User user) {
+        requireAOAdmin(user, "delete seminar hall");
+        SeminarHall hall = getHallById(hallId)
+                .orElseThrow(() -> new ResourceNotFoundException("Seminar Hall not found: " + hallId));
+
+        List<String> variants = getHallIdVariants(hall.getHallId());
+        boolean hasBookings = bookingRepository.existsByHallId(hall.getHallId())
+                || bookingRepository.existsByHallIdIn(variants)
+                || bookingRepository.existsByHallId(hall.getName());
+        if (hasBookings) {
+            throw new BadRequestException("Cannot delete seminar hall '" + hall.getName() + " (" + hall.getHallId() + ")' because historical booking records exist for this hall. Deactivate the hall instead to preserve audit records.");
         }
+        hallRepository.delete(hall);
+    }
+
+    public SeminarHall assignCoordinators(String hallId, List<String> coordinatorUserIds, User user) {
+        requireAOAdmin(user, "assign coordinators");
         SeminarHall hall = getHallById(hallId)
                 .orElseThrow(() -> new ResourceNotFoundException("Seminar Hall not found: " + hallId));
 
         hall.setCoordinatorUserIds(coordinatorUserIds);
+        String now = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        hall.setUpdatedAt(now);
+        hall.setUpdatedBy(user != null ? user.getUserId() : "ADMIN");
         return hallRepository.save(hall);
     }
 
@@ -2302,6 +2410,135 @@ public class SeminarService {
         }
     }
 
+    private void notifyElectriciansOnApproval(SeminarBooking booking) {
+        if (booking == null) return;
+        try {
+            List<User> electricians = userRepository.findAll().stream()
+                    .filter(u -> Boolean.TRUE.equals(u.getActive()))
+                    .filter(u -> u.hasRole("ELECTRICIAN"))
+                    .toList();
+
+            if (electricians.isEmpty()) return;
+
+            String scheduleDesc = formatEventSchedule(booking);
+            String eventName = (booking.getEventTitle() != null && !booking.getEventTitle().isBlank())
+                    ? booking.getEventTitle()
+                    : "Seminar Event";
+            String dept = (booking.getDepartment() != null && !booking.getDepartment().isBlank())
+                    ? booking.getDepartment()
+                    : "College";
+            String hallDesc = resolveHallDescription(booking.getHallId(), booking.getHallName(), booking.getHallLocation());
+
+            Set<String> notified = new HashSet<>();
+            for (User el : electricians) {
+                if (el.getUserId() == null || !notified.add(el.getUserId())) continue;
+
+                notificationService.sendNotification(
+                        "ELECTRICIAN",
+                        el.getDepartment() != null ? el.getDepartment() : "ADMIN",
+                        el.getUserId(),
+                        "New Seminar Approved - Electrical Schedule Updated",
+                        "New approved seminar added to electrical schedule: Booking " + booking.getBookingId() +
+                                " (" + eventName + ", " + dept + " Dept) at " + hallDesc +
+                                " on " + scheduleDesc + ". Please ensure electrical readiness.",
+                        "Electrical Service",
+                        "SUCCESS",
+                        booking.getBookingId()
+                );
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to notify electricians for booking {}: {}", booking.getBookingId(), e.getMessage());
+        }
+    }
+
+    private void notifyElectriciansOnReschedule(SeminarBooking original, SeminarBooking savedNew) {
+        if (savedNew == null) return;
+        try {
+            List<User> electricians = userRepository.findAll().stream()
+                    .filter(u -> Boolean.TRUE.equals(u.getActive()))
+                    .filter(u -> u.hasRole("ELECTRICIAN"))
+                    .toList();
+
+            if (electricians.isEmpty()) return;
+
+            String newScheduleDesc = formatEventSchedule(savedNew);
+            String oldScheduleDesc = original != null ? formatEventSchedule(original) : "";
+            String eventName = (savedNew.getEventTitle() != null && !savedNew.getEventTitle().isBlank())
+                    ? savedNew.getEventTitle()
+                    : (original != null && original.getEventTitle() != null ? original.getEventTitle() : "Seminar Event");
+            String dept = (savedNew.getDepartment() != null && !savedNew.getDepartment().isBlank())
+                    ? savedNew.getDepartment()
+                    : (original != null && original.getDepartment() != null ? original.getDepartment() : "College");
+            String newHallDesc = resolveHallDescription(savedNew.getHallId(), savedNew.getHallName(), savedNew.getHallLocation());
+            String oldHallDesc = original != null
+                    ? resolveHallDescription(original.getHallId(), original.getHallName(), original.getHallLocation())
+                    : "";
+
+            Set<String> notified = new HashSet<>();
+            for (User el : electricians) {
+                if (el.getUserId() == null || !notified.add(el.getUserId())) continue;
+
+                String prevInfo = !oldScheduleDesc.isEmpty() ? " (Previously: " + oldHallDesc + " on " + oldScheduleDesc + ")" : "";
+                notificationService.sendNotification(
+                        "ELECTRICIAN",
+                        el.getDepartment() != null ? el.getDepartment() : "ADMIN",
+                        el.getUserId(),
+                        "Seminar Schedule Changed - Electrical Schedule Updated",
+                        "Approved seminar rescheduled: Booking " + savedNew.getBookingId() +
+                                " (" + eventName + ", " + dept + " Dept) has been moved to " + newHallDesc +
+                                " on " + newScheduleDesc + prevInfo + ". Please update electrical operations.",
+                        "Electrical Service",
+                        "WARNING",
+                        savedNew.getBookingId()
+                );
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to notify electricians for reschedule {}: {}", savedNew.getBookingId(), e.getMessage());
+        }
+    }
+
+    private void notifyElectriciansOnCancellation(SeminarBooking booking, List<SeminarBooking> targetBookings) {
+        if (booking == null) return;
+        try {
+            List<User> electricians = userRepository.findAll().stream()
+                    .filter(u -> Boolean.TRUE.equals(u.getActive()))
+                    .filter(u -> u.hasRole("ELECTRICIAN"))
+                    .toList();
+
+            if (electricians.isEmpty()) return;
+
+            String hallDesc = resolveHallDescription(booking.getHallId(), booking.getHallName(), booking.getHallLocation());
+            String cancelledScheduleDesc = formatCancelledSchedule(booking, targetBookings);
+            String eventName = (booking.getEventTitle() != null && !booking.getEventTitle().isBlank())
+                    ? booking.getEventTitle()
+                    : "Seminar Event";
+            String dept = (booking.getDepartment() != null && !booking.getDepartment().isBlank())
+                    ? booking.getDepartment()
+                    : "College";
+
+            Set<String> notified = new HashSet<>();
+            for (User el : electricians) {
+                if (el.getUserId() == null || !notified.add(el.getUserId())) continue;
+
+                notificationService.sendNotification(
+                        "ELECTRICIAN",
+                        el.getDepartment() != null ? el.getDepartment() : "ADMIN",
+                        el.getUserId(),
+                        "Seminar Cancelled - Electrical Schedule Updated",
+                        "Approved seminar cancelled: Booking " + booking.getBookingId() +
+                                " (" + eventName + ", " + dept + " Dept) at " + hallDesc +
+                                " scheduled for " + cancelledScheduleDesc +
+                                " has been cancelled. Electrical support is no longer required.",
+                        "Electrical Service",
+                        "INFO",
+                        booking.getBookingId()
+                );
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to notify electricians for cancellation {}: {}", booking.getBookingId(), e.getMessage());
+        }
+    }
+
     public void validateTechnicianHallAuthorization(User user, String hallId) {
         if (user == null) {
             throw new AccessDeniedException("Authentication required.");
@@ -2436,16 +2673,16 @@ public class SeminarService {
     }
 
     // ==========================================
-    // GENERATOR OPERATOR SERVICE
+    // GENERATOR OPERATOR & ELECTRICIAN SERVICE
     // ==========================================
 
     public List<SeminarBooking> getGeneratorSchedule(User user) {
         if (user == null) {
             throw new AccessDeniedException("Authentication required.");
         }
-        boolean isAuthorized = isSuperAdmin(user) || user.hasRole("SEMINAR_ADMIN") || user.hasRole("GENERATOR_OPERATOR");
+        boolean isAuthorized = isSuperAdmin(user) || user.hasRole("SEMINAR_ADMIN") || user.hasRole("GENERATOR_OPERATOR") || user.hasRole("ELECTRICIAN");
         if (!isAuthorized) {
-            throw new AccessDeniedException("Access denied: Generator Operator or Admin authority required.");
+            throw new AccessDeniedException("Access denied: Generator Operator, Electrician, or Admin authority required.");
         }
 
         return bookingRepository.findAll().stream()

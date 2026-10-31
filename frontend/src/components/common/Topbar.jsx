@@ -218,11 +218,11 @@ export const Topbar = ({ onToggleSidebar, searchPlaceholder = 'Search anything..
 
         <div className="topbar-brand">
           <div className="topbar-logo-circle">
-            <img src={COLLEGE_LOGO} alt="NEC College Logo" className="topbar-logo" style={{ objectFit: 'contain' }} />
+            <img src={COLLEGE_LOGO} alt="College Services Logo" className="topbar-logo" style={{ objectFit: 'contain' }} />
           </div>
           <div className="topbar-brand-titles">
             <span className="topbar-title-desktop">College Department Services Management System</span>
-            <span className="topbar-title-mobile">NEC Services</span>
+            <span className="topbar-title-mobile">College Services</span>
           </div>
         </div>
 

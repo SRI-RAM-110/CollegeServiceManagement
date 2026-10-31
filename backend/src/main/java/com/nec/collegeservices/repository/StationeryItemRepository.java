@@ -10,5 +10,10 @@ import java.util.Optional;
 @Repository
 public interface StationeryItemRepository extends MongoRepository<StationeryItem, String> {
     Optional<StationeryItem> findByItemId(String itemId);
+    Optional<StationeryItem> findByItemIdIgnoreCase(String itemId);
+    Optional<StationeryItem> findByNameIgnoreCase(String name);
     List<StationeryItem> findByCategory(String category);
+    List<StationeryItem> findByActiveTrue();
+    boolean existsByItemIdIgnoreCase(String itemId);
+    boolean existsByNameIgnoreCase(String name);
 }

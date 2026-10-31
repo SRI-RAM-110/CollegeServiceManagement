@@ -1431,5 +1431,68 @@ public class CollegeServicesApplicationTests {
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @WithMockUser(username = "electrician_user", roles = {"ELECTRICIAN"})
+    public void testElectricianAccess_Success() throws Exception {
+        userRepository.findByUserId("electrician_user").orElseGet(() -> {
+            User u = User.builder()
+                    .userId("electrician_user")
+                    .name("Campus Electrician")
+                    .email("campus.electrician@nec.edu.in")
+                    .role("ELECTRICIAN")
+                    .roles(List.of("ELECTRICIAN"))
+                    .active(true)
+                    .build();
+            return userRepository.save(u);
+        });
+
+        // 1. Can access electrician schedule endpoint
+        mockMvc.perform(get("/api/seminar/electrician/schedule")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        // 2. Can access generator schedule endpoint (shared schedule logic)
+        mockMvc.perform(get("/api/seminar/generator/schedule")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    @WithMockUser(username = "electrician_user", roles = {"ELECTRICIAN"})
+    public void testElectricianAccess_ForbiddenForCreatingOrModifyingBookings() throws Exception {
+        userRepository.findByUserId("electrician_user").orElseGet(() -> {
+            User u = User.builder()
+                    .userId("electrician_user")
+                    .name("Campus Electrician")
+                    .email("campus.electrician@nec.edu.in")
+                    .role("ELECTRICIAN")
+                    .roles(List.of("ELECTRICIAN"))
+                    .active(true)
+                    .build();
+            return userRepository.save(u);
+        });
+
+        // Electrician cannot create bookings (must be 403)
+        mockMvc.perform(post("/api/seminar/book")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"hallId\":\"H1\",\"date\":\"2026-11-20\"}"))
+                .andExpect(status().isForbidden());
+
+        // Electrician cannot access admin user management (must be 403)
+        mockMvc.perform(get("/api/admin/users")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "dept_user_blocked", roles = {"DEPARTMENT_USER"})
+    public void testElectricianAccess_ForbiddenForDeptUser() throws Exception {
+        mockMvc.perform(get("/api/seminar/electrician/schedule")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
 }
 

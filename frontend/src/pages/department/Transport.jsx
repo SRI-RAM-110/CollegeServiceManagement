@@ -20,7 +20,7 @@ import {
   RefreshCw,
   X,
 } from 'lucide-react';
-import { transportApi } from '../../services/api';
+import { transportApi, resourceApi } from '../../services/api';
 import { useNotifications } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
 import { StatCard } from '../../components/common/StatCard';
@@ -81,12 +81,14 @@ export const Transport = () => {
   const { showToast } = useNotifications();
 
   const [vehicles, setVehicles] = useState([]);
+  const [loadingVehicles, setLoadingVehicles] = useState(true);
+  const [vehiclesError, setVehiclesError] = useState(null);
   const [requests, setRequests] = useState([]);
   const [trips, setTrips] = useState([]);
   const [selectedReqModal, setSelectedReqModal] = useState(null);
 
   // Form states
-  const [tripType, setTripType] = useState('College Bus');
+  const [tripType, setTripType] = useState('');
   const [tripDate, setTripDate] = useState(getTomorrowStr());
   const [roundTrip, setRoundTrip] = useState(true);
   const [pickupLocation, setPickupLocation] = useState('Narasaraopeta Engineering College');
@@ -115,30 +117,38 @@ export const Transport = () => {
   }, [tripDate]);
 
   const loadData = async () => {
+    setLoadingVehicles(true);
+    setVehiclesError(null);
     try {
       const [vRes, rRes, tRes] = await Promise.all([
-        transportApi.getVehicles(tripDate),
+        resourceApi.getActiveVehicles(tripDate),
         transportApi.getRequests(),
         transportApi.getTrips(tripDate),
       ]);
-      if (vRes.data) setVehicles(vRes.data);
+      const vList = Array.isArray(vRes?.data) ? vRes.data : [];
+      setVehicles(vList);
       if (rRes.data) setRequests(rRes.data);
       if (tRes.data) setTrips(tRes.data);
     } catch (e) {
+      console.error('Failed to load active transport fleet data:', e);
+      setVehiclesError('Failed to load transport fleet data. Please try again.');
       showToast('Failed to load transport fleet data', 'error');
+    } finally {
+      setLoadingVehicles(false);
     }
   };
 
   const loadVehiclesAndTrips = async (date) => {
     try {
       const [vRes, tRes] = await Promise.all([
-        transportApi.getVehicles(date),
+        resourceApi.getActiveVehicles(date),
         transportApi.getTrips(date),
       ]);
-      if (vRes.data) setVehicles(vRes.data);
+      const vList = Array.isArray(vRes?.data) ? vRes.data : [];
+      setVehicles(vList);
       if (tRes.data) setTrips(tRes.data);
     } catch (e) {
-      console.error('Error refreshing vehicles and trips for date:', e);
+      console.error('Error refreshing active vehicles and trips for date:', e);
     }
   };
 
@@ -232,12 +242,30 @@ export const Transport = () => {
     };
   }, [tripType, targetDates, departureTime, returnTime, bookingType]);
 
+  // Dynamic vehicle types derived from active vehicles
+  const availableVehicleTypes = useMemo(() => {
+    const types = new Set();
+    vehicles.forEach((v) => {
+      if (v.type) types.add(v.type);
+      else if (v.name) types.add(v.name);
+    });
+    return Array.from(types);
+  }, [vehicles]);
+
+  useEffect(() => {
+    if (availableVehicleTypes.length > 0) {
+      setTripType((prev) => (availableVehicleTypes.includes(prev) ? prev : availableVehicleTypes[0]));
+    } else if (!loadingVehicles) {
+      setTripType('');
+    }
+  }, [availableVehicleTypes, loadingVehicles]);
+
   const availableVehiclesCount = vehicles.filter((v) => v.status === 'AVAILABLE').length;
   const pendingRequestsCount = requests.filter((r) => r.status === 'PENDING').length;
   const approvedThisMonthCount = requests.filter((r) => r.status === 'APPROVED').length;
 
   const handleReset = () => {
-    setTripType('College Bus');
+    setTripType(availableVehicleTypes[0] || '');
     setBookingType('ONE_TIME');
     setTripDate(getTomorrowStr());
     setEndDate(getTomorrowStr());
@@ -252,6 +280,14 @@ export const Transport = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loadingVehicles) {
+      showToast('Please wait while transport fleet is loading', 'warning');
+      return;
+    }
+    if (vehicles.length === 0 || !tripType) {
+      showToast('No active transport vehicles available in the fleet', 'warning');
+      return;
+    }
     const today = getTodayStr();
     if (tripDate < today) {
       showToast('Trip date cannot be in the past', 'warning');
@@ -435,17 +471,50 @@ export const Transport = () => {
           {/* Left Column: Vehicle & Date Selection + Fleet Availability */}
           <div className="column-stack">
             <div className="form-group">
-              <label className="form-label text-xs">Trip Type *</label>
-              <select
-                value={tripType}
-                onChange={(e) => setTripType(e.target.value)}
-                className="w-full text-xs"
-              >
-                <option value="College Bus">College Bus (50 Seater)</option>
-                <option value="Mini Bus">Mini Bus (25/32 Seater)</option>
-                <option value="Tempo Traveller">Tempo Traveller (12/17 Seater)</option>
-                <option value="Innova">Innova (7 Seater)</option>
-              </select>
+              <div className="flex justify-between items-center mb-1">
+                <label className="form-label text-xs mb-0">Trip Type / Vehicle *</label>
+                {loadingVehicles && <span className="text-[11px] text-slate-400">Loading fleet...</span>}
+              </div>
+              {vehiclesError ? (
+                <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between gap-2">
+                  <span>{vehiclesError}</span>
+                  <button
+                    type="button"
+                    onClick={() => loadData()}
+                    className="btn btn-secondary btn-sm text-[11px] py-0.5 px-2"
+                  >
+                    <RefreshCw size={12} className="mr-1" /> Retry
+                  </button>
+                </div>
+              ) : vehicles.length === 0 && !loadingVehicles ? (
+                <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between gap-2">
+                  <span>No active vehicles available in the fleet.</span>
+                  <button
+                    type="button"
+                    onClick={() => loadData()}
+                    className="btn btn-secondary btn-sm text-[11px] py-0.5 px-2"
+                  >
+                    <RefreshCw size={12} className="mr-1" /> Refresh
+                  </button>
+                </div>
+              ) : (
+                <select
+                  value={tripType}
+                  onChange={(e) => setTripType(e.target.value)}
+                  className="w-full text-xs"
+                  disabled={loadingVehicles || availableVehicleTypes.length === 0}
+                >
+                  {availableVehicleTypes.map((t) => {
+                    const matching = vehicles.filter((v) => v.type === t || v.name === t);
+                    const maxCap = Math.max(...matching.map((v) => v.capacity || 0), 0);
+                    return (
+                      <option key={t} value={t}>
+                        {t} {maxCap > 0 ? `(${maxCap} Seater)` : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              )}
             </div>
 
             {/* Booking Type Toggle Bar */}
@@ -709,9 +778,13 @@ export const Transport = () => {
                 </span>
               </div>
               <div className="vehicle-list">
-                {vehicles.length === 0 ? (
+                {loadingVehicles ? (
                   <div className="text-center py-4 text-slate-500 text-xs">
-                    No vehicles registered.
+                    Loading fleet availability...
+                  </div>
+                ) : vehicles.length === 0 ? (
+                  <div className="text-center py-4 text-slate-500 text-xs">
+                    No active vehicles registered in the fleet.
                   </div>
                 ) : (
                   vehicles.map((v) => (
@@ -852,7 +925,7 @@ export const Transport = () => {
                 <button
                   type="submit"
                   className="btn btn-primary btn-flex-2 text-xs"
-                  disabled={submitting}
+                  disabled={submitting || loadingVehicles || vehicles.length === 0 || !tripType}
                 >
                   <Send size={14} /> {submitting ? 'Sending...' : 'Send Request to Admin'}
                 </button>

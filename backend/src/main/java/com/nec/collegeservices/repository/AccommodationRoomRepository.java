@@ -10,5 +10,8 @@ import java.util.Optional;
 @Repository
 public interface AccommodationRoomRepository extends MongoRepository<AccommodationRoom, String> {
     Optional<AccommodationRoom> findByRoomId(String roomId);
+    Optional<AccommodationRoom> findByRoomIdIgnoreCase(String roomId);
     List<AccommodationRoom> findByHostel(String hostel);
+    boolean existsByRoomIdIgnoreCase(String roomId);
+    boolean existsByHostelIgnoreCaseAndRoomIdIgnoreCase(String hostel, String roomId);
 }

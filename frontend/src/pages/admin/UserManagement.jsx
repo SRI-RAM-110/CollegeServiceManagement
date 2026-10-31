@@ -51,6 +51,7 @@ const ROLES_LIST = [
   { id: 'SEMINAR_COORDINATOR', label: 'Seminar Coordinator', desc: 'Direct coordinator authority over specifically assigned seminar halls' },
   { id: 'SEMINAR_TECHNICIAN', label: 'Seminar Equipment Technician', desc: 'Equipment inspection & setup for assigned seminar halls' },
   { id: 'GENERATOR_OPERATOR', label: 'Generator Operator', desc: 'Read-only view of approved seminar events and generator schedule' },
+  { id: 'ELECTRICIAN', label: 'Electrician', desc: 'Read-only view of approved seminar events and electrical schedule' },
   { id: 'SERVICE_ADMIN', label: 'Service Admin', desc: 'Administration over specific facility modules' },
   { id: 'AO_ADMIN', label: 'AO Admin / Super Admin', desc: 'Universal super admin rights across all services & users' },
   { id: 'DEPARTMENT_USER', label: 'Department Faculty / Staff', desc: 'Standard department service requester' },
@@ -64,25 +65,18 @@ const SERVICES_LIST = [
   { id: 'MEALS_ADMIN', label: 'Meals / Snacks', key: 'MEALS' },
 ];
 
-const SEMINAR_HALLS_LIST = [
-  { id: 'SH-2', name: 'Seminar Hall 1', location: 'Block 3 – Ground Floor', capacity: 300 },
-  { id: 'SH-3', name: 'Seminar Hall 2', location: 'Block 3 – Third Floor', capacity: 200 },
-  { id: 'SH-4', name: 'Seminar Hall 3', location: 'Block 4 – Ground Floor', capacity: 350 },
-  { id: 'SH-5', name: 'Seminar Hall 4', location: 'Pharma Block', capacity: 200 },
-  { id: 'TH-1', name: 'Tech Hub', location: 'Block 3 – Third Floor', capacity: 150 },
-  { id: 'SH-1', name: 'Block 2 Seminar hall', location: 'Block 2 – Ground Floor', capacity: 250 },
-];
-
 export default function UserManagement() {
   const { addToast } = useNotifications();
   const { user: currentUser } = useAuth();
 
   // Dynamic Seminar Halls
-  const [availableHalls, setAvailableHalls] = useState(SEMINAR_HALLS_LIST);
+  const [availableHalls, setAvailableHalls] = useState([]);
+  const [loadingHalls, setLoadingHalls] = useState(false);
 
   useEffect(() => {
+    setLoadingHalls(true);
     seminarApi.getHalls().then((res) => {
-      if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+      if (res?.data && Array.isArray(res.data)) {
         setAvailableHalls(
           res.data.map((h) => ({
             id: h.hallId || h.id,
@@ -92,7 +86,12 @@ export default function UserManagement() {
           }))
         );
       }
-    }).catch(() => { });
+    }).catch((err) => {
+      console.error('Failed to load seminar halls for user management:', err);
+      addToast('warning', 'Could not load seminar halls for assignment');
+    }).finally(() => {
+      setLoadingHalls(false);
+    });
   }, []);
 
   // Data states
@@ -762,6 +761,7 @@ export default function UserManagement() {
                               else if (r === 'DEPARTMENT_HOD') badgeStyle = 'bg-purple-500/10 text-purple-400 border-purple-500/30';
                               else if (r === 'SEMINAR_COORDINATOR') badgeStyle = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
                               else if (r === 'SEMINAR_TECHNICIAN') badgeStyle = 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30';
+                              else if (r === 'GENERATOR_OPERATOR' || r === 'ELECTRICIAN') badgeStyle = 'bg-amber-500/10 text-amber-400 border-amber-500/30';
                               else if (r.endsWith('_ADMIN')) badgeStyle = 'bg-amber-500/10 text-amber-400 border-amber-500/30';
 
                               return (
