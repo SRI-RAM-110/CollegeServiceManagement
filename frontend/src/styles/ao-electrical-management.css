@@ -1,0 +1,357 @@
+/* ============================================================
+   AO ADMIN ELECTRICAL ISSUE MANAGEMENT STYLES
+   ============================================================ */
+
+.ao-elec-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Header & Stat Cards */
+.ao-elec-header {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .ao-elec-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.ao-elec-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+@media (min-width: 640px) {
+  .ao-elec-stat-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .ao-elec-stat-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+/* Filter Bar */
+.ao-elec-filter-card {
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--bg-surface, rgba(15, 23, 42, 0.75));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  backdrop-filter: blur(12px);
+}
+
+.ao-elec-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 10px;
+}
+
+@media (min-width: 640px) {
+  .ao-elec-filter-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .ao-elec-filter-grid {
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+  }
+}
+
+.ao-elec-filter-select,
+.ao-elec-filter-input {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  color: var(--text-primary, #ffffff);
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.ao-elec-filter-select:focus,
+.ao-elec-filter-input:focus {
+  border-color: #38bdf8;
+  background: rgba(30, 41, 59, 0.95);
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.15);
+}
+
+/* Status Quick Pills */
+.ao-elec-status-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.ao-elec-status-pill {
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ao-elec-status-pill:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ao-elec-status-pill.active {
+  background: #0284c7;
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
+}
+
+.ao-elec-status-pill.active.pill-unassigned {
+  background: #d97706;
+  border-color: #fbbf24;
+  color: #ffffff;
+}
+
+.ao-elec-status-pill.active.pill-emergency {
+  background: #dc2626;
+  border-color: #f87171;
+  color: #ffffff;
+}
+
+/* Tickets Grid */
+.ao-elec-tickets-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.ao-elec-ticket-card {
+  border-radius: 14px;
+  background: var(--bg-surface, rgba(15, 23, 42, 0.8));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.ao-elec-ticket-card:hover {
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 6px 20px -4px rgba(0, 0, 0, 0.4);
+}
+
+.ao-elec-ticket-card.is-emergency {
+  border-color: rgba(239, 68, 68, 0.6);
+  box-shadow: 0 0 15px -3px rgba(239, 68, 68, 0.25);
+}
+
+.ao-elec-ticket-card.is-unassigned {
+  border-left: 4px solid #f59e0b;
+}
+
+/* Card Elements */
+.ao-elec-card-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ao-elec-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.ao-elec-card-location {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.ao-elec-card-spot {
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+.ao-elec-card-desc {
+  font-size: 0.82rem;
+  color: #cbd5e1;
+  line-height: 1.5;
+  background: rgba(15, 23, 42, 0.5);
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ao-elec-card-meta {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+@media (min-width: 640px) {
+  .ao-elec-card-meta {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.ao-elec-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ao-elec-btn-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ao-elec-btn-details {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.3);
+  color: #38bdf8;
+}
+
+.ao-elec-btn-details:hover {
+  background: rgba(56, 189, 248, 0.22);
+  color: #ffffff;
+}
+
+.ao-elec-btn-assign {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+}
+
+.ao-elec-btn-assign:hover {
+  background: rgba(245, 158, 11, 0.25);
+  color: #ffffff;
+}
+
+.ao-elec-btn-override {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: rgba(168, 85, 247, 0.3);
+  color: #c084fc;
+}
+
+.ao-elec-btn-override:hover {
+  background: rgba(168, 85, 247, 0.25);
+  color: #ffffff;
+}
+
+.ao-elec-btn-cancel {
+  background: rgba(244, 63, 94, 0.12);
+  border-color: rgba(244, 63, 94, 0.3);
+  color: #fb7185;
+}
+
+.ao-elec-btn-cancel:hover {
+  background: rgba(244, 63, 94, 0.22);
+  color: #ffffff;
+}
+
+/* Modals */
+.ao-elec-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ao-elec-modal-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.ao-elec-modal-textarea {
+  width: 100%;
+  min-height: 90px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  outline: none;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.ao-elec-modal-textarea:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.15);
+}
+
+.ao-elec-alert-banner {
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.ao-elec-alert-warning {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+}
+
+.ao-elec-alert-danger {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+}
+
+.ao-elec-alert-info {
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #38bdf8;
+}
+

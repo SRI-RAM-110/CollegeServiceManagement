@@ -22,7 +22,7 @@ public class RequestIdService {
 
     private static final Logger logger = LoggerFactory.getLogger(RequestIdService.class);
 
-    private static final Pattern ID_PATTERN = Pattern.compile("^[A-Za-z0-9]+-(SEM|ACC|TRN|STA|MEAL)-(\\d{4,})(?:-\\d+)?$");
+    private static final Pattern ID_PATTERN = Pattern.compile("^[A-Za-z0-9]+-(SEM|ACC|TRN|STA|MEAL|ELEC)-(\\d{4,})(?:-\\d+)?$");
 
     @Autowired
     private MongoTemplate mongoTemplate;
@@ -34,6 +34,7 @@ public class RequestIdService {
         syncSequenceFromCollection("TRN", "transport_requests", "requestId");
         syncSequenceFromCollection("STA", "stationery_requests", "requestId");
         syncSequenceFromCollection("MEAL", "meal_requests", "requestId");
+        syncSequenceFromCollection("ELEC", "electrical_issue_requests", "requestId");
     }
 
     private void syncSequenceFromCollection(String serviceCode, String collectionName, String idField) {

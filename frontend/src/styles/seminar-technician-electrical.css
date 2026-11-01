@@ -1,0 +1,300 @@
+/* ============================================================
+   SEMINAR TECHNICIAN ELECTRICAL ISSUES STYLES
+   ============================================================ */
+
+.ste-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Tab Bar */
+.ste-tabs-bar {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.ste-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-secondary, #94a3b8);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ste-tab-btn:hover {
+  color: var(--text-primary, #ffffff);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ste-tab-btn.active {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+/* Form Styles */
+.ste-form-card {
+  padding: 24px;
+  border-radius: 16px;
+  background: var(--bg-surface, rgba(15, 23, 42, 0.7));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  backdrop-filter: blur(12px);
+}
+
+.ste-form-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 14px;
+}
+
+.ste-form-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary, #ffffff);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.ste-form-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #94a3b8);
+  margin-top: 4px;
+}
+
+.ste-form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .ste-form-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.ste-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ste-field-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ste-field-label .required-star {
+  color: #f87171;
+}
+
+.ste-input,
+.ste-select,
+.ste-textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  color: var(--text-primary, #ffffff);
+  outline: none;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.ste-input:focus,
+.ste-select:focus,
+.ste-textarea:focus {
+  border-color: #38bdf8;
+  background: rgba(30, 41, 59, 0.95);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+}
+
+.ste-field-error {
+  font-size: 0.75rem;
+  color: #f87171;
+  margin-top: 2px;
+}
+
+/* Priority Option Buttons */
+.ste-priority-selector {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+@media (min-width: 640px) {
+  .ste-priority-selector {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.ste-priority-btn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(30, 41, 59, 0.5);
+  color: #94a3b8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.ste-priority-btn.active.priority-low {
+  background: rgba(148, 163, 184, 0.2);
+  border-color: #94a3b8;
+  color: #ffffff;
+}
+
+.ste-priority-btn.active.priority-medium {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+.ste-priority-btn.active.priority-high {
+  background: rgba(249, 115, 22, 0.2);
+  border-color: #fb923c;
+  color: #fb923c;
+}
+
+.ste-priority-btn.active.priority-emergency {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #f87171;
+  color: #f87171;
+}
+
+/* Photo Upload Box */
+.ste-photo-uploader {
+  border: 2px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.4);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ste-photo-uploader:hover {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.05);
+}
+
+.ste-photo-preview-wrap {
+  position: relative;
+  display: inline-block;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  max-width: 280px;
+}
+
+.ste-photo-preview-img {
+  width: 100%;
+  height: auto;
+  max-height: 180px;
+  object-fit: cover;
+  display: block;
+}
+
+.ste-photo-remove-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 4px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ste-photo-remove-btn:hover {
+  background: #ef4444;
+}
+
+/* Form Action Buttons */
+.ste-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 16px;
+}
+
+/* Technician Ticket Cards */
+.ste-tickets-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.ste-ticket-card {
+  border-radius: 16px;
+  background: var(--bg-surface, rgba(15, 23, 42, 0.7));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(12px);
+}
+
+.ste-ticket-card:hover {
+  border-color: rgba(56, 189, 248, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.35);
+}
+
+/* Reopen Modal Textarea */
+.ste-modal-textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+  color: var(--text-primary, #ffffff);
+  outline: none;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.ste-modal-textarea:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+}
+

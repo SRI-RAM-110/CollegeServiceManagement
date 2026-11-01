@@ -25,9 +25,11 @@ import {
   PlusCircle,
   ListOrdered,
   Megaphone,
-  Ban
+  Ban,
+  Zap
 } from 'lucide-react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
+import AOElectricalIssuesManagement from './AOElectricalIssuesManagement';
 import { COLLEGE_LOGO } from '../../constants/branding';
 import { useAuth } from '../../context/AuthContext';
 import StatCard from '../../components/common/StatCard';
@@ -50,11 +52,27 @@ import {
 import { useNotifications } from '../../context/NotificationContext';
 import { getTodayStr } from '../../utils/dateUtils';
 
-export default function AOAdminDashboard() {
+export default function AOAdminDashboard({ defaultTab = 'OVERVIEW' }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { user } = useAuth();
+  const { user, isAOAdmin } = useAuth();
   const { addToast } = useNotifications();
+
+  // Active module tab: 'OVERVIEW' | 'ELECTRICAL'
+  const isElecPath = location.pathname.includes('/admin/electrical-issues');
+  const queryTab = searchParams.get('tab');
+  const initialTab = isElecPath ? 'ELECTRICAL' : queryTab ? queryTab.toUpperCase() : defaultTab;
+  const [activeModuleTab, setActiveModuleTab] = useState(initialTab);
+
+  useEffect(() => {
+    if (isElecPath) {
+      setActiveModuleTab('ELECTRICAL');
+    } else if (queryTab) {
+      setActiveModuleTab(queryTab.toUpperCase());
+    }
+  }, [location.pathname, queryTab, isElecPath]);
+
   const [dashboardData, setDashboardData] = useState(null);
   const [allRequests, setAllRequests] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -529,7 +547,42 @@ const sortEventsChronological = (a, b) => {
         </div>
       </div>
 
-      {/* Primary KPI Stats */}
+      {/* Primary Governance Switcher (Only if user has AO_ADMIN role) */}
+      {isAOAdmin && (
+        <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+          <button
+            type="button"
+            onClick={() => setActiveModuleTab('OVERVIEW')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              activeModuleTab === 'OVERVIEW'
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/20'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4" />
+            <span>Overview & 5 Services</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveModuleTab('ELECTRICAL')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              activeModuleTab === 'ELECTRICAL'
+                ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-md shadow-amber-600/20'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <Zap className="w-4 h-4 text-amber-300" />
+            <span>Electrical Issue Management</span>
+          </button>
+        </div>
+      )}
+
+      {activeModuleTab === 'ELECTRICAL' && isAOAdmin ? (
+        <AOElectricalIssuesManagement />
+      ) : (
+        <>
+          {/* Primary KPI Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <StatCard
           title="Total College Requests"
@@ -760,6 +813,19 @@ const sortEventsChronological = (a, b) => {
               </div>
               <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
             </button>
+
+            {isAOAdmin && (
+              <button
+                onClick={() => setActiveModuleTab('ELECTRICAL')}
+                className="w-full p-2.5 rounded-lg bg-amber-950/30 hover:bg-amber-900/40 border border-amber-500/30 text-left text-xs flex items-center justify-between text-amber-200 hover:text-white transition"
+              >
+                <div className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-amber-400" />
+                  <span>Electrical Issue Management</span>
+                </div>
+                <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1142,6 +1208,8 @@ const sortEventsChronological = (a, b) => {
           </table>
         </div>
       </div>
+      </>
+      )}
 
       {/* Details Modal */}
       {selectedRequest && (

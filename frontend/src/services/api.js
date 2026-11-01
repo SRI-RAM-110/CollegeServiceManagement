@@ -322,4 +322,30 @@ export const resourceApi = {
   deleteStationeryItem: (itemId) => api.delete(`/stationery/items/${itemId}`),
 };
 
+export const electricalIssueApi = {
+  createRequest: (data) => api.post('/electrical-issues', data),
+  getMyRequests: () => api.get('/electrical-issues/my'),
+  getAssignedRequests: (status) =>
+    api.get('/electrical-issues/assigned', {
+      params: status && status !== 'ALL' ? { status } : {},
+    }),
+  getAllRequests: (params = {}) => api.get('/electrical-issues/all', { params }),
+  getRequestById: (id) => api.get(`/electrical-issues/${id}`),
+  acceptRequest: (id) => api.put(`/electrical-issues/${id}/accept`),
+  startRepair: (id) => api.put(`/electrical-issues/${id}/start`),
+  updateRemarks: (id, remarks) => api.put(`/electrical-issues/${id}/remarks`, { remarks }),
+  completeRequest: (id, resolutionRemarks) =>
+    api.put(`/electrical-issues/${id}/complete`, { resolutionRemarks }),
+  rejectRequest: (id, rejectionReason) =>
+    api.put(`/electrical-issues/${id}/reject`, { rejectionReason }),
+  reopenRequest: (id, reopenReason) =>
+    api.post(`/electrical-issues/${id}/reopen`, { reopenReason }),
+  reassignElectrician: (id, electricianUserId, remarks) =>
+    api.put(`/electrical-issues/${id}/reassign`, { electricianUserId, remarks }),
+  overrideStatus: (id, targetStatus, reason) =>
+    api.put(`/electrical-issues/${id}/override-status`, { targetStatus, reason }),
+  cancelRequest: (id, cancellationReason) =>
+    api.put(`/electrical-issues/${id}/cancel`, { cancellationReason }),
+};
+
 export default api;

@@ -45,6 +45,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
       // Resource Management is accessible only to users with the AO_ADMIN role (CREATOR alone is denied)
       if (userRoles.includes('AO_ADMIN')) {
         links.push({ name: 'Resource Management', path: '/admin/resources', icon: Layers });
+        links.push({ name: 'Electrical Issues', path: '/admin/electrical-issues', icon: Zap });
       }
 
       links.push(
@@ -61,15 +62,20 @@ export const Sidebar = ({ isOpen, onClose }) => {
       return links;
     }
 
-    // Pure generator operator / electrician check: exactly ONE dashboard (Generator Schedule)
-    const isPureOperator =
-      (userRoles.includes('GENERATOR_OPERATOR') || userRoles.includes('ELECTRICIAN')) &&
-      !userRoles.some((r) => r.endsWith('_ADMIN') || r === 'CREATOR' || r === 'SEMINAR_COORDINATOR' || r === 'DEPARTMENT_HOD');
+    // Pure generator operator / electrician check
+    const hasGenOp = userRoles.includes('GENERATOR_OPERATOR');
+    const hasElec = userRoles.includes('ELECTRICIAN');
+    const hasOtherRoles = userRoles.some((r) => r.endsWith('_ADMIN') || r === 'CREATOR' || r === 'SEMINAR_COORDINATOR' || r === 'DEPARTMENT_HOD');
 
-    if (isPureOperator) {
-      return [
-        { name: 'Generator Schedule', path: '/operator/generator', icon: Zap },
-      ];
+    if ((hasGenOp || hasElec) && !hasOtherRoles) {
+      const operatorLinks = [];
+      if (hasElec) {
+        operatorLinks.push({ name: 'Electrical Issues', path: '/operator/electrician', icon: Zap });
+      }
+      if (hasGenOp) {
+        operatorLinks.push({ name: 'Generator Schedule', path: '/operator/generator', icon: Zap });
+      }
+      return operatorLinks;
     }
 
     const isHostelAdmin =
@@ -108,8 +114,12 @@ export const Sidebar = ({ isOpen, onClose }) => {
       adminDashboards.push({ name: 'Equipment Dashboard', path: '/technician/seminar', icon: Wrench });
     }
 
-    if (userRoles.includes('GENERATOR_OPERATOR') || userRoles.includes('ELECTRICIAN')) {
+    if (userRoles.includes('GENERATOR_OPERATOR')) {
       adminDashboards.push({ name: 'Generator Schedule', path: '/operator/generator', icon: Zap });
+    }
+
+    if (userRoles.includes('ELECTRICIAN')) {
+      adminDashboards.push({ name: 'Electrical Issues', path: '/operator/electrician', icon: Zap });
     }
 
     // Avoid duplicate links when multiple roles map to the same dashboard
@@ -145,12 +155,20 @@ export const Sidebar = ({ isOpen, onClose }) => {
     // Standalone operator / service admin (non-department user)
     if (uniqueAdminDashboards.length === 1) {
       const single = uniqueAdminDashboards[0];
-      // Generator operator / electrician without admin roles has access strictly to generator schedule
-      if ((userRoles.includes('GENERATOR_OPERATOR') || userRoles.includes('ELECTRICIAN')) && !userRoles.some((r) => r.endsWith('_ADMIN') || r === 'CREATOR')) {
+      if (userRoles.includes('GENERATOR_OPERATOR') && !userRoles.some((r) => r.endsWith('_ADMIN') || r === 'CREATOR')) {
         return [
           {
             name: 'Generator Schedule',
             path: '/operator/generator',
+            icon: Zap,
+          },
+        ];
+      }
+      if (userRoles.includes('ELECTRICIAN') && !userRoles.some((r) => r.endsWith('_ADMIN') || r === 'CREATOR')) {
+        return [
+          {
+            name: 'Electrical Issues',
+            path: '/operator/electrician',
             icon: Zap,
           },
         ];
@@ -161,9 +179,11 @@ export const Sidebar = ({ isOpen, onClose }) => {
             ? 'Coordinator Dashboard'
             : single.name === 'Equipment Dashboard'
               ? 'Equipment Dashboard'
-              : single.name === 'Generator Schedule'
-                ? 'Generator Schedule'
-                : 'Dashboard',
+              : single.name === 'Electrical Issues'
+                ? 'Electrical Issues'
+                : single.name === 'Generator Schedule'
+                  ? 'Generator Schedule'
+                  : 'Dashboard',
           path: single.path,
           icon: single.icon || LayoutDashboard,
         },

@@ -86,7 +86,10 @@ export const AuthProvider = ({ children }) => {
       if (roles.includes('SEMINAR_TECHNICIAN') && !roles.includes('DEPARTMENT_HOD') && !roles.includes('DEPARTMENT_USER')) {
         return '/technician/seminar';
       }
-      if ((roles.includes('GENERATOR_OPERATOR') || roles.includes('ELECTRICIAN')) && !roles.includes('DEPARTMENT_HOD') && !roles.includes('DEPARTMENT_USER')) {
+      if (roles.includes('ELECTRICIAN') && !roles.includes('DEPARTMENT_HOD') && !roles.includes('DEPARTMENT_USER')) {
+        return '/operator/electrician';
+      }
+      if (roles.includes('GENERATOR_OPERATOR') && !roles.includes('DEPARTMENT_HOD') && !roles.includes('DEPARTMENT_USER')) {
         return '/operator/generator';
       }
     }
@@ -109,8 +112,9 @@ export const AuthProvider = ({ children }) => {
         return '/admin/meals';
       case 'SEMINAR_TECHNICIAN':
         return '/technician/seminar';
-      case 'GENERATOR_OPERATOR':
       case 'ELECTRICIAN':
+        return '/operator/electrician';
+      case 'GENERATOR_OPERATOR':
         return '/operator/generator';
       case 'DEPARTMENT_HOD':
       case 'DEPARTMENT_USER':
