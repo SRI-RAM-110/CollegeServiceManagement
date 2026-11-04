@@ -33,7 +33,15 @@ public class NotificationController {
             return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("Unauthorized"));
         }
+        if (targetEmail == null || targetEmail.isBlank()) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Recipient email address is required. Please supply a valid target email."));
+        }
         java.util.Map<String, Object> result = emailService.sendTestEmail(user.getUserId(), targetEmail);
+        if ("VALIDATION_ERROR".equals(result.get("status"))) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(String.valueOf(result.get("message"))));
+        }
         return ResponseEntity.ok(ApiResponse.ok("Test email execution completed", result));
     }
 

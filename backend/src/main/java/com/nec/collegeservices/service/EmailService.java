@@ -79,7 +79,10 @@ public class EmailService {
     @Value("${APP_MAIL_FROM_NAME:${MAIL_FROM_NAME:NEC Service Management}}")
     private String mailFromName;
 
-    @Value("${APP_URL:${FRONTEND_URL:http://localhost:5173}}")
+    @Value("${app.frontend.url:${app.mail.app-url:${APP_FRONTEND_URL:${FRONTEND_URL:${APP_URL:http://localhost:5173}}}}}")
+    private String frontendUrl;
+
+    @Value("${app.mail.app-url:${APP_URL:${FRONTEND_URL:}}}")
     private String appUrl;
 
     @Value("${app.mail.provider:${APP_MAIL_PROVIDER:${MAIL_PROVIDER:local}}}")
@@ -109,11 +112,13 @@ public class EmailService {
         log.info("==========================================================");
         String provider = getActiveProvider();
         log.info("EmailService initialized. Active provider: {}", provider.toUpperCase());
+        log.info("Frontend portal URL: {}", getEffectiveFrontendUrl());
         if ("apps-script".equals(provider)) {
             if (isAppsScriptConfigured()) {
                 log.info("Google Apps Script HTTPS relay active: endpoint configured, secret configured");
             } else {
-                log.warn("Google Apps Script relay credentials missing (APP_SCRIPT_MAIL_URL / APP_SCRIPT_MAIL_SECRET).");
+                log.warn(
+                        "Google Apps Script relay credentials missing (APP_SCRIPT_MAIL_URL / APP_SCRIPT_MAIL_SECRET).");
             }
         } else {
             if (isSmtpConfigured()) {
@@ -121,10 +126,36 @@ public class EmailService {
                 log.info("SMTP active: host={}:{}, sender={}", mailHost, mailPort, mailUsername);
             } else {
                 log.warn("SMTP credentials not configured (SPRING_MAIL_USERNAME / SPRING_MAIL_PASSWORD missing). " +
-                         "Email notifications will be safely simulated/logged.");
+                        "Email notifications will be safely simulated/logged.");
             }
         }
         log.info("==========================================================");
+    }
+
+    public String getEffectiveFrontendUrl() {
+        if (frontendUrl != null && !frontendUrl.isBlank()) {
+            return frontendUrl.trim().replaceAll("/+$", "");
+        }
+        if (appUrl != null && !appUrl.isBlank()) {
+            return appUrl.trim().replaceAll("/+$", "");
+        }
+        return "http://localhost:5173";
+    }
+
+    public String getFrontendUrl() {
+        return getEffectiveFrontendUrl();
+    }
+
+    public void setFrontendUrl(String frontendUrl) {
+        this.frontendUrl = frontendUrl;
+    }
+
+    public String getAppUrl() {
+        return getEffectiveFrontendUrl();
+    }
+
+    public void setAppUrl(String appUrl) {
+        this.appUrl = appUrl;
     }
 
     public String getActiveProvider() {
@@ -140,12 +171,12 @@ public class EmailService {
 
     public boolean isSmtpConfigured() {
         return mailUsername != null && !mailUsername.isBlank() &&
-               mailPassword != null && !mailPassword.isBlank();
+                mailPassword != null && !mailPassword.isBlank();
     }
 
     public boolean isAppsScriptConfigured() {
         return appsScriptUrl != null && !appsScriptUrl.isBlank() &&
-               appsScriptSecret != null && !appsScriptSecret.isBlank();
+                appsScriptSecret != null && !appsScriptSecret.isBlank();
     }
 
     public boolean isProviderConfigured() {
@@ -169,7 +200,8 @@ public class EmailService {
     }
 
     public String sanitizeErrorMessage(String msg, String... sensitiveValues) {
-        if (msg == null) return "Unknown error";
+        if (msg == null)
+            return "Unknown error";
         String sanitized = msg;
         if (mailPassword != null && !mailPassword.isBlank()) {
             sanitized = sanitized.replace(mailPassword, "[REDACTED_PASSWORD]");
@@ -192,12 +224,14 @@ public class EmailService {
 
     private JavaMailSender createMailSender() {
         JavaMailSenderImpl sender = new JavaMailSenderImpl();
-        String host = (mailHost != null && !mailHost.isBlank()) ? mailHost.trim().replaceAll("^[\"']|[\"']$", "") : "smtp.gmail.com";
+        String host = (mailHost != null && !mailHost.isBlank()) ? mailHost.trim().replaceAll("^[\"']|[\"']$", "")
+                : "smtp.gmail.com";
         int port = mailPort > 0 ? mailPort : 587;
         sender.setHost(host);
         sender.setPort(port);
         sender.setUsername(mailUsername != null ? mailUsername.trim().replaceAll("^[\"']|[\"']$", "") : "");
-        sender.setPassword(mailPassword != null ? mailPassword.trim().replaceAll("^[\"']|[\"']$", "").replaceAll("\\s+", "") : "");
+        sender.setPassword(
+                mailPassword != null ? mailPassword.trim().replaceAll("^[\"']|[\"']$", "").replaceAll("\\s+", "") : "");
 
         Properties props = sender.getJavaMailProperties();
         props.put("mail.transport.protocol", "smtp");
@@ -220,7 +254,8 @@ public class EmailService {
     }
 
     public String classifyEvent(Notification notification) {
-        if (notification == null) return "GENERAL";
+        if (notification == null)
+            return "GENERAL";
         String title = notification.getTitle() != null ? notification.getTitle().toUpperCase() : "";
         String msg = notification.getMessage() != null ? notification.getMessage().toUpperCase() : "";
 
@@ -248,7 +283,8 @@ public class EmailService {
         if (title.contains("CANCELLED") || title.contains("CANCELLATION")) {
             return "REQUEST_CANCELLED";
         }
-        if (title.contains("READY") || title.contains("COLLECTED") || title.contains("UNDER REVIEW") || title.contains("FORWARDED")) {
+        if (title.contains("READY") || title.contains("COLLECTED") || title.contains("UNDER REVIEW")
+                || title.contains("FORWARDED")) {
             return "REQUEST_STATUS_UPDATED";
         }
         return "GENERAL_NOTIFICATION";
@@ -280,7 +316,12 @@ public class EmailService {
         List<String> ccRecipients = resolveCcRecipients(notification, eventCategory);
 
         for (String primaryRecipient : primaryRecipients) {
-            sendSingleEmail(notification, eventCategory, primaryRecipient, ccRecipients);
+            // Deduplicate CC recipients and exclude the primary recipient
+            List<String> filteredCc = ccRecipients.stream()
+                    .filter(cc -> cc != null && !cc.equalsIgnoreCase(primaryRecipient))
+                    .distinct()
+                    .toList();
+            sendSingleEmail(notification, eventCategory, primaryRecipient, filteredCc);
         }
     }
 
@@ -306,9 +347,12 @@ public class EmailService {
         List<User> targetUsers = userRepository.findAll().stream()
                 .filter(u -> Boolean.TRUE.equals(u.getActive()))
                 .filter(u -> {
-                    boolean roleMatch = role == null || "ALL".equalsIgnoreCase(role) || u.hasRole(role) || u.hasServicePermission(role);
-                    boolean deptMatch = dept == null || "ALL".equalsIgnoreCase(dept) || "ADMIN".equalsIgnoreCase(dept) ||
-                            "ADMIN".equalsIgnoreCase(u.getDepartment()) || (u.getDepartment() != null && u.getDepartment().equalsIgnoreCase(dept));
+                    boolean roleMatch = role == null || "ALL".equalsIgnoreCase(role) || u.hasRole(role.trim())
+                            || u.hasServicePermission(role.trim());
+                    boolean deptMatch = dept == null || "ALL".equalsIgnoreCase(dept) || "ADMIN".equalsIgnoreCase(dept)
+                            ||
+                            "ADMIN".equalsIgnoreCase(u.getDepartment())
+                            || (u.getDepartment() != null && u.getDepartment().trim().equalsIgnoreCase(dept.trim()));
                     return roleMatch && deptMatch;
                 })
                 .toList();
@@ -335,14 +379,81 @@ public class EmailService {
                 "Electrical Service".equalsIgnoreCase(notification.getService()))) {
             return Collections.emptyList();
         }
+
+        Set<String> ccEmails = new LinkedHashSet<>();
+
+        // 1. Hall-specific CC recipients for Seminar notifications
         if (isSeminarNotification(notification)) {
-            return resolveSeminarHallCcRecipients(notification);
+            ccEmails.addAll(resolveSeminarHallCcRecipients(notification));
         }
-        return Collections.emptyList();
+
+        // 2. Department HOD for departmental events (approval, rejection, cancellation,
+        // rescheduling)
+        if (isDepartmentEvent(eventCategory) && notification != null) {
+            String dept = resolveNotificationDepartment(notification);
+            if (dept != null && !dept.isBlank() && !"ADMIN".equalsIgnoreCase(dept) && !"ALL".equalsIgnoreCase(dept)) {
+                List<String> hodEmails = resolveDepartmentHodEmails(dept);
+                ccEmails.addAll(hodEmails);
+            }
+        }
+
+        return new ArrayList<>(ccEmails);
+    }
+
+    public boolean isDepartmentEvent(String eventCategory) {
+        if (eventCategory == null)
+            return false;
+        return switch (eventCategory) {
+            case "REQUEST_APPROVED",
+                    "REQUEST_REJECTED",
+                    "REQUEST_CANCELLED",
+                    "REQUEST_CANCEL_REQUESTED",
+                    "REQUEST_CANCEL_REJECTED",
+                    "REQUEST_RESCHEDULED",
+                    "REQUEST_STATUS_UPDATED" ->
+                true;
+            default -> false;
+        };
+    }
+
+    public String resolveNotificationDepartment(Notification notification) {
+        if (notification == null)
+            return null;
+        if (notification.getRecipientDept() != null && !notification.getRecipientDept().isBlank() &&
+                !"ALL".equalsIgnoreCase(notification.getRecipientDept())) {
+            return notification.getRecipientDept().trim();
+        }
+        String userId = notification.getRecipientUserId();
+        if (userId != null && !userId.isBlank() && !"ALL".equalsIgnoreCase(userId)) {
+            return userRepository.findByUserId(userId.trim())
+                    .or(() -> userRepository.findByEmailIgnoreCase(userId.trim()))
+                    .map(User::getDepartment)
+                    .orElse(null);
+        }
+        return null;
+    }
+
+    public List<String> resolveDepartmentHodEmails(String department) {
+        if (department == null || department.isBlank() || "ADMIN".equalsIgnoreCase(department)
+                || "ALL".equalsIgnoreCase(department)) {
+            return Collections.emptyList();
+        }
+        String deptTrimmed = department.trim();
+        return userRepository.findAll().stream()
+                .filter(u -> Boolean.TRUE.equals(u.getActive()))
+                .filter(u -> u.hasRole("DEPARTMENT_HOD"))
+                .filter(u -> u.getDepartment() != null && u.getDepartment().trim().equalsIgnoreCase(deptTrimmed))
+                .map(User::getEmail)
+                .filter(e -> e != null && !e.isBlank() && e.contains("@"))
+                .map(String::trim)
+                .map(String::toLowerCase)
+                .distinct()
+                .toList();
     }
 
     public boolean isSeminarNotification(Notification notification) {
-        if (notification == null) return false;
+        if (notification == null)
+            return false;
         String service = notification.getService();
         if (service != null && (service.equalsIgnoreCase("Seminar Hall") || service.equalsIgnoreCase("Seminar"))) {
             return true;
@@ -357,11 +468,15 @@ public class EmailService {
         }
         if (refId != null && seminarBookingRepository != null) {
             try {
-                if (seminarBookingRepository.findByBookingId(refId).isPresent()) return true;
-                if (seminarBookingRepository.findById(refId).isPresent()) return true;
+                if (seminarBookingRepository.findByBookingId(refId).isPresent())
+                    return true;
+                if (seminarBookingRepository.findById(refId).isPresent())
+                    return true;
                 List<SeminarBooking> series = seminarBookingRepository.findBySeriesId(refId);
-                if (series != null && !series.isEmpty()) return true;
-            } catch (Exception ignored) {}
+                if (series != null && !series.isEmpty())
+                    return true;
+            } catch (Exception ignored) {
+            }
         }
         return false;
     }
@@ -400,7 +515,8 @@ public class EmailService {
         }
 
         if (booking == null) {
-            log.info("Seminar notification reference '{}' did not resolve to a booking record. Sending without CC.", refId);
+            log.info("Seminar notification reference '{}' did not resolve to a booking record. Sending without CC.",
+                    refId);
             return Collections.emptyList();
         }
 
@@ -427,7 +543,8 @@ public class EmailService {
         }
 
         if (hall == null) {
-            log.info("Seminar booking '{}' refers to hallId '{}' / hallName '{}' not found in database. Sending without CC.",
+            log.info(
+                    "Seminar booking '{}' refers to hallId '{}' / hallName '{}' not found in database. Sending without CC.",
                     booking.getBookingId(), hallId, hallName);
             return Collections.emptyList();
         }
@@ -439,9 +556,11 @@ public class EmailService {
 
         Set<String> validCcEmails = new LinkedHashSet<>();
         for (String email : rawCcEmails) {
-            if (email == null) continue;
+            if (email == null)
+                continue;
             String clean = email.trim().replaceAll("^[\"']|[\"']$", "").toLowerCase();
-            if (clean.isEmpty()) continue;
+            if (clean.isEmpty())
+                continue;
             if (clean.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
                 validCcEmails.add(clean);
             } else {
@@ -452,25 +571,97 @@ public class EmailService {
         return new ArrayList<>(validCcEmails);
     }
 
-    private void sendSingleEmail(Notification notification, String eventCategory,
-                                 String primaryRecipient, List<String> ccRecipients) {
-        String referenceId = notification.getReferenceId() != null ? notification.getReferenceId() : notification.getId();
-        String dedupKey = (referenceId != null ? referenceId : "GEN") + ":" + eventCategory + ":" + primaryRecipient.toLowerCase();
+    private final java.util.concurrent.ConcurrentHashMap<String, Long> activeDeduplicationKeys = new java.util.concurrent.ConcurrentHashMap<>();
 
-        // Check deduplication
-        Optional<EmailLog> existing = emailLogRepository.findFirstByDeduplicationKeyAndStatus(dedupKey, "SENT");
-        if (existing.isPresent()) {
-            log.info("Duplicate email skipped for key: {}", dedupKey);
+    public String buildDeduplicationKey(String referenceId, String eventCategory, String email) {
+        String ref = (referenceId != null && !referenceId.isBlank()) ? referenceId.trim() : "GEN";
+        String cat = (eventCategory != null && !eventCategory.isBlank()) ? eventCategory.trim().toUpperCase()
+                : "GENERAL";
+        String em = (email != null && !email.isBlank()) ? email.trim().toLowerCase() : "unknown";
+        return ref + ":" + cat + ":" + em;
+    }
+
+    public boolean claimEventKey(String dedupKey) {
+        if (dedupKey == null || dedupKey.isBlank())
+            return false;
+
+        // Periodic cleanup of keys older than 2 hours if cache grows large
+        if (activeDeduplicationKeys.size() > 5000) {
+            long cutoff = System.currentTimeMillis() - 7200000L;
+            activeDeduplicationKeys.entrySet().removeIf(entry -> entry.getValue() < cutoff);
+        }
+
+        // 1. Check in-memory active claims (atomic putIfAbsent)
+        Long existingTime = activeDeduplicationKeys.putIfAbsent(dedupKey, System.currentTimeMillis());
+        if (existingTime != null) {
+            return false;
+        }
+
+        // 2. Check MongoDB for existing sent/accepted/skipped logs
+        try {
+            boolean existsInDb = emailLogRepository.existsByDeduplicationKeyAndStatusIn(
+                    dedupKey, List.of(
+                            EmailLog.STATUS_SENT,
+                            EmailLog.STATUS_SMTP_ACCEPTED,
+                            EmailLog.STATUS_SENDING,
+                            EmailLog.STATUS_SKIPPED_LOCAL_DOMAIN));
+            if (existsInDb) {
+                return false;
+            }
+        } catch (Exception e) {
+            log.warn("Error checking deduplication in repository for {}: {}", dedupKey, e.getMessage());
+        }
+
+        return true;
+    }
+
+    public void releaseEventKey(String dedupKey) {
+        if (dedupKey != null) {
+            activeDeduplicationKeys.remove(dedupKey);
+        }
+    }
+
+    public void clearDeduplicationCache() {
+        activeDeduplicationKeys.clear();
+    }
+
+    private void sendSingleEmail(Notification notification, String eventCategory,
+            String primaryRecipient, List<String> ccRecipients) {
+        if (primaryRecipient == null || primaryRecipient.isBlank()) {
+            return;
+        }
+        String cleanPrimary = primaryRecipient.trim().toLowerCase();
+        String referenceId = notification.getReferenceId() != null ? notification.getReferenceId()
+                : notification.getId();
+        String primaryDedupKey = buildDeduplicationKey(referenceId, eventCategory, cleanPrimary);
+
+        // Deduplicate primary recipient by normalized email
+        if (!claimEventKey(primaryDedupKey)) {
+            log.info("Duplicate email skipped for key: {}", primaryDedupKey);
             return;
         }
 
-        // Filter CCs so primary is not in CC
-        List<String> effectiveCcs = ccRecipients.stream()
-                .filter(cc -> !cc.equalsIgnoreCase(primaryRecipient))
-                .toList();
+        // Filter CCs: exclude primary, deduplicate, and claim event keys
+        List<String> claimedCcs = new ArrayList<>();
+        if (ccRecipients != null) {
+            for (String cc : ccRecipients) {
+                if (cc == null || cc.isBlank())
+                    continue;
+                String cleanCc = cc.trim().toLowerCase();
+                if (cleanCc.equalsIgnoreCase(cleanPrimary)) continue;
 
-        String subject = "[NEC Services] " + (notification.getTitle() != null ? notification.getTitle() : "Notification") +
-                         (referenceId != null ? " (" + referenceId + ")" : "");
+                String ccDedupKey = buildDeduplicationKey(referenceId, eventCategory, cleanCc);
+                if (claimEventKey(ccDedupKey)) {
+                    claimedCcs.add(cleanCc);
+                } else {
+                    log.info("CC recipient {} already received event {} - excluded from CC", cleanCc, ccDedupKey);
+                }
+            }
+        }
+
+        String subject = "[NEC Services] "
+                + (notification.getTitle() != null ? notification.getTitle() : "Notification") +
+                (referenceId != null ? " (" + referenceId + ")" : "");
 
         String activeProvider = getActiveProvider();
         String providerName = "apps-script".equalsIgnoreCase(activeProvider) ? "APPS_SCRIPT" : "SMTP";
@@ -478,29 +669,44 @@ public class EmailService {
         EmailLog logEntry = EmailLog.builder()
                 .notificationId(notification.getId())
                 .referenceId(referenceId)
-                .deduplicationKey(dedupKey)
+                .deduplicationKey(primaryDedupKey)
                 .service(notification.getService() != null ? notification.getService() : "General")
                 .eventCategory(eventCategory)
-                .primaryRecipient(primaryRecipient)
-                .ccRecipients(effectiveCcs)
+                .primaryRecipient(cleanPrimary)
+                .ccRecipients(claimedCcs)
                 .subject(subject)
                 .provider(providerName)
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        String htmlBody = buildHtmlEmailBody(notification, eventCategory, referenceId);
-        String plainText = buildPlainTextEmailBody(notification, eventCategory, referenceId);
+        String htmlBody = buildHtmlEmailBody(notification, eventCategory, referenceId, cleanPrimary);
+        String plainText = buildPlainTextEmailBody(notification, eventCategory, referenceId, cleanPrimary);
 
-        dispatchEmail(primaryRecipient, effectiveCcs, subject, htmlBody, plainText, logEntry);
+        try {
+            dispatchEmail(cleanPrimary, claimedCcs, subject, htmlBody, plainText, logEntry);
+            if (EmailLog.STATUS_FAILED.equals(logEntry.getStatus())) {
+                releaseEventKey(primaryDedupKey);
+                for (String cc : claimedCcs) {
+                    releaseEventKey(buildDeduplicationKey(referenceId, eventCategory, cc));
+                }
+            }
+        } catch (Exception e) {
+            releaseEventKey(primaryDedupKey);
+            for (String cc : claimedCcs) {
+                releaseEventKey(buildDeduplicationKey(referenceId, eventCategory, cc));
+            }
+            log.warn("Unexpected dispatch error for {}: {}", cleanPrimary, e.getMessage());
+        }
     }
 
     private void dispatchEmail(String primaryRecipient, List<String> ccRecipients,
-                               String subject, String htmlBody, String plainText,
-                               EmailLog logEntry, String... sensitiveValues) {
+            String subject, String htmlBody, String plainText,
+            EmailLog logEntry, String... sensitiveValues) {
         String activeProvider = getActiveProvider();
         if ("apps-script".equalsIgnoreCase(activeProvider)) {
             logEntry.setProvider("APPS_SCRIPT");
-            dispatchViaAppsScript(primaryRecipient, ccRecipients, subject, htmlBody, plainText, logEntry, sensitiveValues);
+            dispatchViaAppsScript(primaryRecipient, ccRecipients, subject, htmlBody, plainText, logEntry,
+                    sensitiveValues);
         } else {
             logEntry.setProvider("SMTP");
             dispatchViaSmtp(primaryRecipient, ccRecipients, subject, htmlBody, plainText, logEntry, sensitiveValues);
@@ -508,13 +714,14 @@ public class EmailService {
     }
 
     private void dispatchViaAppsScript(String primaryRecipient, List<String> ccRecipients,
-                                       String subject, String htmlBody, String plainText,
-                                       EmailLog logEntry, String... sensitiveValues) {
+            String subject, String htmlBody, String plainText,
+            EmailLog logEntry, String... sensitiveValues) {
         if (!isAppsScriptConfigured()) {
             logEntry.setStatus("SKIPPED_NO_CREDENTIALS");
             logEntry.setErrorMessage("Apps Script URL or secret not configured in environment. Email logged safely.");
             emailLogRepository.save(logEntry);
-            log.info("Email notification simulated [SKIPPED_NO_CREDENTIALS] via Apps Script to: {} (CC: {}) - Subject: {}",
+            log.info(
+                    "Email notification simulated [SKIPPED_NO_CREDENTIALS] via Apps Script to: {} (CC: {}) - Subject: {}",
                     primaryRecipient, ccRecipients, subject);
             return;
         }
@@ -527,7 +734,8 @@ public class EmailService {
             payload.put("subject", subject);
             payload.put("htmlBody", htmlBody);
             payload.put("textBody", plainText);
-            payload.put("senderName", (mailFromName != null && !mailFromName.isBlank()) ? mailFromName.trim() : "NEC Service Management");
+            payload.put("senderName",
+                    (mailFromName != null && !mailFromName.isBlank()) ? mailFromName.trim() : "NEC Service Management");
 
             String jsonPayload = objectMapper.writeValueAsString(payload);
 
@@ -540,7 +748,8 @@ public class EmailService {
                     .build();
 
             HttpClient client = (this.httpClient != null) ? this.httpClient : createHttpClient();
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            HttpResponse<String> response = client.send(request,
+                    HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 
             int statusCode = response.statusCode();
             String responseBody = response.body() != null ? response.body().trim() : "";
@@ -548,22 +757,27 @@ public class EmailService {
             if (statusCode >= 200 && statusCode < 300) {
                 boolean success = false;
                 String errorDetail = null;
+                JsonNode root = null;
                 try {
-                    JsonNode root = objectMapper.readTree(responseBody);
+                    root = objectMapper.readTree(responseBody);
                     success = root.path("success").asBoolean(false);
                     if (!success) {
-                        errorDetail = root.has("error") ? root.get("error").asText() :
-                                     (root.has("message") ? root.get("message").asText() : "Apps Script rejected request");
+                        errorDetail = root.has("error") ? root.get("error").asText()
+                                : (root.has("message") ? root.get("message").asText() : "Apps Script rejected request");
                     }
                 } catch (Exception parseEx) {
                     errorDetail = "Invalid JSON response from Apps Script: " + responseBody;
                 }
 
                 if (success) {
-                    logEntry.setStatus("SENT");
+                    logEntry.setStatus(EmailLog.STATUS_SMTP_ACCEPTED);
+                    if (root != null && root.has("messageId") && !root.get("messageId").isNull()) {
+                        logEntry.setMessageId(root.get("messageId").asText());
+                    }
                     logEntry.setErrorMessage(null);
                     emailLogRepository.save(logEntry);
-                    log.info("Email notification SENT successfully via Apps Script relay to: {} (CC: {}) - Subject: {}",
+                    log.info(
+                            "Email notification accepted by Apps Script relay [SMTP_ACCEPTED] to: {} (CC: {}) - Subject: {}",
                             primaryRecipient, ccRecipients, subject);
                 } else {
                     String sanitized = sanitizeErrorMessage(errorDetail, sensitiveValues);
@@ -580,13 +794,15 @@ public class EmailService {
                 log.warn("Apps Script HTTP failure for {}: {}", primaryRecipient, sanitized);
             }
         } catch (HttpTimeoutException te) {
-            String sanitized = sanitizeErrorMessage("Apps Script request timed out: " + te.getMessage(), sensitiveValues);
+            String sanitized = sanitizeErrorMessage("Apps Script request timed out: " + te.getMessage(),
+                    sensitiveValues);
             logEntry.setStatus("FAILED");
             logEntry.setErrorMessage(sanitized);
             emailLogRepository.save(logEntry);
             log.warn("Apps Script timeout for {}: {}", primaryRecipient, sanitized);
         } catch (Exception e) {
-            String sanitized = sanitizeErrorMessage(e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName(), sensitiveValues);
+            String sanitized = sanitizeErrorMessage(
+                    e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName(), sensitiveValues);
             logEntry.setStatus("FAILED");
             logEntry.setErrorMessage(sanitized);
             emailLogRepository.save(logEntry);
@@ -595,8 +811,8 @@ public class EmailService {
     }
 
     private void dispatchViaSmtp(String primaryRecipient, List<String> ccRecipients,
-                                 String subject, String htmlBody, String plainText,
-                                 EmailLog logEntry, String... sensitiveValues) {
+            String subject, String htmlBody, String plainText,
+            EmailLog logEntry, String... sensitiveValues) {
         if (!isSmtpConfigured()) {
             logEntry.setStatus("SKIPPED_NO_CREDENTIALS");
             logEntry.setErrorMessage("SMTP credentials not configured in environment. Email logged safely.");
@@ -622,11 +838,14 @@ public class EmailService {
 
             sender.send(message);
 
-            logEntry.setStatus("SENT");
+            String messageId = message.getMessageID();
+            logEntry.setMessageId(messageId);
+            logEntry.setStatus(EmailLog.STATUS_SMTP_ACCEPTED);
             logEntry.setErrorMessage(null);
             emailLogRepository.save(logEntry);
-            log.info("Email notification SENT successfully via SMTP to: {} (CC: {}) - Subject: {}",
-                    primaryRecipient, ccRecipients, subject);
+            log.info(
+                    "Email notification accepted by SMTP relay [SMTP_ACCEPTED] to: {} (CC: {}) - MessageId: {} - Subject: {}",
+                    primaryRecipient, ccRecipients, messageId, subject);
 
         } catch (Exception e) {
             String sanitizedError = sanitizeErrorMessage(e.getMessage(), sensitiveValues);
@@ -638,9 +857,20 @@ public class EmailService {
     }
 
     public Map<String, Object> sendTestEmail(String requestingUserId, String targetEmail) {
-        String recipient = (targetEmail != null && !targetEmail.isBlank())
-                ? targetEmail.trim()
-                : "sriramsriram123654@gmail.com";
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        if (targetEmail == null || targetEmail.isBlank()) {
+            result.put("status", "VALIDATION_ERROR");
+            result.put("message", "Recipient email address is required. Please supply a valid target email.");
+            return result;
+        }
+
+        String recipient = targetEmail.trim().replaceAll("^[\"']|[\"']$", "").toLowerCase();
+        if (!recipient.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
+            result.put("status", "VALIDATION_ERROR");
+            result.put("message", "Invalid recipient email address format: " + targetEmail);
+            return result;
+        }
 
         List<String> ccList = Collections.emptyList(); // Strictly no global CC
 
@@ -654,8 +884,10 @@ public class EmailService {
                 .recipientUserId(requestingUserId)
                 .service("Seminar Hall")
                 .title("Test Email Notification")
-                .message("This is a live test notification from Narasaraopeta Engineering College Services Management System. " +
-                         "Verifying email delivery via " + providerName + ".")
+                .message(
+                        "This is a live test notification from Narasaraopeta Engineering College Services Management System. "
+                                +
+                                "Verifying email delivery via " + providerName + ".")
                 .type("INFO")
                 .referenceId("TEST-SEM-0001")
                 .createdAt(LocalDateTime.now())
@@ -677,15 +909,14 @@ public class EmailService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        Map<String, Object> result = new LinkedHashMap<>();
         result.put("primaryRecipient", recipient);
         result.put("ccRecipients", ccList);
         result.put("event", eventCategory);
         result.put("provider", providerName);
         result.put("configured", isConfigured);
 
-        String htmlBody = buildHtmlEmailBody(testNotification, eventCategory, testNotification.getReferenceId());
-        String plainText = buildPlainTextEmailBody(testNotification, eventCategory, testNotification.getReferenceId());
+        String htmlBody = buildHtmlEmailBody(testNotification, eventCategory, testNotification.getReferenceId(), recipient);
+        String plainText = buildPlainTextEmailBody(testNotification, eventCategory, testNotification.getReferenceId(), recipient);
 
         if (!isConfigured) {
             logEntry.setStatus("SKIPPED_NO_CREDENTIALS");
@@ -701,8 +932,9 @@ public class EmailService {
         dispatchEmail(recipient, ccList, logEntry.getSubject(), htmlBody, plainText, logEntry);
 
         result.put("status", logEntry.getStatus());
-        if ("SENT".equals(logEntry.getStatus())) {
-            result.put("message", "Test email sent successfully via " + providerName + " to " + recipient);
+        result.put("messageId", logEntry.getMessageId());
+        if (EmailLog.STATUS_SMTP_ACCEPTED.equals(logEntry.getStatus()) || "SENT".equals(logEntry.getStatus())) {
+            result.put("message", "Test email accepted by " + providerName + " relay for " + recipient);
         } else {
             result.put("error", logEntry.getErrorMessage());
             result.put("message", "Failed to deliver email: " + logEntry.getErrorMessage());
@@ -710,7 +942,106 @@ public class EmailService {
         return result;
     }
 
-    private String buildHtmlEmailBody(Notification notification, String eventCategory, String referenceId) {
+    public String resolvePortalUrl(Notification notification, String referenceId, String recipientEmail) {
+        String baseUrl = getEffectiveFrontendUrl();
+        String path = resolvePortalPath(notification, referenceId, recipientEmail);
+        if (path == null || path.isBlank()) {
+            return baseUrl;
+        }
+        if (!path.startsWith("/")) {
+            path = "/" + path;
+        }
+        return baseUrl + path;
+    }
+
+    public String resolvePortalPath(Notification notification, String referenceId, String recipientEmail) {
+        String reqId = (referenceId != null && !referenceId.isBlank() && !"N/A".equalsIgnoreCase(referenceId))
+                ? referenceId.trim()
+                : null;
+        String queryParam = (reqId != null) ? "?q=" + reqId : "";
+
+        // Determine user role if recipient user is registered
+        String role = null;
+        if (recipientEmail != null && !recipientEmail.isBlank()) {
+            try {
+                Optional<User> userOpt = userRepository.findByEmailIgnoreCase(recipientEmail.trim());
+                if (userOpt.isPresent()) {
+                    role = userOpt.get().getRole();
+                }
+            } catch (Exception e) {
+                log.debug("Error resolving user role for recipient {}: {}", recipientEmail, e.getMessage());
+            }
+        }
+        if (role == null && notification != null) {
+            role = notification.getRecipientRole();
+        }
+
+        String service = notification != null && notification.getService() != null ? notification.getService().trim() : "";
+
+        // 1. Role-specific operator / technician routing
+        if ("ELECTRICIAN".equalsIgnoreCase(role)) {
+            return "/operator/electrician";
+        }
+        if ("GENERATOR_OPERATOR".equalsIgnoreCase(role)) {
+            return "/operator/generator";
+        }
+        if ("SEMINAR_TECHNICIAN".equalsIgnoreCase(role)) {
+            return "/technician/seminar";
+        }
+
+        // 2. Role-specific domain admin routing
+        if ("SEMINAR_ADMIN".equalsIgnoreCase(role) || "SEMINAR_COORDINATOR".equalsIgnoreCase(role)) {
+            return "/admin/seminar" + queryParam;
+        }
+        if ("ACCOMMODATION_ADMIN".equalsIgnoreCase(role) || "BOYS_HOSTEL_ADMIN".equalsIgnoreCase(role)
+                || "GIRLS_HOSTEL_ADMIN".equalsIgnoreCase(role)) {
+            return "/admin/accommodation" + queryParam;
+        }
+        if ("TRANSPORT_ADMIN".equalsIgnoreCase(role)) {
+            return "/admin/transport" + queryParam;
+        }
+        if ("STATIONERY_ADMIN".equalsIgnoreCase(role)) {
+            return "/admin/stationery" + queryParam;
+        }
+        if ("MEALS_ADMIN".equalsIgnoreCase(role)) {
+            return "/admin/meals" + queryParam;
+        }
+
+        // 3. AO Admin / Creator routing
+        if ("AO_ADMIN".equalsIgnoreCase(role) || "CREATOR".equalsIgnoreCase(role)) {
+            if (service.equalsIgnoreCase("Electrical Service") || (reqId != null && reqId.startsWith("ELE"))) {
+                return "/admin/electrical-issues" + queryParam;
+            }
+            if (service.equalsIgnoreCase("Seminar Hall") || service.equalsIgnoreCase("Seminar")
+                    || (reqId != null && reqId.contains("SEM"))) {
+                return "/admin/seminar" + queryParam;
+            }
+            if (service.equalsIgnoreCase("Accommodation") || service.equalsIgnoreCase("Hostel")
+                    || (reqId != null && reqId.contains("ACC"))) {
+                return "/admin/accommodation" + queryParam;
+            }
+            if (service.equalsIgnoreCase("Transport") || (reqId != null && reqId.contains("TRN"))) {
+                return "/admin/transport" + queryParam;
+            }
+            if (service.equalsIgnoreCase("Stationery") || (reqId != null && reqId.contains("STA"))) {
+                return "/admin/stationery" + queryParam;
+            }
+            if (service.equalsIgnoreCase("Snacks & Meals") || service.equalsIgnoreCase("Meals")
+                    || (reqId != null && reqId.contains("MEAL"))) {
+                return "/admin/meals" + queryParam;
+            }
+            return "/admin/ao" + queryParam;
+        }
+
+        // 4. Default for Faculty, Department Users, Department HODs, Requesters:
+        return "/my-requests" + queryParam;
+    }
+
+    public String buildHtmlEmailBody(Notification notification, String eventCategory, String referenceId) {
+        return buildHtmlEmailBody(notification, eventCategory, referenceId, null);
+    }
+
+    public String buildHtmlEmailBody(Notification notification, String eventCategory, String referenceId, String recipientEmail) {
         String badgeColor = "#2563eb"; // blue
         String badgeText = "Notification";
 
@@ -748,27 +1079,39 @@ public class EmailService {
         String serviceName = notification.getService() != null ? notification.getService() : "Department Service";
         String reqId = referenceId != null ? referenceId : "N/A";
         String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a"));
+        String portalUrl = resolvePortalUrl(notification, reqId, recipientEmail);
 
         return "<!DOCTYPE html>" +
                 "<html><head><meta charset='UTF-8'>" +
                 "<style>" +
-                "body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 20px; color: #1e293b; }" +
-                ".container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }" +
-                ".header { background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); padding: 24px; color: #ffffff; text-align: center; }" +
+                "body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 20px; color: #1e293b; }"
+                +
+                ".container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }"
+                +
+                ".header { background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); padding: 24px; color: #ffffff; text-align: center; }"
+                +
                 ".header h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px; }" +
                 ".header p { margin: 4px 0 0 0; font-size: 13px; opacity: 0.9; }" +
                 ".body-content { padding: 28px 24px; }" +
-                ".badge-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }" +
-                ".badge { background-color: " + badgeColor + "; color: #ffffff; padding: 6px 14px; border-radius: 9999px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; }" +
-                ".req-id { font-family: monospace; font-size: 14px; font-weight: 700; color: #334155; background: #f8fafc; padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; display: inline-block; }" +
+                ".badge-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }"
+                +
+                ".badge { background-color: " + badgeColor
+                + "; color: #ffffff; padding: 6px 14px; border-radius: 9999px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; }"
+                +
+                ".req-id { font-family: monospace; font-size: 14px; font-weight: 700; color: #334155; background: #f8fafc; padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; display: inline-block; }"
+                +
                 ".card-title { font-size: 18px; font-weight: 700; margin: 0 0 12px 0; color: #0f172a; }" +
                 ".details-table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; }" +
                 ".details-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }" +
                 ".details-table td.label { font-weight: 600; color: #64748b; width: 35%; }" +
                 ".details-table td.value { color: #1e293b; font-weight: 500; }" +
-                ".message-box { background-color: #f8fafc; border-left: 4px solid " + badgeColor + "; padding: 14px 16px; border-radius: 0 8px 8px 0; margin: 20px 0; font-size: 14px; line-height: 1.5; color: #334155; }" +
-                ".action-btn { display: inline-block; background-color: #2563eb; color: #ffffff !important; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; text-align: center; margin-top: 10px; }" +
-                ".footer { background-color: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; }" +
+                ".message-box { background-color: #f8fafc; border-left: 4px solid " + badgeColor
+                + "; padding: 14px 16px; border-radius: 0 8px 8px 0; margin: 20px 0; font-size: 14px; line-height: 1.5; color: #334155; }"
+                +
+                ".action-btn { display: inline-block; background-color: #2563eb; color: #ffffff !important; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; text-align: center; margin-top: 10px; }"
+                +
+                ".footer { background-color: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; }"
+                +
                 ".footer p { margin: 4px 0; }" +
                 "</style></head><body>" +
                 "<div class='container'>" +
@@ -782,48 +1125,59 @@ public class EmailService {
                 "<span class='req-id' style='float: right;'>#" + reqId + "</span>" +
                 "<div style='clear: both;'></div>" +
                 "</div>" +
-                "<h2 class='card-title'>" + (notification.getTitle() != null ? notification.getTitle() : "Service Notification") + "</h2>" +
-                "<div class='message-box'>" + (notification.getMessage() != null ? notification.getMessage() : "") + "</div>" +
+                "<h2 class='card-title'>"
+                + (notification.getTitle() != null ? notification.getTitle() : "Service Notification") + "</h2>" +
+                "<div class='message-box'>" + (notification.getMessage() != null ? notification.getMessage() : "")
+                + "</div>" +
                 "<table class='details-table'>" +
                 "<tr><td class='label'>Service</td><td class='value'>" + serviceName + "</td></tr>" +
                 "<tr><td class='label'>Request ID</td><td class='value'>" + reqId + "</td></tr>" +
-                "<tr><td class='label'>Status</td><td class='value'><strong style='color: " + badgeColor + ";'>" + badgeText + "</strong></td></tr>" +
+                "<tr><td class='label'>Status</td><td class='value'><strong style='color: " + badgeColor + ";'>"
+                + badgeText + "</strong></td></tr>" +
                 "<tr><td class='label'>Timestamp</td><td class='value'>" + dateStr + "</td></tr>" +
                 "</table>" +
                 "<div style='text-align: center; margin-top: 24px;'>" +
-                "<a href='" + appUrl + "/requests' class='action-btn' target='_blank'>View in Portal</a>" +
+                "<a href='" + portalUrl + "' class='action-btn' target='_blank'>View in Portal</a>" +
                 "</div>" +
                 "</div>" +
                 "<div class='footer'>" +
                 "<p>This is an automated notification from NEC Department Services Management System.</p>" +
                 "<p>Please do not reply directly to this email.</p>" +
-                "<p>&copy; " + LocalDateTime.now().getYear() + " Narasaraopeta Engineering College (Autonomous). All rights reserved.</p>" +
+                "<p>&copy; " + LocalDateTime.now().getYear()
+                + " Narasaraopeta Engineering College (Autonomous). All rights reserved.</p>" +
                 "</div></div></body></html>";
     }
 
-    private String buildPlainTextEmailBody(Notification notification, String eventCategory, String referenceId) {
+    public String buildPlainTextEmailBody(Notification notification, String eventCategory, String referenceId) {
+        return buildPlainTextEmailBody(notification, eventCategory, referenceId, null);
+    }
+
+    public String buildPlainTextEmailBody(Notification notification, String eventCategory, String referenceId, String recipientEmail) {
         String reqId = referenceId != null ? referenceId : "N/A";
         String serviceName = notification.getService() != null ? notification.getService() : "Department Service";
         String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a"));
+        String portalUrl = resolvePortalUrl(notification, reqId, recipientEmail);
 
         return "=======================================================\n" +
                 "NARASARAOPETA ENGINEERING COLLEGE (AUTONOMOUS)\n" +
                 "College Department Services Management System\n" +
                 "=======================================================\n\n" +
-                "Notification: " + (notification.getTitle() != null ? notification.getTitle() : "Service Notification") + "\n" +
+                "Notification: " + (notification.getTitle() != null ? notification.getTitle() : "Service Notification")
+                + "\n" +
                 "Request ID: " + reqId + "\n" +
                 "Service: " + serviceName + "\n" +
                 "Event: " + eventCategory + "\n" +
                 "Timestamp: " + dateStr + "\n\n" +
                 "Details:\n" +
                 (notification.getMessage() != null ? notification.getMessage() : "") + "\n\n" +
-                "View Request in Portal: " + appUrl + "/requests\n\n" +
+                "View Request in Portal: " + portalUrl + "\n\n" +
                 "-------------------------------------------------------\n" +
                 "This is an automated notification. Please do not reply directly.";
     }
 
     @Async
-    public CompletableFuture<Void> sendPasswordResetEmailAsync(String recipientEmail, String userName, String rawToken) {
+    public CompletableFuture<Void> sendPasswordResetEmailAsync(String recipientEmail, String userName,
+            String rawToken) {
         try {
             sendPasswordResetEmail(recipientEmail, userName, rawToken);
         } catch (Exception e) {
@@ -837,7 +1191,7 @@ public class EmailService {
             return;
         }
 
-        String baseUrl = (appUrl != null && !appUrl.isBlank()) ? appUrl.replaceAll("/+$", "") : "http://localhost:5173";
+        String baseUrl = getEffectiveFrontendUrl();
         String resetLink = baseUrl + "/reset-password?token=" + rawToken;
 
         String subject = "[NEC Services] Password Reset Request";
@@ -870,17 +1224,23 @@ public class EmailService {
         return "<!DOCTYPE html>" +
                 "<html><head><meta charset='UTF-8'>" +
                 "<style>" +
-                "body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 20px; color: #1e293b; }" +
-                ".container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }" +
-                ".header { background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); padding: 24px; color: #ffffff; text-align: center; }" +
+                "body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 20px; color: #1e293b; }"
+                +
+                ".container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }"
+                +
+                ".header { background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); padding: 24px; color: #ffffff; text-align: center; }"
+                +
                 ".header h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px; }" +
                 ".header p { margin: 4px 0 0 0; font-size: 13px; opacity: 0.9; }" +
                 ".body-content { padding: 28px 24px; }" +
                 ".card-title { font-size: 18px; font-weight: 700; margin: 0 0 12px 0; color: #0f172a; }" +
-                ".message-box { background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 14px 16px; border-radius: 0 8px 8px 0; margin: 20px 0; font-size: 14px; line-height: 1.6; color: #334155; }" +
-                ".action-btn { display: inline-block; background-color: #2563eb; color: #ffffff !important; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; text-align: center; margin: 16px 0; }" +
+                ".message-box { background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 14px 16px; border-radius: 0 8px 8px 0; margin: 20px 0; font-size: 14px; line-height: 1.6; color: #334155; }"
+                +
+                ".action-btn { display: inline-block; background-color: #2563eb; color: #ffffff !important; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; text-align: center; margin: 16px 0; }"
+                +
                 ".expiry-note { font-size: 13px; color: #64748b; margin-top: 16px; }" +
-                ".footer { background-color: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; }" +
+                ".footer { background-color: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; }"
+                +
                 ".footer p { margin: 4px 0; }" +
                 "</style></head><body>" +
                 "<div class='container'>" +
@@ -891,19 +1251,23 @@ public class EmailService {
                 "<div class='body-content'>" +
                 "<h2 class='card-title'>Password Reset Request</h2>" +
                 "<p style='font-size: 14px; line-height: 1.5; color: #334155;'>" + greeting + "</p>" +
-                "<p style='font-size: 14px; line-height: 1.5; color: #334155;'>We received a request to reset your password for your institutional account on the NEC Services Management Portal.</p>" +
+                "<p style='font-size: 14px; line-height: 1.5; color: #334155;'>We received a request to reset your password for your institutional account on the NEC Services Management Portal.</p>"
+                +
                 "<div style='text-align: center; margin: 24px 0;'>" +
                 "<a href='" + resetLink + "' class='action-btn' target='_blank'>Reset Password</a>" +
                 "</div>" +
                 "<div class='message-box'>" +
-                "<strong>Security Notice:</strong> This password reset link is valid for <strong>15 minutes</strong> and can only be used once. If you did not request this reset, you can safely ignore this email; your existing password will remain secure and unchanged." +
+                "<strong>Security Notice:</strong> This password reset link is valid for <strong>15 minutes</strong> and can only be used once. If you did not request this reset, you can safely ignore this email; your existing password will remain secure and unchanged."
+                +
                 "</div>" +
-                "<p class='expiry-note'>If the button above does not work, copy and paste the following link into your browser:<br>" +
+                "<p class='expiry-note'>If the button above does not work, copy and paste the following link into your browser:<br>"
+                +
                 "<span style='word-break: break-all; color: #2563eb;'>" + resetLink + "</span></p>" +
                 "</div>" +
                 "<div class='footer'>" +
                 "<p>This is an automated system email. Please do not reply directly.</p>" +
-                "<p>&copy; " + LocalDateTime.now().getYear() + " Narasaraopeta Engineering College (Autonomous). All rights reserved.</p>" +
+                "<p>&copy; " + LocalDateTime.now().getYear()
+                + " Narasaraopeta Engineering College (Autonomous). All rights reserved.</p>" +
                 "</div></div></body></html>";
     }
 
@@ -914,11 +1278,13 @@ public class EmailService {
                 "College Department Services Management System\n" +
                 "=======================================================\n\n" +
                 greeting + "\n\n" +
-                "We received a request to reset your password for your institutional account on the NEC Services Management Portal.\n\n" +
+                "We received a request to reset your password for your institutional account on the NEC Services Management Portal.\n\n"
+                +
                 "To choose a new password, open the following link in your browser:\n" +
                 resetLink + "\n\n" +
                 "This password reset link is valid for 15 minutes and can only be used once.\n\n" +
-                "If you did not request this password reset, please ignore this email. Your account remains secure.\n\n" +
+                "If you did not request this password reset, please ignore this email. Your account remains secure.\n\n"
+                +
                 "-------------------------------------------------------\n" +
                 "This is an automated notification. Please do not reply directly.";
     }

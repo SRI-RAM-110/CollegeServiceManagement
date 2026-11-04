@@ -31,7 +31,18 @@ public class EmailLog {
     private String status;
     private String errorMessage;
     private String provider;
+    private String messageId;
 
     @CreatedDate
     private LocalDateTime createdAt;
+
+    public static final String STATUS_QUEUED = "QUEUED";
+    public static final String STATUS_SENDING = "SENDING";
+    public static final String STATUS_SENT = "SENT";
+    public static final String STATUS_SMTP_ACCEPTED = "SMTP_ACCEPTED";
+    public static final String STATUS_FAILED = "FAILED";
+    public static final String STATUS_DELIVERED = "DELIVERED";
+    public static final String STATUS_BOUNCED = "BOUNCED";
+    public static final String STATUS_SKIPPED_NO_CREDENTIALS = "SKIPPED_NO_CREDENTIALS";
+    public static final String STATUS_SKIPPED_LOCAL_DOMAIN = "SKIPPED_LOCAL_DOMAIN";
 }

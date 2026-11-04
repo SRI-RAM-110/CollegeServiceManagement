@@ -156,12 +156,18 @@ public class SeminarService {
         opt = hallRepository.findByNameIgnoreCase(trimmed);
         if (opt.isPresent()) return opt;
         if ("SH-5".equalsIgnoreCase(trimmed) || "5".equals(trimmed)) {
+            Optional<SeminarHall> sh5 = hallRepository.findByHallIdIgnoreCase("SH-5");
+            if (sh5.isPresent()) return sh5;
             return hallRepository.findByHallIdIgnoreCase("TECH-HUB");
         }
         if ("TECH-HUB".equalsIgnoreCase(trimmed) || "TECHHUB".equalsIgnoreCase(trimmed)) {
             Optional<SeminarHall> th = hallRepository.findByHallIdIgnoreCase("SH-5");
             if (th.isPresent()) return th;
             return hallRepository.findByHallIdIgnoreCase("TECH-HUB");
+        }
+        if ("SH-3".equalsIgnoreCase(trimmed) || "3".equals(trimmed) || "BLOCK 4".equalsIgnoreCase(trimmed) || "BLOCK4".equalsIgnoreCase(trimmed)) {
+            Optional<SeminarHall> sh3 = hallRepository.findByHallIdIgnoreCase("SH-3");
+            if (sh3.isPresent()) return sh3;
         }
         // Dynamic search across all halls in MongoDB
         List<SeminarHall> allHalls = hallRepository.findAll();
@@ -186,9 +192,9 @@ public class SeminarService {
         if (s.contains("TECHHUB") || s.equals("SH5") || s.equals("5")) return "TECHHUB";
         if (s.contains("SEMINARHALL1") || s.equals("SH1") || s.equals("1")) return "SH1";
         if (s.contains("SEMINARHALL2") || s.equals("SH2") || s.equals("2")) return "SH2";
-        if (s.contains("SEMINARHALL3") || s.equals("SH3") || s.equals("3")) return "SH3";
-        if (s.contains("SEMINARHALL4") || s.equals("SH4") || s.equals("4")) return "SH4";
-        if (s.contains("SEMINARHALL6") || s.equals("SH6") || s.equals("6") || s.contains("BLOCK2SEMINARHALL")) return "SH6";
+        if (s.contains("SEMINARHALL3") || s.equals("SH3") || s.equals("3") || s.contains("BLOCK4")) return "SH3";
+        if (s.contains("SEMINARHALL4") || s.equals("SH4") || s.equals("4") || s.contains("PHARMABLOCK")) return "SH4";
+        if (s.contains("SEMINARHALL6") || s.equals("SH6") || s.equals("6") || s.contains("BLOCK2SEMINARHALL") || s.contains("BLOCK2")) return "SH6";
         return s;
     }
 
@@ -196,7 +202,19 @@ public class SeminarService {
         if (hallId == null) return List.of();
         String norm = normalizeHallKey(hallId);
         if ("TECHHUB".equals(norm)) {
-            return List.of("SH-5", "TECH-HUB", "Tech Hub");
+            return List.of("SH-5", "TECH-HUB", "Tech Hub", "Tech Hub Wifi center");
+        }
+        if ("SH3".equals(norm)) {
+            return List.of("SH-3", "Seminar Hall 3", "Block 4 Seminar Hall", "Block 4");
+        }
+        if ("SH1".equals(norm)) {
+            return List.of("SH-1", "Seminar Hall 1", "Block 3 Seminar Hall");
+        }
+        if ("SH2".equals(norm)) {
+            return List.of("SH-2", "Seminar Hall 2", "Block 3 Seminar Hall");
+        }
+        if ("SH4".equals(norm)) {
+            return List.of("SH-4", "Seminar Hall 4", "Pharma Block Seminar Hall");
         }
         if ("SH6".equals(norm)) {
             return List.of("SH-6", "Block 2 Seminar hall", "Seminar Hall 6");
@@ -930,6 +948,24 @@ public class SeminarService {
                 primary.getBookingId()
         );
 
+        // Notify assigned Seminar Coordinator(s) for the specific hall
+        if (hall.getCoordinatorUserIds() != null) {
+            for (String coordUserId : hall.getCoordinatorUserIds()) {
+                if (coordUserId != null && !coordUserId.isBlank()) {
+                    notificationService.sendNotification(
+                            "SEMINAR_COORDINATOR",
+                            "ADMIN",
+                            coordUserId.trim(),
+                            "New Seminar Hall Request",
+                            notificationSummary,
+                            "Seminar Hall",
+                            "INFO",
+                            primary.getBookingId()
+                    );
+                }
+            }
+        }
+
         return primary;
     }
 
@@ -1274,6 +1310,18 @@ public class SeminarService {
                 requesterId,
                 "Seminar Request Approved",
                 "Your booking for " + booking.getHallName() + " on " + booking.getDate() + " (" + booking.getSlot() + ") has been approved and confirmed!",
+                "Seminar Hall",
+                "SUCCESS",
+                saved.getBookingId()
+        );
+
+        // Also notify Department HOD for departmental visibility
+        notificationService.sendNotification(
+                "DEPARTMENT_HOD",
+                booking.getDepartment(),
+                null,
+                "Seminar Request Approved (" + saved.getBookingId() + ")",
+                "Seminar hall request " + saved.getBookingId() + " (" + (booking.getEventTitle() != null ? booking.getEventTitle() : "") + ") for " + booking.getHallName() + " on " + booking.getDate() + " (" + booking.getSlot() + ") has been approved.",
                 "Seminar Hall",
                 "SUCCESS",
                 saved.getBookingId()

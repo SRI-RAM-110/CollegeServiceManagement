@@ -112,8 +112,28 @@ public class User {
         for (String a : assignedHallIds) {
             if (a == null) continue;
             if (a.equalsIgnoreCase(hallId)) return true;
-            if ((a.equalsIgnoreCase("SH-5") || a.equalsIgnoreCase("TECH-HUB") || a.equalsIgnoreCase("Tech Hub")) &&
-                (hallId.equalsIgnoreCase("SH-5") || hallId.equalsIgnoreCase("TECH-HUB") || hallId.equalsIgnoreCase("Tech Hub"))) {
+            if ((a.equalsIgnoreCase("SH-5") || a.equalsIgnoreCase("TECH-HUB") || a.equalsIgnoreCase("Tech Hub") || a.equalsIgnoreCase("Tech Hub Wifi center")) &&
+                (hallId.equalsIgnoreCase("SH-5") || hallId.equalsIgnoreCase("TECH-HUB") || hallId.equalsIgnoreCase("Tech Hub") || hallId.equalsIgnoreCase("Tech Hub Wifi center"))) {
+                return true;
+            }
+            if ((a.equalsIgnoreCase("SH-3") || a.equalsIgnoreCase("Seminar Hall 3") || a.equalsIgnoreCase("Block 4 Seminar Hall") || a.equalsIgnoreCase("Block 4")) &&
+                (hallId.equalsIgnoreCase("SH-3") || hallId.equalsIgnoreCase("Seminar Hall 3") || hallId.equalsIgnoreCase("Block 4 Seminar Hall") || hallId.equalsIgnoreCase("Block 4"))) {
+                return true;
+            }
+            if ((a.equalsIgnoreCase("SH-1") || a.equalsIgnoreCase("Seminar Hall 1") || a.equalsIgnoreCase("Block 3 Seminar Hall")) &&
+                (hallId.equalsIgnoreCase("SH-1") || hallId.equalsIgnoreCase("Seminar Hall 1") || hallId.equalsIgnoreCase("Block 3 Seminar Hall"))) {
+                return true;
+            }
+            if ((a.equalsIgnoreCase("SH-2") || a.equalsIgnoreCase("Seminar Hall 2")) &&
+                (hallId.equalsIgnoreCase("SH-2") || hallId.equalsIgnoreCase("Seminar Hall 2"))) {
+                return true;
+            }
+            if ((a.equalsIgnoreCase("SH-4") || a.equalsIgnoreCase("Seminar Hall 4") || a.equalsIgnoreCase("Pharma Block Seminar Hall")) &&
+                (hallId.equalsIgnoreCase("SH-4") || hallId.equalsIgnoreCase("Seminar Hall 4") || hallId.equalsIgnoreCase("Pharma Block Seminar Hall"))) {
+                return true;
+            }
+            if ((a.equalsIgnoreCase("SH-6") || a.equalsIgnoreCase("Seminar Hall 6") || a.equalsIgnoreCase("Block 2 Seminar hall")) &&
+                (hallId.equalsIgnoreCase("SH-6") || hallId.equalsIgnoreCase("Seminar Hall 6") || hallId.equalsIgnoreCase("Block 2 Seminar hall"))) {
                 return true;
             }
         }

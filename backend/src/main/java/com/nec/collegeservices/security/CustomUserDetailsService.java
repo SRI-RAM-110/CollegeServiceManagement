@@ -22,6 +22,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         String clean = identifier.trim();
         User user = userRepository.findByEmailIgnoreCase(clean)
                 .or(() -> userRepository.findByUserId(clean))
+                .or(() -> userRepository.findByUserIdIgnoreCase(clean))
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email or ID: " + clean));
         return new CustomUserDetails(user);
     }

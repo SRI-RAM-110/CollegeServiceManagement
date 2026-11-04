@@ -47,7 +47,8 @@ public class AuthService {
 
         // Check if account is inactive
         java.util.Optional<User> userOpt = userRepository.findByEmailIgnoreCase(cleanIdentifier)
-                .or(() -> userRepository.findByUserId(cleanIdentifier));
+                .or(() -> userRepository.findByUserId(cleanIdentifier))
+                .or(() -> userRepository.findByUserIdIgnoreCase(cleanIdentifier));
 
         if (userOpt.isPresent()) {
             User u = userOpt.get();

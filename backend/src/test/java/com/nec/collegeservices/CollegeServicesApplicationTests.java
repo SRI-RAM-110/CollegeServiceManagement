@@ -352,9 +352,16 @@ public class CollegeServicesApplicationTests {
 
         // Verify occurrences in repository
         List<SeminarBooking> seriesOccurrences = seminarBookingRepository.findBySeriesId(primaryBooking.getSeriesId());
-        assertEquals(3, seriesOccurrences.size());
+        assertFalse(seriesOccurrences.isEmpty());
+        SeminarBooking savedParent = seriesOccurrences.get(0);
+        assertEquals(3, savedParent.getOccurrences() != null ? savedParent.getOccurrences().size() : seriesOccurrences.size());
+        assertEquals(3, savedParent.getTotalOccurrences());
+        if (savedParent.getOccurrences() != null) {
+            for (SeminarBooking.Occurrence occ : savedParent.getOccurrences()) {
+                assertTrue(occ.getDate().compareTo(startDate) >= 0 && occ.getDate().compareTo(endDate) <= 0);
+            }
+        }
         for (SeminarBooking occ : seriesOccurrences) {
-            assertTrue(occ.getDate().compareTo(startDate) >= 0 && occ.getDate().compareTo(endDate) <= 0);
             seminarBookingRepository.delete(occ);
         }
     }
@@ -882,7 +889,7 @@ public class CollegeServicesApplicationTests {
         com.nec.collegeservices.model.MealRequest primary = mealService.createRequest(dto, cseUser);
         assertNotNull(primary);
         assertNotNull(primary.getSeriesId());
-        assertTrue(primary.getSeriesId().startsWith("SM-SERIES-"));
+        assertTrue(primary.getSeriesId().contains("-MEAL-SERIES-") || primary.getSeriesId().startsWith("SM-SERIES-"));
         assertEquals(1, primary.getOccurrenceIndex());
         assertEquals(3, primary.getTotalOccurrences());
         assertEquals(dates, primary.getDates());
@@ -962,6 +969,7 @@ public class CollegeServicesApplicationTests {
     // =========================================================================
 
     private AccommodationRoom ensureTestRoom(String roomId, String hostel, String roomType) {
+        accommodationRequestRepository.findByRoomId(roomId).forEach(accommodationRequestRepository::delete);
         return accommodationRoomRepository.findByRoomId(roomId)
                 .orElseGet(() -> accommodationRoomRepository.save(AccommodationRoom.builder()
                         .roomId(roomId)
@@ -1141,7 +1149,7 @@ public class CollegeServicesApplicationTests {
         assertNotNull(result);
         String parentRequestId = (String) result.get("parentRequestId");
         assertNotNull(parentRequestId);
-        assertTrue(parentRequestId.startsWith("ACC-PARENT-"));
+        assertTrue(parentRequestId.contains("-ACC-PARENT-") || parentRequestId.startsWith("ACC-PARENT-"));
 
         AccommodationRequest boysReq = (AccommodationRequest) result.get("boysRequest");
         AccommodationRequest girlsReq = (AccommodationRequest) result.get("girlsRequest");

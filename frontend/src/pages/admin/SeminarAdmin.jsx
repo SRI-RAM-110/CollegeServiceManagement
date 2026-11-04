@@ -105,7 +105,9 @@ export default function SeminarAdmin() {
       assignedHallIds.some((a) => a?.toLowerCase() === h.hallId?.toLowerCase()) ||
       assignedHallIds.some((a) => a?.toLowerCase() === h.name?.toLowerCase()) ||
       ((assignedHallIds.includes('TECH-HUB') || assignedHallIds.includes('Tech Hub') || assignedHallIds.includes('SH-5')) &&
-        (h.hallId === 'TECH-HUB' || h.hallId === 'SH-5' || h.name === 'Tech Hub'))
+        (h.hallId === 'TECH-HUB' || h.hallId === 'SH-5' || h.name === 'Tech Hub')) ||
+      ((assignedHallIds.includes('SH-3') || assignedHallIds.includes('Seminar Hall 3') || assignedHallIds.includes('Block 4 Seminar Hall')) &&
+        (h.hallId === 'SH-3' || h.name === 'Seminar Hall 3' || h.name === 'Block 4 Seminar Hall'))
     );
   };
 
@@ -296,7 +298,7 @@ export default function SeminarAdmin() {
       (req.facultyCoordinator?.toLowerCase() || '').includes(q) ||
       (req.requesterUserId?.toLowerCase() || '').includes(q);
 
-    const matchesHall = hallFilter === 'ALL' || req.hallName === hallFilter;
+    const matchesHall = hallFilter === 'ALL' || req.hallId === hallFilter || req.hallName === hallFilter;
     const matchesStatus = statusFilter === 'ALL' || req.status === statusFilter;
     const reqDate = req.date || req.bookingDate;
     const matchesDate = !dateFilter || reqDate === dateFilter;
@@ -642,7 +644,9 @@ export default function SeminarAdmin() {
             >
               <option value="ALL">All Halls</option>
               {halls.map((h, idx) => (
-                <option key={`${h.name}-${h.id || idx}`} value={h.name}>{h.name}</option>
+                <option key={`${h.hallId || h.id || idx}`} value={h.hallId || h.name}>
+                  {h.name} ({h.location || h.hallId})
+                </option>
               ))}
             </select>
 

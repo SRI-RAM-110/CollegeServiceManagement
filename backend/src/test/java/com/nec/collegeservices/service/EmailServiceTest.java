@@ -85,14 +85,16 @@ public class EmailServiceTest {
         ReflectionTestUtils.setField(emailService, "mailEnabled", true);
         ReflectionTestUtils.setField(emailService, "mailFrom", "collegeservice2026@gmail.com");
         ReflectionTestUtils.setField(emailService, "mailFromName", "NEC Service Management");
+        ReflectionTestUtils.setField(emailService, "frontendUrl", "https://college-service-management.vercel.app");
         ReflectionTestUtils.setField(emailService, "appUrl", "https://college-service-management.vercel.app");
 
         emailService.setMailSender(mockMailSender);
         emailService.setHttpClient(mockHttpClient);
+        emailService.clearDeduplicationCache();
     }
 
     @Test
-    @DisplayName("1. Local SMTP provider selection routes through JavaMailSender and marks log SENT")
+    @DisplayName("1. Local SMTP provider selection routes through JavaMailSender and marks log SMTP_ACCEPTED")
     void testLocalSmtpProviderSelectionAndDelivery() {
         ReflectionTestUtils.setField(emailService, "mailProvider", "local");
         assertEquals("local", emailService.getActiveProvider());
@@ -123,7 +125,7 @@ public class EmailServiceTest {
         verify(emailLogRepository).save(logCaptor.capture());
 
         EmailLog savedLog = logCaptor.getValue();
-        assertEquals("SENT", savedLog.getStatus());
+        assertEquals(EmailLog.STATUS_SMTP_ACCEPTED, savedLog.getStatus());
         assertEquals("SMTP", savedLog.getProvider());
         assertEquals("smith@nrtec.in", savedLog.getPrimaryRecipient());
         assertTrue(savedLog.getCcRecipients().isEmpty(), "Non-seminar services must have strictly empty CC list");
@@ -176,7 +178,7 @@ public class EmailServiceTest {
         verify(emailLogRepository).save(logCaptor.capture());
 
         EmailLog savedLog = logCaptor.getValue();
-        assertEquals("SENT", savedLog.getStatus());
+        assertEquals(EmailLog.STATUS_SMTP_ACCEPTED, savedLog.getStatus());
         assertEquals("APPS_SCRIPT", savedLog.getProvider());
         assertEquals("faculty@nrtec.in", savedLog.getPrimaryRecipient());
         assertTrue(savedLog.getCcRecipients().isEmpty());
@@ -296,7 +298,7 @@ public class EmailServiceTest {
         verify(emailLogRepository).save(logCaptor.capture());
 
         EmailLog savedLog = logCaptor.getValue();
-        assertEquals("SENT", savedLog.getStatus());
+        assertEquals(EmailLog.STATUS_SMTP_ACCEPTED, savedLog.getStatus());
         assertEquals("faculty@nrtec.in", savedLog.getPrimaryRecipient());
 
         // Must contain hall-specific CCs
@@ -342,7 +344,7 @@ public class EmailServiceTest {
         verify(emailLogRepository).save(logCaptor.capture());
 
         EmailLog savedLog = logCaptor.getValue();
-        assertEquals("SENT", savedLog.getStatus());
+        assertEquals(EmailLog.STATUS_SMTP_ACCEPTED, savedLog.getStatus());
         assertTrue(savedLog.getCcRecipients().isEmpty(), "Hall without configured CC must send with 0 CC");
     }
 
@@ -392,7 +394,7 @@ public class EmailServiceTest {
         verify(emailLogRepository).save(logCaptor.capture());
 
         EmailLog savedLog = logCaptor.getValue();
-        assertEquals("SENT", savedLog.getStatus());
+        assertEquals(EmailLog.STATUS_SMTP_ACCEPTED, savedLog.getStatus());
         assertEquals("PASSWORD_RESET", savedLog.getEventCategory());
         assertEquals("faculty.user@nrtec.in", savedLog.getPrimaryRecipient());
         assertTrue(savedLog.getCcRecipients().isEmpty(), "Password-reset must have strictly empty CC list");
@@ -410,7 +412,7 @@ public class EmailServiceTest {
 
         Map<String, Object> result = emailService.sendTestEmail("admin_user", "tester@nrtec.in");
 
-        assertEquals("SENT", result.get("status"));
+        assertEquals(EmailLog.STATUS_SMTP_ACCEPTED, result.get("status"));
         assertEquals("APPS_SCRIPT", result.get("provider"));
         assertEquals("tester@nrtec.in", result.get("primaryRecipient"));
         assertTrue(((List<?>) result.get("ccRecipients")).isEmpty(), "Test email must have strictly zero CC");
@@ -426,7 +428,7 @@ public class EmailServiceTest {
 
         verify(mockMailSender, times(1)).send(any(MimeMessage.class));
 
-        assertEquals("SENT", result.get("status"));
+        assertEquals(EmailLog.STATUS_SMTP_ACCEPTED, result.get("status"));
         assertEquals("SMTP", result.get("provider"));
         assertEquals("target@nrtec.in", result.get("primaryRecipient"));
         assertTrue(((List<?>) result.get("ccRecipients")).isEmpty(), "Test email must have strictly zero CC");
@@ -462,6 +464,7 @@ public class EmailServiceTest {
         assertEquals("SKIPPED_NO_CREDENTIALS", logCaptor.getValue().getStatus());
 
         // Test unconfigured Apps Script
+        emailService.clearDeduplicationCache();
         ReflectionTestUtils.setField(emailService, "mailProvider", "apps-script");
         ReflectionTestUtils.setField(emailService, "appsScriptUrl", "");
 
@@ -494,5 +497,121 @@ public class EmailServiceTest {
         assertFalse(savedLog.getErrorMessage().contains(sensitiveToken), "Reset token must be redacted");
         assertTrue(savedLog.getErrorMessage().contains("[REDACTED_PASSWORD]"));
         assertTrue(savedLog.getErrorMessage().contains("[REDACTED_TOKEN]"));
+    }
+
+    @Test
+    @DisplayName("13. Generated email templates use configured frontend URL and never localhost")
+    void testGeneratedEmailLinksUseConfiguredFrontendUrlAndNeverLocalhost() {
+        ReflectionTestUtils.setField(emailService, "frontendUrl", "https://college-service-management.vercel.app");
+        assertEquals("https://college-service-management.vercel.app", emailService.getEffectiveFrontendUrl());
+
+        Notification notification = Notification.builder()
+                .id("NOTIF-VERIFY-01")
+                .recipientRole("DEPARTMENT_USER")
+                .service("Seminar Hall")
+                .title("Seminar Booking Confirmed")
+                .message("Your seminar booking has been approved.")
+                .referenceId("CSE-SEM-0001")
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        String htmlBody = emailService.buildHtmlEmailBody(notification, "REQUEST_APPROVED", "CSE-SEM-0001", "faculty@nrtec.in");
+        String plainText = emailService.buildPlainTextEmailBody(notification, "REQUEST_APPROVED", "CSE-SEM-0001", "faculty@nrtec.in");
+
+        // Verify HTML contains configured frontend URL with exact destination path and query
+        assertTrue(htmlBody.contains("href='https://college-service-management.vercel.app/my-requests?q=CSE-SEM-0001'"),
+                "HTML 'View in Portal' link must use configured frontend URL");
+        assertFalse(htmlBody.contains("localhost"), "HTML template must never contain localhost when frontend URL is configured");
+
+        // Verify Plain text contains configured frontend URL
+        assertTrue(plainText.contains("View Request in Portal: https://college-service-management.vercel.app/my-requests?q=CSE-SEM-0001"),
+                "Plain text portal link must use configured frontend URL");
+        assertFalse(plainText.contains("localhost"), "Plain text template must never contain localhost when frontend URL is configured");
+    }
+
+    @Test
+    @DisplayName("14. Destination page routing resolves correctly across all modules")
+    void testPortalUrlDestinationPageRoutingForAllModules() {
+        ReflectionTestUtils.setField(emailService, "frontendUrl", "https://college-service-management.vercel.app");
+
+        // Seminar Admin
+        Notification semNotif = Notification.builder().recipientRole("SEMINAR_ADMIN").service("Seminar Hall").build();
+        assertEquals("https://college-service-management.vercel.app/admin/seminar?q=CSE-SEM-1001",
+                emailService.resolvePortalUrl(semNotif, "CSE-SEM-1001", null));
+
+        // Seminar Technician
+        Notification techNotif = Notification.builder().recipientRole("SEMINAR_TECHNICIAN").service("Seminar Hall").build();
+        assertEquals("https://college-service-management.vercel.app/technician/seminar",
+                emailService.resolvePortalUrl(techNotif, "CSE-SEM-1001", null));
+
+        // Generator Operator
+        Notification genNotif = Notification.builder().recipientRole("GENERATOR_OPERATOR").service("Generator").build();
+        assertEquals("https://college-service-management.vercel.app/operator/generator",
+                emailService.resolvePortalUrl(genNotif, "GEN-0001", null));
+
+        // Electrician
+        Notification elecNotif = Notification.builder().recipientRole("ELECTRICIAN").service("Electrical Service").build();
+        assertEquals("https://college-service-management.vercel.app/operator/electrician",
+                emailService.resolvePortalUrl(elecNotif, "ELE-0001", null));
+
+        // Accommodation Admin
+        Notification accNotif = Notification.builder().recipientRole("ACCOMMODATION_ADMIN").service("Accommodation").build();
+        assertEquals("https://college-service-management.vercel.app/admin/accommodation?q=CSE-ACC-0031",
+                emailService.resolvePortalUrl(accNotif, "CSE-ACC-0031", null));
+
+        // Boys Hostel Admin
+        Notification hostelNotif = Notification.builder().recipientRole("BOYS_HOSTEL_ADMIN").service("Hostel").build();
+        assertEquals("https://college-service-management.vercel.app/admin/accommodation?q=CSE-HOS-0005",
+                emailService.resolvePortalUrl(hostelNotif, "CSE-HOS-0005", null));
+
+        // Transport Admin
+        Notification trnNotif = Notification.builder().recipientRole("TRANSPORT_ADMIN").service("Transport").build();
+        assertEquals("https://college-service-management.vercel.app/admin/transport?q=CSE-TRN-0010",
+                emailService.resolvePortalUrl(trnNotif, "CSE-TRN-0010", null));
+
+        // Stationery Admin
+        Notification staNotif = Notification.builder().recipientRole("STATIONERY_ADMIN").service("Stationery").build();
+        assertEquals("https://college-service-management.vercel.app/admin/stationery?q=CSE-STA-0010",
+                emailService.resolvePortalUrl(staNotif, "CSE-STA-0010", null));
+
+        // Meals Admin
+        Notification mealNotif = Notification.builder().recipientRole("MEALS_ADMIN").service("Snacks & Meals").build();
+        assertEquals("https://college-service-management.vercel.app/admin/meals?q=CSE-MEAL-0145",
+                emailService.resolvePortalUrl(mealNotif, "CSE-MEAL-0145", null));
+
+        // AO Admin (Electrical)
+        Notification aoElecNotif = Notification.builder().recipientRole("AO_ADMIN").service("Electrical Service").build();
+        assertEquals("https://college-service-management.vercel.app/admin/electrical-issues?q=ELE-0001",
+                emailService.resolvePortalUrl(aoElecNotif, "ELE-0001", null));
+
+        // Department User / HOD / Requester
+        Notification deptNotif = Notification.builder().recipientRole("DEPARTMENT_USER").service("Seminar Hall").build();
+        assertEquals("https://college-service-management.vercel.app/my-requests?q=CSE-SEM-0001",
+                emailService.resolvePortalUrl(deptNotif, "CSE-SEM-0001", null));
+    }
+
+    @Test
+    @DisplayName("15. Password reset link uses configured frontend URL and never localhost")
+    void testPasswordResetLinkUsesConfiguredFrontendUrlAndNeverLocalhost() {
+        ReflectionTestUtils.setField(emailService, "frontendUrl", "https://college-service-management.vercel.app");
+
+        ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+        emailService.sendPasswordResetEmail("faculty.user@nrtec.in", "Prof. Sharma", "token-xyz-123");
+
+        verify(mockMailSender, atLeastOnce()).send(messageCaptor.capture());
+
+        // Verify reset link generated with configured URL
+        String baseUrl = emailService.getEffectiveFrontendUrl();
+        assertEquals("https://college-service-management.vercel.app", baseUrl);
+        assertFalse(baseUrl.contains("localhost"));
+    }
+
+    @Test
+    @DisplayName("16. Local development fallback is preserved when unconfigured")
+    void testLocalDevelopmentFallbackPreservedWhenUnconfigured() {
+        ReflectionTestUtils.setField(emailService, "frontendUrl", null);
+        ReflectionTestUtils.setField(emailService, "appUrl", null);
+
+        assertEquals("http://localhost:5173", emailService.getEffectiveFrontendUrl());
     }
 }
