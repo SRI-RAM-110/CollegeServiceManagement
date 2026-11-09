@@ -25,15 +25,16 @@ class CorsSecurityHardeningTest {
     }
 
     @Test
-    @DisplayName("Production: Verified origins include Vercel and Capacitor, but reject localhost dev ports")
+    @DisplayName("Production: Verified origins include Vercel, Render and Capacitor, but reject localhost dev ports")
     void testProductionOrigins_strictAllowlist() {
         mockEnvironment.setActiveProfiles("prod");
 
         assertTrue(securityConfig.isProductionEnvironment());
         List<String> origins = securityConfig.resolveAllowedOrigins();
 
-        // Approved production web origin
+        // Approved production web origins
         assertTrue(origins.contains("https://college-service-management.vercel.app"));
+        assertTrue(origins.contains("https://collegeservicesmanagement.onrender.com"));
 
         // Approved Capacitor Android origins (androidScheme: https)
         assertTrue(origins.contains("https://localhost"));
@@ -67,14 +68,20 @@ class CorsSecurityHardeningTest {
     }
 
     @Test
-    @DisplayName("Custom Override: app.cors.allowed-origins property overrides defaults")
-    void testCustomOriginsOverride() {
+    @DisplayName("Custom Origins: app.cors.allowed-origins extends base origins without replacing required production origins")
+    void testCustomOriginsExtendBaseOrigins() {
+        mockEnvironment.setActiveProfiles("prod");
         mockEnvironment.setProperty("app.cors.allowed-origins", "https://custom.nec.edu.in, https://portal.nec.edu.in");
 
         List<String> origins = securityConfig.resolveAllowedOrigins();
-        assertEquals(2, origins.size());
+        // Custom origins are appended
         assertTrue(origins.contains("https://custom.nec.edu.in"));
         assertTrue(origins.contains("https://portal.nec.edu.in"));
+        // Base production origins remain intact
+        assertTrue(origins.contains("https://college-service-management.vercel.app"));
+        assertTrue(origins.contains("https://collegeservicesmanagement.onrender.com"));
+        assertTrue(origins.contains("https://localhost"));
+        assertEquals(7, origins.size());
     }
 
     @Test
@@ -111,7 +118,7 @@ class CorsSecurityHardeningTest {
     }
 
     @Test
-    @DisplayName("Production CORS Source: Accepts approved Vercel and Capacitor origins")
+    @DisplayName("Production CORS Source: Accepts approved Vercel, Render and Capacitor origins")
     void testProductionCorsSource_acceptsApprovedOrigins() {
         mockEnvironment.setActiveProfiles("prod");
         CorsConfigurationSource source = securityConfig.corsConfigurationSource();
@@ -122,6 +129,8 @@ class CorsSecurityHardeningTest {
 
         assertEquals("https://college-service-management.vercel.app",
                 config.checkOrigin("https://college-service-management.vercel.app"));
+        assertEquals("https://collegeservicesmanagement.onrender.com",
+                config.checkOrigin("https://collegeservicesmanagement.onrender.com"));
         assertEquals("https://localhost",
                 config.checkOrigin("https://localhost"));
         assertEquals("capacitor://localhost",

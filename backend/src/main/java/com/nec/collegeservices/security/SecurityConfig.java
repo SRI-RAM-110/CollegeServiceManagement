@@ -29,6 +29,7 @@ public class SecurityConfig {
 
     public static final List<String> PRODUCTION_ORIGINS = List.of(
             "https://college-service-management.vercel.app",
+            "https://collegeservicesmanagement.onrender.com",
             "https://localhost",
             "capacitor://localhost",
             "http://localhost"
@@ -97,19 +98,20 @@ public class SecurityConfig {
     }
 
     public List<String> resolveAllowedOrigins() {
+        List<String> baseOrigins = isProductionEnvironment() ? PRODUCTION_ORIGINS : LOCAL_ORIGINS;
         if (environment != null) {
             String custom = environment.getProperty("app.cors.allowed-origins");
             if (custom != null && !custom.trim().isEmpty()) {
-                return Arrays.stream(custom.split(","))
+                List<String> customList = Arrays.stream(custom.split(","))
                         .map(String::trim)
                         .filter(s -> !s.isEmpty())
                         .toList();
+                java.util.LinkedHashSet<String> merged = new java.util.LinkedHashSet<>(baseOrigins);
+                merged.addAll(customList);
+                return new java.util.ArrayList<>(merged);
             }
         }
-        if (isProductionEnvironment()) {
-            return PRODUCTION_ORIGINS;
-        }
-        return LOCAL_ORIGINS;
+        return baseOrigins;
     }
 
     @Bean
