@@ -29,6 +29,7 @@ public class SecurityConfig {
 
     public static final List<String> PRODUCTION_ORIGINS = List.of(
             "https://college-service-management.vercel.app",
+            "https://collegeservicemanagement.onrender.com",
             "https://collegeservicesmanagement.onrender.com",
             "https://localhost",
             "capacitor://localhost",
@@ -87,7 +88,7 @@ public class SecurityConfig {
             return true;
         }
         String frontendUrl = environment.getProperty("app.frontend.url", "");
-        if (frontendUrl.contains("vercel.app")) {
+        if (frontendUrl.contains("vercel.app") || frontendUrl.contains("onrender.com")) {
             return true;
         }
         String mongoUri = environment.getProperty("spring.data.mongodb.uri", "");

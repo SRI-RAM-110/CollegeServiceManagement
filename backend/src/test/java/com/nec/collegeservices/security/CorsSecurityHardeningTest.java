@@ -34,6 +34,7 @@ class CorsSecurityHardeningTest {
 
         // Approved production web origins
         assertTrue(origins.contains("https://college-service-management.vercel.app"));
+        assertTrue(origins.contains("https://collegeservicemanagement.onrender.com"));
         assertTrue(origins.contains("https://collegeservicesmanagement.onrender.com"));
 
         // Approved Capacitor Android origins (androidScheme: https)
@@ -79,9 +80,10 @@ class CorsSecurityHardeningTest {
         assertTrue(origins.contains("https://portal.nec.edu.in"));
         // Base production origins remain intact
         assertTrue(origins.contains("https://college-service-management.vercel.app"));
+        assertTrue(origins.contains("https://collegeservicemanagement.onrender.com"));
         assertTrue(origins.contains("https://collegeservicesmanagement.onrender.com"));
         assertTrue(origins.contains("https://localhost"));
-        assertEquals(7, origins.size());
+        assertEquals(8, origins.size());
     }
 
     @Test
@@ -129,6 +131,8 @@ class CorsSecurityHardeningTest {
 
         assertEquals("https://college-service-management.vercel.app",
                 config.checkOrigin("https://college-service-management.vercel.app"));
+        assertEquals("https://collegeservicemanagement.onrender.com",
+                config.checkOrigin("https://collegeservicemanagement.onrender.com"));
         assertEquals("https://collegeservicesmanagement.onrender.com",
                 config.checkOrigin("https://collegeservicesmanagement.onrender.com"));
         assertEquals("https://localhost",
@@ -137,6 +141,39 @@ class CorsSecurityHardeningTest {
                 config.checkOrigin("capacitor://localhost"));
         assertEquals("http://localhost",
                 config.checkOrigin("http://localhost"));
+    }
+
+    @Test
+    @DisplayName("Focused Test: Exact browser Render frontend origin https://collegeservicemanagement.onrender.com is accepted")
+    void testExactRenderFrontendOrigin_isAccepted() {
+        mockEnvironment.setActiveProfiles("prod");
+        CorsConfigurationSource source = securityConfig.corsConfigurationSource();
+
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/auth/me");
+        request.addHeader("Origin", "https://collegeservicemanagement.onrender.com");
+
+        CorsConfiguration config = source.getCorsConfiguration(request);
+        assertNotNull(config, "CORS configuration must exist for requests");
+
+        String matchedOrigin = config.checkOrigin("https://collegeservicemanagement.onrender.com");
+        assertEquals("https://collegeservicemanagement.onrender.com", matchedOrigin,
+                "Exact production browser origin https://collegeservicemanagement.onrender.com must be accepted");
+    }
+
+    @Test
+    @DisplayName("Focused Test: Unrelated and malicious origins remain rejected")
+    void testUnrelatedOrigin_remainsRejected() {
+        mockEnvironment.setActiveProfiles("prod");
+        CorsConfigurationSource source = securityConfig.corsConfigurationSource();
+
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/auth/me");
+        CorsConfiguration config = source.getCorsConfiguration(request);
+        assertNotNull(config);
+
+        assertNull(config.checkOrigin("https://unrelated-domain.com"), "Unrelated origin must be rejected");
+        assertNull(config.checkOrigin("https://fake-collegeservices.onrender.com"), "Fake render origin must be rejected");
+        assertNull(config.checkOrigin("https://evil.attacker.com"), "Attacker domain must be rejected");
+        assertNull(config.checkOrigin("http://collegeservicemanagement.onrender.com"), "HTTP (non-SSL) origin must be rejected");
     }
 
     @Test
