@@ -325,6 +325,14 @@ public class EmailService {
         }
     }
 
+    public boolean isAdministrativeRole(String role) {
+        if (role == null || role.isBlank()) return false;
+        String r = role.trim().toUpperCase();
+        return r.endsWith("_ADMIN") || r.equals("CREATOR") || r.equals("SUPER_ADMIN")
+                || r.equals("SEMINAR_COORDINATOR") || r.equals("SEMINAR_TECHNICIAN")
+                || r.equals("GENERATOR_OPERATOR") || r.equals("ELECTRICIAN");
+    }
+
     public List<String> resolvePrimaryRecipients(Notification notification) {
         Set<String> recipientEmails = new LinkedHashSet<>();
 
@@ -344,14 +352,16 @@ public class EmailService {
         String role = notification.getRecipientRole();
         String dept = notification.getRecipientDept();
 
+        boolean isRoleAll = role == null || role.isBlank() || "ALL".equalsIgnoreCase(role.trim());
+        boolean isDeptAll = dept == null || dept.isBlank() || "ALL".equalsIgnoreCase(dept.trim());
+        boolean isAdminRole = !isRoleAll && isAdministrativeRole(role.trim());
+
         List<User> targetUsers = userRepository.findAll().stream()
                 .filter(u -> Boolean.TRUE.equals(u.getActive()))
                 .filter(u -> {
-                    boolean roleMatch = role == null || "ALL".equalsIgnoreCase(role) || u.hasRole(role.trim())
-                            || u.hasServicePermission(role.trim());
-                    boolean deptMatch = dept == null || "ALL".equalsIgnoreCase(dept) || "ADMIN".equalsIgnoreCase(dept)
-                            ||
-                            "ADMIN".equalsIgnoreCase(u.getDepartment())
+                    boolean roleMatch = isRoleAll || u.hasRole(role.trim());
+                    boolean deptMatch = isDeptAll
+                            || (isAdminRole && "ADMIN".equalsIgnoreCase(dept.trim()))
                             || (u.getDepartment() != null && u.getDepartment().trim().equalsIgnoreCase(dept.trim()));
                     return roleMatch && deptMatch;
                 })
@@ -376,7 +386,8 @@ public class EmailService {
                 "ELECTRICIAN".equalsIgnoreCase(notification.getRecipientRole()) ||
                 "Seminar Equipment".equalsIgnoreCase(notification.getService()) ||
                 "Generator Service".equalsIgnoreCase(notification.getService()) ||
-                "Electrical Service".equalsIgnoreCase(notification.getService()))) {
+                "Electrical Service".equalsIgnoreCase(notification.getService()) ||
+                "Stationery".equalsIgnoreCase(notification.getService()))) {
             return Collections.emptyList();
         }
 

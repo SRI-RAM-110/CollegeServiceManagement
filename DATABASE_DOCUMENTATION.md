@@ -267,3 +267,128 @@ Stores catering and refreshment orders.
   - `title`, `content`, `type` (`EVENT`, `MAINTENANCE`, `EXAM`, `URGENT`), `date`, `active` (boolean).
 - **`notifications`**:
   - `recipientRole`, `recipientDept`, `recipientUserId`, `title`, `message`, `service`, `type`, `read` (boolean), `referenceId`, `createdAt`.
+
+---
+
+## 3. Database Backup, Snapshot Assets, and Safe Disaster Recovery Procedures
+
+### 3.1 Classification of Existing Backup Assets
+
+The `backups/` directory in the project repository contains the following asset:
+
+* **Path**: `backups/resources_pre_migration_20261101/`
+  * `accommodation_rooms.json` (2.7 KB)
+  * `seminar_halls.json` (3.4 KB)
+  * `stationery_items.json` (4.9 KB)
+  * `vehicles.json` (2.2 KB)
+
+> [!IMPORTANT]
+> **CLASSIFICATION: PARTIAL STATIC REFERENCE CATALOG ONLY (NOT A COMPLETE DATABASE BACKUP)**  
+> This directory contains an export of four static institutional resource catalogs taken on 2026-11-01 before a schema update.
+> 
+> **CRITICAL RESTRICTION**:
+> * It **DOES NOT** contain transactional records or requisitions (`seminar_bookings`, `accommodation_requests`, `transport_requests`, `stationery_requests`, `meal_requests`, `electrical_issues`).
+> * It **DOES NOT** contain user accounts or hashed credentials (`users`).
+> * It **DOES NOT** contain in-app notification history (`notifications`).
+> * It **DOES NOT** contain email delivery logs or audit records (`email_logs`).
+> * It **DOES NOT** contain academic department records (`departments`) or campus announcements (`announcements`).
+> 
+> **NEVER** attempt to restore `backups/resources_pre_migration_20261101/` as a full database restore. Restoring this directory will NOT restore faculty accounts, user requests, booking schedules, or system audit trails.
+
+---
+
+### 3.2 Deprecation and Danger of `mongorestore --drop`
+
+> [!CAUTION]
+> **HIGH-RISK COMMAND WARNING: NEVER USE `mongorestore --drop` IN PRODUCTION**  
+> The `--drop` command-line flag directs MongoDB to **drop each target collection from the database before restoring documents from the dump archive**.
+> 
+> **Catastrophic Failure Modes of `--drop`**:
+> 1. **Irreversible Data Destruction**: All user accounts, faculty requisitions, booking approvals, and audit entries created after the timestamp of the backup archive are permanently dropped and unrecoverable.
+> 2. **Partial Dump Destruction**: If `--drop` is executed with a partial snapshot (such as `resources_pre_migration_20261101/`), all live seminar halls, guest rooms, vehicles, and stationery items will be dropped and replaced with outdated 2026-11-01 records, wiping out newly created coordinators or room configurations.
+> 3. **Service Disruption**: Dropping collections destroys live indexes and invalidates query plans, causing immediate errors for connected web and mobile users.
+> 
+> **POLICY**: The `--drop` flag is strictly deprecated and prohibited for live production operations at Narasaraopeta Engineering College.
+
+---
+
+### 3.3 Safe Multi-Phase Disaster Recovery Protocol
+
+Any database recovery procedure must follow this disciplined, phased protocol. Backup and restore commands must **NEVER** be executed against production without formal written approval from the Administrative Officer (AO) and IT Systems Lead.
+
+```
++---------------------------------------------------------------------------------------------------+
+|                            SAFE DISASTER RECOVERY PIPELINE                                        |
+|                                                                                                   |
+| [1. Validate Archive] ---> [2. Live Safety Dump] ---> [3. Isolated Staging Restore]               |
+|                                                                 |                                 |
+|                                                                 v                                 |
+| [6. Selective Live Merge] <-- [5. Formal Sign-Off] <--- [4. Schema & Count Verification]          |
++---------------------------------------------------------------------------------------------------+
+```
+
+#### Step 1: Backup Identification and Completeness Verification
+1. Verify the exact backup archive filename, creation timestamp, and SHA-256 checksum.
+2. Confirm that the backup contains all 13 required collections if a full recovery is intended, or document the exact sub-collections if performing a selective repair.
+3. Test archive integrity without writing to any database:
+   ```bash
+   mongorestore --gzip --archive="<PATH_TO_BACKUP_ARCHIVE>.gz" --dryRun
+   ```
+
+#### Step 2: Capture an Immediate Pre-Recovery Safety Backup
+Before executing any write or restore operation against the target environment, take a fresh, immutable snapshot of the existing live database:
+```bash
+# Capture immediate point-in-time state of the live database
+mongodump --uri="<MONGODB_PRODUCTION_URI_PLACEHOLDER>" \
+  --gzip \
+  --archive="./backups/pre_recovery_safety_dump_$(date +%Y%m%d_%H%M%S).gz"
+```
+
+#### Step 3: Restore into an Isolated Verification Database
+**NEVER** restore directly into the active production database (`collegeservices_db`). Always restore into an isolated staging namespace using namespace remapping (`--nsFrom` and `--nsTo`):
+```bash
+# Restore into an isolated temporary database for inspection
+mongorestore --uri="<MONGODB_STAGING_URI_PLACEHOLDER>" \
+  --nsFrom="collegeservices_db.*" \
+  --nsTo="collegeservices_recovery_verify.*" \
+  --gzip \
+  --archive="<PATH_TO_VERIFIED_BACKUP>.gz"
+```
+
+#### Step 4: Verification and Count Comparison
+Inspect the restored verification database (`collegeservices_recovery_verify`) and verify:
+1. All expected collections are present.
+2. Document counts match expectations across all collections.
+3. Indexes (including unique constraints on `userId`, `email`, `bookingId`, `requestId`) are intact.
+4. Compare representative documents with the pre-recovery safety backup.
+
+#### Step 5: Formal Administrative Sign-Off
+Present the verification report (document counts, timestamp, affected collections) to the Administrative Officer (AO) and obtain explicit sign-off before proceeding with any production data modifications.
+
+#### Step 6: Controlled Production Recovery
+1. When restoring specific corrupted collections, use targeted collection flags (`--nsInclude`) rather than restoring the entire database.
+2. If individual documents must be recovered, prefer exporting specific records from the staging verification database and merging them with surgical update operations.
+
+---
+
+### 3.4 MongoDB Atlas Cloud Backup Verification & Retention Checks
+
+The College Services Management System utilizes MongoDB Atlas for cloud database hosting in production. Note the following operational requirements:
+
+* **Independent Verification Required**: Do not assume that automated cloud backups or continuous point-in-time backups are enabled by default. Backup features depend on the Atlas cluster tier and project configuration.
+* **Administrative Console Verification Checklist**:
+  1. Log in to the [MongoDB Atlas Console](https://cloud.mongodb.com).
+  2. Navigate to **Database Deployments** -> Select your Cluster -> **Backup** tab.
+  3. Verify that **Cloud Backup** is active.
+  4. Confirm the **Snapshot Schedule**:
+     * Daily snapshots retained for a minimum of 7 days (recommended: 30 days).
+     * Continuous Cloud Backup / Point-in-Time Restore (PITR) enabled if available on the cluster tier.
+  5. Test an on-demand snapshot creation to ensure project permissions are active.
+
+---
+
+### 3.5 Credential and Environment Safety
+
+* All connection strings in operational documentation, scripts, and logs must use placeholders (e.g. `<MONGODB_URI>`, `<USER>`, `<PASSWORD>`).
+* Real database credentials, connection URIs, and Atlas admin tokens must **NEVER** be committed to Git, stored in documentation files, or printed in terminal logs.
+

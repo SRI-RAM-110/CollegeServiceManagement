@@ -9,6 +9,7 @@ import com.nec.collegeservices.model.TransportRequest;
 import com.nec.collegeservices.model.User;
 import com.nec.collegeservices.model.Vehicle;
 import com.nec.collegeservices.repository.TransportRequestRepository;
+import com.nec.collegeservices.repository.UserRepository;
 import com.nec.collegeservices.repository.VehicleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -44,6 +45,9 @@ public class TransportService {
 
     @Autowired
     private RequestIdService requestIdService;
+
+    @Autowired
+    private UserRepository userRepository;
 
     public void requireAOAdmin(User user, String operation) {
         if (user == null || (!user.hasRole("AO_ADMIN") && !"AO_ADMIN".equalsIgnoreCase(user.getRole()))) {
@@ -569,24 +573,25 @@ public class TransportService {
 
         TransportRequest primary = createdList.get(0);
 
-        // Notify Admins
+        // Explicit confirmation to original requester
+        notificationService.sendNotification(
+                "DEPARTMENT_USER",
+                user.getDepartment(),
+                user.getUserId(),
+                "Transport Request Submitted",
+                "Your transport request to " + dto.getDestination() + " on " + startDateStr + " has been submitted (" + primary.getRequestId() + ").",
+                "Transport",
+                "INFO",
+                primary.getRequestId()
+        );
+
+        // Notify Transport Admin
         String notifyMsg = isSeries
                 ? user.getDepartment() + " requested " + totalOccurrences + " trips (" + dto.getTripType() + " to " + dto.getDestination() + " from " + startDateStr + " to " + endDateStr + ")."
                 : user.getDepartment() + " requested " + dto.getTripType() + " to " + dto.getDestination() + " on " + startDateStr;
 
         notificationService.sendNotification(
                 "TRANSPORT_ADMIN",
-                "ADMIN",
-                null,
-                "New Transport Request",
-                notifyMsg,
-                "Transport",
-                "INFO",
-                primary.getRequestId()
-        );
-
-        notificationService.sendNotification(
-                "AO_ADMIN",
                 "ADMIN",
                 null,
                 "New Transport Request",
@@ -705,6 +710,32 @@ public class TransportService {
                 "SUCCESS",
                 saved.getRequestId()
         );
+
+        // Notify assigned driver if vehicle has driver details
+        if (req.getVehicleId() != null) {
+            vehicleRepository.findByVehicleId(req.getVehicleId()).ifPresent(v -> {
+                if ((v.getDriverPhone() != null && !v.getDriverPhone().isBlank()) ||
+                    (v.getDriverName() != null && !v.getDriverName().isBlank())) {
+                    userRepository.findAll().stream()
+                            .filter(u -> Boolean.TRUE.equals(u.getActive()))
+                            .filter(u -> (v.getDriverPhone() != null && v.getDriverPhone().equals(u.getPhone()))
+                                    || (v.getDriverName() != null && v.getDriverName().equalsIgnoreCase(u.getName())))
+                            .findFirst()
+                            .ifPresent(driverUser -> {
+                                notificationService.sendNotification(
+                                        "DRIVER",
+                                        "ADMIN",
+                                        driverUser.getUserId(),
+                                        "Transport Trip Assigned",
+                                        "You have been assigned to trip " + saved.getRequestId() + " to " + saved.getDestination() + " on " + saved.getTripDate() + ".",
+                                        "Transport",
+                                        "INFO",
+                                        saved.getRequestId()
+                                );
+                            });
+                }
+            });
+        }
 
         return saved;
     }

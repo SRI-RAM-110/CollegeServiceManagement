@@ -3,6 +3,7 @@ package com.nec.collegeservices.security;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -26,6 +27,26 @@ import java.util.List;
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
+    public static final List<String> PRODUCTION_ORIGINS = List.of(
+            "https://college-service-management.vercel.app",
+            "https://localhost",
+            "capacitor://localhost",
+            "http://localhost"
+    );
+
+    public static final List<String> LOCAL_ORIGINS = List.of(
+            "http://localhost:5173",
+            "http://localhost:3000",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:3000",
+            "https://localhost",
+            "capacitor://localhost",
+            "http://localhost"
+    );
+
+    @Autowired(required = false)
+    private Environment environment;
+
     @Autowired
     private CustomUserDetailsService userDetailsService;
 
@@ -37,6 +58,59 @@ public class SecurityConfig {
 
     @Autowired
     private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    public void setEnvironment(Environment environment) {
+        this.environment = environment;
+    }
+
+    public boolean isProductionEnvironment() {
+        if (environment == null) {
+            return false;
+        }
+        for (String profile : environment.getActiveProfiles()) {
+            if ("prod".equalsIgnoreCase(profile) || "production".equalsIgnoreCase(profile)) {
+                return true;
+            }
+        }
+        if ("true".equalsIgnoreCase(environment.getProperty("app.cors.production"))
+                || "true".equalsIgnoreCase(environment.getProperty("APP_CORS_PRODUCTION"))) {
+            return true;
+        }
+        if ("true".equalsIgnoreCase(environment.getProperty("RENDER"))
+                || environment.getProperty("RENDER_SERVICE_ID") != null
+                || environment.getProperty("RENDER_INSTANCE_ID") != null) {
+            return true;
+        }
+        String mailProvider = environment.getProperty("app.mail.provider");
+        if ("apps-script".equalsIgnoreCase(mailProvider)) {
+            return true;
+        }
+        String frontendUrl = environment.getProperty("app.frontend.url", "");
+        if (frontendUrl.contains("vercel.app")) {
+            return true;
+        }
+        String mongoUri = environment.getProperty("spring.data.mongodb.uri", "");
+        if (mongoUri.contains("mongodb+srv://")) {
+            return true;
+        }
+        return false;
+    }
+
+    public List<String> resolveAllowedOrigins() {
+        if (environment != null) {
+            String custom = environment.getProperty("app.cors.allowed-origins");
+            if (custom != null && !custom.trim().isEmpty()) {
+                return Arrays.stream(custom.split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .toList();
+            }
+        }
+        if (isProductionEnvironment()) {
+            return PRODUCTION_ORIGINS;
+        }
+        return LOCAL_ORIGINS;
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -59,9 +133,13 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
+        List<String> origins = resolveAllowedOrigins();
+        configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowedHeaders(Arrays.asList(
+                "Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin",
+                "Access-Control-Request-Method", "Access-Control-Request-Headers"
+        ));
         configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Disposition"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);

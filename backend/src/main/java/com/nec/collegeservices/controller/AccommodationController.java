@@ -23,7 +23,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/accommodation")
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class AccommodationController {
 
     @Autowired
@@ -317,16 +316,4 @@ public class AccommodationController {
         return ResponseEntity.ok(ApiResponse.ok("Reschedule request declined", rejected));
     }
 
-    // ==========================================
-    // TEST FIXTURE ENDPOINT (Step 33, Test 29)
-    // ==========================================
-
-    @PostMapping("/test-fixture/create-pending")
-    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN')")
-    public ResponseEntity<ApiResponse<AccommodationRequest>> createPendingBookingTestFixture(
-            @RequestBody AccommodationRequestDTO dto) {
-        User user = authService.getCurrentUser();
-        AccommodationRequest booking = accommodationService.createPendingBookingTestFixture(dto, user);
-        return ResponseEntity.ok(ApiResponse.ok("Test fixture pending booking created", booking));
-    }
 }

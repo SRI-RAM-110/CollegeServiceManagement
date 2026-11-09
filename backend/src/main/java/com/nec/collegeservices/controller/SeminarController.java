@@ -19,7 +19,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/seminar")
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class SeminarController {
 
     @Autowired
@@ -293,18 +292,6 @@ public class SeminarController {
         return ResponseEntity.ok(ApiResponse.ok("Coordinators assigned successfully", updated));
     }
 
-    // ==========================================
-    // TEST FIXTURE ENDPOINT (Section 48 - TEST 23)
-    // ==========================================
-
-    @PostMapping("/test-fixture/create-pending")
-    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN')")
-    public ResponseEntity<ApiResponse<SeminarBooking>> createPendingBookingTestFixture(
-            @RequestBody SeminarBookingRequestDTO dto) {
-        User user = authService.getCurrentUser();
-        SeminarBooking booking = seminarService.createPendingBookingTestFixture(dto, user);
-        return ResponseEntity.ok(ApiResponse.ok("Test fixture pending booking created", booking));
-    }
 
     // ==========================================
     // SEMINAR EQUIPMENT TECHNICIAN ENDPOINTS

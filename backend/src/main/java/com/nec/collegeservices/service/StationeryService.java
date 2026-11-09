@@ -198,20 +198,21 @@ public class StationeryService {
 
         StationeryRequest saved = requestRepository.save(request);
 
-        // Notify Admins
+        // Explicit confirmation to original requester
         notificationService.sendNotification(
-                "STATIONERY_ADMIN",
-                "ADMIN",
-                null,
-                "New Stationery Request",
-                user.getDepartment() + " submitted a stationery request for " + requestedItems.size() + " items (" + saved.getRequestId() + ")",
+                "DEPARTMENT_USER",
+                user.getDepartment(),
+                user.getUserId(),
+                "Stationery Request Submitted",
+                "Your stationery request for " + requestedItems.size() + " items has been submitted (" + saved.getRequestId() + ").",
                 "Stationery",
                 "INFO",
                 saved.getRequestId()
         );
 
+        // Notify Stationery Admin
         notificationService.sendNotification(
-                "AO_ADMIN",
+                "STATIONERY_ADMIN",
                 "ADMIN",
                 null,
                 "New Stationery Request",

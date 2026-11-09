@@ -22,7 +22,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/transport")
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class TransportController {
 
     @Autowired

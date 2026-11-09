@@ -425,6 +425,18 @@ public class AccommodationService {
                 parentRequestId + ") requiring AO approval.";
         notificationService.sendNotification("AO_ADMIN", "ADMIN", null, "New Dual Accommodation Request", notifyMsg, "Accommodation", "INFO", parentRequestId);
 
+        // Explicit confirmation to original requester
+        notificationService.sendNotification(
+                "DEPARTMENT_USER",
+                user.getDepartment(),
+                user.getUserId(),
+                "Dual Accommodation Request Submitted",
+                "Your dual accommodation request (Boys & Girls Hostel: " + parentRequestId + ") has been submitted and is pending AO approval.",
+                "Accommodation",
+                "INFO",
+                parentRequestId
+        );
+
         Map<String, Object> res = new HashMap<>();
         res.put("parentRequestId", parentRequestId);
         res.put("boysRequest", boysReq);
@@ -653,6 +665,18 @@ public class AccommodationService {
                 String notifyMsg = user.getDepartment() + " requested " + totalOccurrences + " stay occurrences for room " +
                         room.getRoomId() + " (" + room.getHostel() + "). Pending AO approval.";
                 notificationService.sendNotification("AO_ADMIN", "ADMIN", null, "New Accommodation Request", notifyMsg, "Accommodation", "INFO", primary.getRequestId());
+
+                // Explicit confirmation to original requester
+                notificationService.sendNotification(
+                        "DEPARTMENT_USER",
+                        user.getDepartment(),
+                        user.getUserId(),
+                        "Accommodation Request Submitted",
+                        "Your recurring accommodation request for room " + room.getRoomId() + " (" + room.getHostel() + ") has been submitted (" + primary.getRequestId() + ").",
+                        "Accommodation",
+                        "INFO",
+                        primary.getRequestId()
+                );
             }
             return primary;
         }
@@ -715,6 +739,18 @@ public class AccommodationService {
             String notifyMsg = user.getDepartment() + " requested " + room.getRoomId() + " (" + room.getHostel() + ") from " +
                     finalCheckIn + " to " + finalCheckOut + " for " + dto.getGuestsCount() + " guest(s). Pending AO approval.";
             notificationService.sendNotification("AO_ADMIN", "ADMIN", null, "New Accommodation Request", notifyMsg, "Accommodation", "INFO", saved.getRequestId());
+
+            // Explicit confirmation to original requester
+            notificationService.sendNotification(
+                    "DEPARTMENT_USER",
+                    user.getDepartment(),
+                    user.getUserId(),
+                    "Accommodation Request Submitted",
+                    "Your accommodation request for room " + room.getRoomId() + " (" + room.getHostel() + ") has been submitted (" + saved.getRequestId() + ").",
+                    "Accommodation",
+                    "INFO",
+                    saved.getRequestId()
+            );
         }
 
         return saved;
@@ -922,6 +958,19 @@ public class AccommodationService {
                 "Your accommodation request for " + req.getRoomId() + " (" + req.getHostel() + ", " + req.getCheckInDate() + " to " + req.getCheckOutDate() + ") was directly approved by AO Admin.",
                 "Accommodation",
                 "SUCCESS",
+                saved.getRequestId()
+        );
+
+        // Notify assigned hostel warden
+        String wardenRole = "Boys Hostel".equalsIgnoreCase(req.getHostel()) ? "BOYS_HOSTEL_ADMIN" : "GIRLS_HOSTEL_ADMIN";
+        notificationService.sendNotification(
+                wardenRole,
+                "ADMIN",
+                null,
+                "Accommodation Request Approved Directly",
+                "Accommodation request " + saved.getRequestId() + " (" + req.getHostel() + ", room " + req.getRoomId() + ") was directly approved by AO Admin.",
+                "Accommodation",
+                "INFO",
                 saved.getRequestId()
         );
 
@@ -1169,6 +1218,18 @@ public class AccommodationService {
                 saved.getRequestId()
         );
 
+        // Notify AO Admin of warden approval
+        notificationService.sendNotification(
+                "AO_ADMIN",
+                "ADMIN",
+                null,
+                "Accommodation Request Approved by Warden",
+                "Accommodation request " + saved.getRequestId() + " (" + req.getHostel() + ", room " + req.getRoomId() + ") has been approved by the hostel warden.",
+                "Accommodation",
+                "INFO",
+                saved.getRequestId()
+        );
+
         return saved;
     }
 
@@ -1356,6 +1417,19 @@ public class AccommodationService {
                 requesterId,
                 "Cancellation Approved",
                 "Your cancellation request for " + req.getRoomId() + " has been approved.",
+                "Accommodation",
+                "INFO",
+                saved.getRequestId()
+        );
+
+        // Notify assigned hostel warden
+        String wardenRole = "Boys Hostel".equalsIgnoreCase(req.getHostel()) ? "BOYS_HOSTEL_ADMIN" : "GIRLS_HOSTEL_ADMIN";
+        notificationService.sendNotification(
+                wardenRole,
+                "ADMIN",
+                null,
+                "Accommodation Cancellation Approved",
+                "Cancellation for room " + req.getRoomId() + " (" + req.getHostel() + ", " + saved.getRequestId() + ") has been approved.",
                 "Accommodation",
                 "INFO",
                 saved.getRequestId()
@@ -1601,6 +1675,37 @@ public class AccommodationService {
                 "SUCCESS",
                 saved.getRequestId()
         );
+
+        // Notify target room hostel warden
+        String targetWardenRole = "Boys Hostel".equalsIgnoreCase(targetRoom.getHostel()) ? "BOYS_HOSTEL_ADMIN" : "GIRLS_HOSTEL_ADMIN";
+        notificationService.sendNotification(
+                targetWardenRole,
+                "ADMIN",
+                null,
+                "Accommodation Reschedule Approved",
+                "Accommodation request " + saved.getRequestId() + " was rescheduled to room " + targetRoom.getRoomId() + " (" + targetRoom.getHostel() + ").",
+                "Accommodation",
+                "SUCCESS",
+                saved.getRequestId()
+        );
+
+        // If moved to a different hostel, also notify previous hostel warden
+        String origHostel = req.getOriginalRoomId() != null
+                ? roomRepository.findByRoomId(req.getOriginalRoomId()).map(AccommodationRoom::getHostel).orElse(null)
+                : null;
+        if (origHostel != null && !origHostel.equalsIgnoreCase(targetRoom.getHostel())) {
+            String origWardenRole = "Boys Hostel".equalsIgnoreCase(origHostel) ? "BOYS_HOSTEL_ADMIN" : "GIRLS_HOSTEL_ADMIN";
+            notificationService.sendNotification(
+                    origWardenRole,
+                    "ADMIN",
+                    null,
+                    "Accommodation Rescheduled to Another Hostel",
+                    "Accommodation request " + saved.getRequestId() + " previously in " + origHostel + " was rescheduled to " + targetRoom.getHostel() + ".",
+                    "Accommodation",
+                    "INFO",
+                    saved.getRequestId()
+            );
+        }
 
         return saved;
     }

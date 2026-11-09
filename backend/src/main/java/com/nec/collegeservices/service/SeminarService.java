@@ -919,6 +919,18 @@ public class SeminarService {
 
         SeminarBooking primary = createdList.get(0);
 
+        // Explicit confirmation to original requester
+        notificationService.sendNotification(
+                "DEPARTMENT_USER",
+                user.getDepartment(),
+                user.getUserId(),
+                "Seminar Request Submitted",
+                "Your booking request for " + hall.getName() + " on " + startDateStr + " has been submitted (" + primary.getBookingId() + ").",
+                "Seminar Hall",
+                "INFO",
+                primary.getBookingId()
+        );
+
         // 5. Notify Administrators
         String notificationSummary = bookingType.equals("RECURRING")
                 ? user.getDepartment() + " requested recurring booking (" + totalOccurrences + " occurrences) for " + hall.getName() + " (" + startDateStr + " to " + endDateStr + ")"
@@ -1327,6 +1339,25 @@ public class SeminarService {
                 saved.getBookingId()
         );
 
+        // Notify assigned Seminar Coordinator(s) for the specific hall
+        SeminarHall hall = hallRepository.findById(booking.getHallId()).orElse(null);
+        if (hall != null && hall.getCoordinatorUserIds() != null) {
+            for (String coordUserId : hall.getCoordinatorUserIds()) {
+                if (coordUserId != null && !coordUserId.isBlank()) {
+                    notificationService.sendNotification(
+                            "SEMINAR_COORDINATOR",
+                            "ADMIN",
+                            coordUserId.trim(),
+                            "Seminar Booking Confirmed",
+                            "Booking for " + booking.getHallName() + " on " + booking.getDate() + " (" + booking.getSlot() + ") has been approved and confirmed (" + saved.getBookingId() + ").",
+                            "Seminar Hall",
+                            "SUCCESS",
+                            saved.getBookingId()
+                    );
+                }
+            }
+        }
+
         // Notify assigned Seminar Equipment Technicians
         notifyAssignedTechniciansOnApproval(saved);
 
@@ -1404,6 +1435,25 @@ public class SeminarService {
                 "DANGER",
                 saved.getBookingId()
         );
+
+        // Notify assigned Seminar Coordinator(s) for the specific hall
+        SeminarHall hall = hallRepository.findById(booking.getHallId()).orElse(null);
+        if (hall != null && hall.getCoordinatorUserIds() != null) {
+            for (String coordUserId : hall.getCoordinatorUserIds()) {
+                if (coordUserId != null && !coordUserId.isBlank()) {
+                    notificationService.sendNotification(
+                            "SEMINAR_COORDINATOR",
+                            "ADMIN",
+                            coordUserId.trim(),
+                            "Seminar Request Rejected",
+                            "Booking request for " + booking.getHallName() + " on " + booking.getDate() + " was rejected (" + saved.getBookingId() + ").",
+                            "Seminar Hall",
+                            "DANGER",
+                            saved.getBookingId()
+                    );
+                }
+            }
+        }
 
         return saved;
     }
@@ -1576,6 +1626,25 @@ public class SeminarService {
                 "INFO",
                 booking.getBookingId()
         );
+
+        // Notify assigned Seminar Coordinator(s) for the hall
+        SeminarHall cancelHall = hallRepository.findById(booking.getHallId()).orElse(null);
+        if (cancelHall != null && cancelHall.getCoordinatorUserIds() != null) {
+            for (String coordUserId : cancelHall.getCoordinatorUserIds()) {
+                if (coordUserId != null && !coordUserId.isBlank()) {
+                    notificationService.sendNotification(
+                            "SEMINAR_COORDINATOR",
+                            "ADMIN",
+                            coordUserId.trim(),
+                            "Seminar Cancellation Approved",
+                            "Cancellation for " + booking.getHallName() + " on " + booking.getDate() + " (" + booking.getBookingId() + ") was approved.",
+                            "Seminar Hall",
+                            "INFO",
+                            booking.getBookingId()
+                    );
+                }
+            }
+        }
 
         // Notify assigned Seminar Equipment Technicians
         notifyAssignedTechniciansOnCancellation(booking, targetBookings);
@@ -1856,6 +1925,42 @@ public class SeminarService {
                 "SUCCESS",
                 savedNew.getBookingId()
         );
+
+        // Notify assigned Seminar Coordinator(s) for the new hall
+        if (newHall.getCoordinatorUserIds() != null) {
+            for (String coordUserId : newHall.getCoordinatorUserIds()) {
+                if (coordUserId != null && !coordUserId.isBlank()) {
+                    notificationService.sendNotification(
+                            "SEMINAR_COORDINATOR",
+                            "ADMIN",
+                            coordUserId.trim(),
+                            "Seminar Reschedule Approved",
+                            "Booking rescheduled to " + newHall.getName() + " on " + newDate + " (" + newSlot + "). New ID: " + savedNew.getBookingId(),
+                            "Seminar Hall",
+                            "SUCCESS",
+                            savedNew.getBookingId()
+                    );
+                }
+            }
+        }
+        // If venue changed, also notify old hall coordinator(s)
+        SeminarHall oldHall = getHallById(original.getHallId()).orElse(null);
+        if (oldHall != null && !oldHall.getHallId().equals(newHall.getHallId()) && oldHall.getCoordinatorUserIds() != null) {
+            for (String coordUserId : oldHall.getCoordinatorUserIds()) {
+                if (coordUserId != null && !coordUserId.isBlank()) {
+                    notificationService.sendNotification(
+                            "SEMINAR_COORDINATOR",
+                            "ADMIN",
+                            coordUserId.trim(),
+                            "Seminar Booking Moved",
+                            "Booking " + original.getBookingId() + " previously at " + oldHall.getName() + " was rescheduled to " + newHall.getName() + ".",
+                            "Seminar Hall",
+                            "INFO",
+                            original.getBookingId()
+                    );
+                }
+            }
+        }
 
         // Notify assigned Seminar Equipment Technicians
         notifyAssignedTechniciansOnReschedule(original, savedNew);

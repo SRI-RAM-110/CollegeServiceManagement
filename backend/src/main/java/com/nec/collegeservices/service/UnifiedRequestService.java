@@ -44,6 +44,9 @@ public class UnifiedRequestService {
     @Autowired
     private VehicleRepository vehicleRepository;
 
+    @Autowired
+    private com.nec.collegeservices.repository.UserRepository userRepository;
+
     @Data
     @Builder
     @NoArgsConstructor
@@ -525,6 +528,44 @@ public class UnifiedRequestService {
                     saved.getRequestId()
             );
 
+            // Notify Transport Admin
+            notificationService.sendNotification(
+                    "TRANSPORT_ADMIN",
+                    "ADMIN",
+                    null,
+                    "Transport Request Cancelled",
+                    "Transport request " + saved.getRequestId() + " to " + saved.getDestination() + " on " + saved.getTripDate() + " was cancelled. Reason: " + cleanReason,
+                    "Transport",
+                    "WARNING",
+                    saved.getRequestId()
+            );
+
+            // Notify assigned driver if vehicle has driver details
+            if (saved.getVehicleId() != null) {
+                vehicleRepository.findByVehicleId(saved.getVehicleId()).ifPresent(v -> {
+                    if ((v.getDriverPhone() != null && !v.getDriverPhone().isBlank()) ||
+                        (v.getDriverName() != null && !v.getDriverName().isBlank())) {
+                        userRepository.findAll().stream()
+                                .filter(u -> Boolean.TRUE.equals(u.getActive()))
+                                .filter(u -> (v.getDriverPhone() != null && v.getDriverPhone().equals(u.getPhone()))
+                                        || (v.getDriverName() != null && v.getDriverName().equalsIgnoreCase(u.getName())))
+                                .findFirst()
+                                .ifPresent(driverUser -> {
+                                    notificationService.sendNotification(
+                                            "DRIVER",
+                                            "ADMIN",
+                                            driverUser.getUserId(),
+                                            "Assigned Transport Trip Cancelled",
+                                            "Trip " + saved.getRequestId() + " to " + saved.getDestination() + " on " + saved.getTripDate() + " was cancelled.",
+                                            "Transport",
+                                            "WARNING",
+                                            saved.getRequestId()
+                                    );
+                                });
+                    }
+                });
+            }
+
             return fromTransport(saved);
         }
 
@@ -601,6 +642,46 @@ public class UnifiedRequestService {
                     "WARNING",
                     saved.getRequestId()
             );
+
+            // Notify Meals Admin
+            notificationService.sendNotification(
+                    "MEALS_ADMIN",
+                    "ADMIN",
+                    null,
+                    "Meal Arrangement Request Cancelled",
+                    "Meal request " + saved.getRequestId() + " for " + saved.getDate() + " was cancelled. Reason: " + cleanReason,
+                    "Snacks & Meals",
+                    "WARNING",
+                    saved.getRequestId()
+            );
+
+            // Notify catering/canteen in-charge
+            userRepository.findAll().stream()
+                    .filter(u -> Boolean.TRUE.equals(u.getActive()))
+                    .filter(u -> u.hasRole("CANTEEN_INCHARGE") || u.hasRole("CATERING_INCHARGE") || "CANTEEN".equalsIgnoreCase(u.getDepartment()))
+                    .findFirst()
+                    .ifPresentOrElse(
+                            canteenUser -> notificationService.sendNotification(
+                                    canteenUser.getRole() != null ? canteenUser.getRole() : "CANTEEN_INCHARGE",
+                                    canteenUser.getDepartment() != null ? canteenUser.getDepartment() : "ADMIN",
+                                    canteenUser.getUserId(),
+                                    "Catering Arrangement Cancelled",
+                                    "Catering order " + saved.getRequestId() + " for " + saved.getDate() + " was cancelled.",
+                                    "Snacks & Meals",
+                                    "WARNING",
+                                    saved.getRequestId()
+                            ),
+                            () -> notificationService.sendNotification(
+                                    "CANTEEN_INCHARGE",
+                                    "ADMIN",
+                                    null,
+                                    "Catering Arrangement Cancelled",
+                                    "Catering order " + saved.getRequestId() + " for " + saved.getDate() + " was cancelled.",
+                                    "Snacks & Meals",
+                                    "WARNING",
+                                    saved.getRequestId()
+                            )
+                    );
 
             return fromMeal(saved);
         }

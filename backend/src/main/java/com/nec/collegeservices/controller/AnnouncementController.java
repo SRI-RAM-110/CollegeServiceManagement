@@ -12,7 +12,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/announcements")
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class AnnouncementController {
 
     @Autowired

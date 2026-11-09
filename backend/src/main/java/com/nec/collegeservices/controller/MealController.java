@@ -19,7 +19,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/meals")
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class MealController {
 
     @Autowired

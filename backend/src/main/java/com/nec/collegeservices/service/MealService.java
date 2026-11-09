@@ -286,24 +286,25 @@ public class MealService {
 
         MealRequest primary = createdList.get(0);
 
-        // Notify Admins
+        // Explicit confirmation to original requester
+        notificationService.sendNotification(
+                "DEPARTMENT_USER",
+                user.getDepartment(),
+                user.getUserId(),
+                "Meal Arrangement Request Submitted",
+                "Your snacks & meals arrangement request for " + startDateStr + " has been submitted (" + primary.getRequestId() + ").",
+                "Snacks & Meals",
+                "INFO",
+                primary.getRequestId()
+        );
+
+        // Notify Meals Admin
         String notifyMsg = isSeries
                 ? user.getDepartment() + " requested " + totalOccurrences + " meal arrangement occurrences (" + String.join(", ", dto.getMealTypes()) + " from " + startDateStr + " to " + endDateStr + ")."
                 : user.getDepartment() + " requested food arrangement for " + startDateStr + " (" + String.join(", ", dto.getMealTypes()) + ")";
 
         notificationService.sendNotification(
                 "MEALS_ADMIN",
-                "ADMIN",
-                null,
-                "New Meal Arrangement Request",
-                notifyMsg,
-                "Snacks & Meals",
-                "INFO",
-                primary.getRequestId()
-        );
-
-        notificationService.sendNotification(
-                "AO_ADMIN",
                 "ADMIN",
                 null,
                 "New Meal Arrangement Request",
@@ -423,6 +424,34 @@ public class MealService {
                 "SUCCESS",
                 saved.getRequestId()
         );
+
+        // Notify assigned catering/canteen in-charge
+        userRepository.findAll().stream()
+                .filter(u -> Boolean.TRUE.equals(u.getActive()))
+                .filter(u -> u.hasRole("CANTEEN_INCHARGE") || u.hasRole("CATERING_INCHARGE") || "CANTEEN".equalsIgnoreCase(u.getDepartment()))
+                .findFirst()
+                .ifPresentOrElse(
+                        canteenUser -> notificationService.sendNotification(
+                                canteenUser.getRole() != null ? canteenUser.getRole() : "CANTEEN_INCHARGE",
+                                canteenUser.getDepartment() != null ? canteenUser.getDepartment() : "ADMIN",
+                                canteenUser.getUserId(),
+                                "New Catering Arrangement Order",
+                                "Approved catering arrangement order " + saved.getRequestId() + " for " + saved.getDate() + " (" + (saved.getMealTypes() != null ? String.join(", ", saved.getMealTypes()) : "") + "). Total guests: " + saved.getTotalGuests(),
+                                "Snacks & Meals",
+                                "INFO",
+                                saved.getRequestId()
+                        ),
+                        () -> notificationService.sendNotification(
+                                "CANTEEN_INCHARGE",
+                                "ADMIN",
+                                null,
+                                "New Catering Arrangement Order",
+                                "Approved catering arrangement order " + saved.getRequestId() + " for " + saved.getDate() + " (" + (saved.getMealTypes() != null ? String.join(", ", saved.getMealTypes()) : "") + "). Total guests: " + saved.getTotalGuests(),
+                                "Snacks & Meals",
+                                "INFO",
+                                saved.getRequestId()
+                        )
+                );
 
         if (saved.getRequesterEmail() == null || saved.getRequesterEmail().isBlank()) {
             saved.setRequesterEmail(resolveUserEmail(saved.getRequesterUserId(), saved.getRequestedBy(), saved.getDepartment()));

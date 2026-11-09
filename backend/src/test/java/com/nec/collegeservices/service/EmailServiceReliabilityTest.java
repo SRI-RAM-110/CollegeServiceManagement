@@ -77,13 +77,13 @@ public class EmailServiceReliabilityTest {
     @Test
     @DisplayName("1. CREATOR and AO_ADMIN receiving the same logical event results in one email per recipient")
     void testCreatorAndAoAdminSameLogicalEventDeduplicatedToOnePerRecipient() {
-        // User with CREATOR role (matches SEMINAR_ADMIN and AO_ADMIN permissions)
+        // Multi-role user holding CREATOR, AO_ADMIN, and SEMINAR_ADMIN
         User creator = User.builder()
                 .userId("CREATOR001")
                 .name("Creator User")
                 .email("creator@nrtec.in")
                 .role("CREATOR")
-                .roles(List.of("CREATOR"))
+                .roles(List.of("CREATOR", "AO_ADMIN", "SEMINAR_ADMIN"))
                 .department("ADMIN")
                 .active(true)
                 .build();

@@ -38,6 +38,27 @@ public class ElectricalIssueService {
 
     private static final String SERVICE_NAME = "Electrical Service";
 
+    private User resolveReporter(String reporterUserId) {
+        if (reporterUserId == null || reporterUserId.isBlank()) return null;
+        return userRepository.findByUserId(reporterUserId.trim())
+                .or(() -> userRepository.findByEmailIgnoreCase(reporterUserId.trim()))
+                .orElse(null);
+    }
+
+    private String resolveReporterRole(User reporter) {
+        if (reporter != null && reporter.getRole() != null && !reporter.getRole().isBlank()) {
+            return reporter.getRole();
+        }
+        return "DEPARTMENT_USER";
+    }
+
+    private String resolveReporterDepartment(User reporter, String fallbackDept) {
+        if (reporter != null && reporter.getDepartment() != null && !reporter.getDepartment().isBlank()) {
+            return reporter.getDepartment();
+        }
+        return fallbackDept != null && !fallbackDept.isBlank() ? fallbackDept : "ADMIN";
+    }
+
     /**
      * Create a new campus electrical issue request.
      * Allowed Roles: SEMINAR_TECHNICIAN, AO_ADMIN
@@ -126,6 +147,19 @@ public class ElectricalIssueService {
 
         // Dispatch notifications asynchronously with isolated failure protection
         try {
+            // Notify original reporter
+            User reporter = resolveReporter(saved.getReportedByUserId());
+            notificationService.sendNotification(
+                    resolveReporterRole(reporter),
+                    resolveReporterDepartment(reporter, saved.getReportedByDepartment()),
+                    saved.getReportedByUserId(),
+                    "Electrical Issue Reported",
+                    "Your electrical issue report " + saved.getRequestId() + " at " + saved.getBuildingName() + " has been received.",
+                    SERVICE_NAME,
+                    "INFO",
+                    saved.getRequestId()
+            );
+
             if (ElectricalIssueRequest.Status.ASSIGNED.name().equals(saved.getStatus()) && saved.getAssignedElectricianId() != null) {
                 notificationService.sendNotification(
                         "ELECTRICIAN",
@@ -294,9 +328,10 @@ public class ElectricalIssueService {
         log.info("Electrical issue {} accepted by {}", saved.getRequestId(), currentUser.getUserId());
 
         try {
+            User reporter = resolveReporter(saved.getReportedByUserId());
             notificationService.sendNotification(
-                    "SEMINAR_TECHNICIAN",
-                    saved.getReportedByDepartment(),
+                    resolveReporterRole(reporter),
+                    resolveReporterDepartment(reporter, saved.getReportedByDepartment()),
                     saved.getReportedByUserId(),
                     "Electrical Issue Accepted",
                     "Your reported issue " + saved.getRequestId() + " has been accepted by electrician " + currentUser.getName(),
@@ -339,9 +374,10 @@ public class ElectricalIssueService {
         log.info("Electrical issue {} work started by {}", saved.getRequestId(), currentUser.getUserId());
 
         try {
+            User reporter = resolveReporter(saved.getReportedByUserId());
             notificationService.sendNotification(
-                    "SEMINAR_TECHNICIAN",
-                    saved.getReportedByDepartment(),
+                    resolveReporterRole(reporter),
+                    resolveReporterDepartment(reporter, saved.getReportedByDepartment()),
                     saved.getReportedByUserId(),
                     "Repair Work In Progress",
                     "On-site repair work has commenced for electrical issue " + saved.getRequestId(),
@@ -417,10 +453,11 @@ public class ElectricalIssueService {
         log.info("Electrical issue {} marked COMPLETED by {}", saved.getRequestId(), currentUser.getUserId());
 
         try {
-            // Notify reporting technician
+            // Notify reporting user with resolved role/department
+            User reporter = resolveReporter(saved.getReportedByUserId());
             notificationService.sendNotification(
-                    "SEMINAR_TECHNICIAN",
-                    saved.getReportedByDepartment(),
+                    resolveReporterRole(reporter),
+                    resolveReporterDepartment(reporter, saved.getReportedByDepartment()),
                     saved.getReportedByUserId(),
                     "Electrical Issue Resolved",
                     "Issue " + saved.getRequestId() + " has been resolved. Remarks: " + remarks,
@@ -481,9 +518,10 @@ public class ElectricalIssueService {
         log.info("Electrical issue {} rejected by {}", saved.getRequestId(), currentUser.getUserId());
 
         try {
+            User reporter = resolveReporter(saved.getReportedByUserId());
             notificationService.sendNotification(
-                    "SEMINAR_TECHNICIAN",
-                    saved.getReportedByDepartment(),
+                    resolveReporterRole(reporter),
+                    resolveReporterDepartment(reporter, saved.getReportedByDepartment()),
                     saved.getReportedByUserId(),
                     "Electrical Issue Rejected",
                     "Issue " + saved.getRequestId() + " was rejected. Reason: " + reason,
@@ -548,6 +586,16 @@ public class ElectricalIssueService {
                         saved.getRequestId()
                 );
             }
+            notificationService.sendNotification(
+                    "AO_ADMIN",
+                    "ADMIN",
+                    null,
+                    "Electrical Issue Reopened",
+                    "Issue " + saved.getRequestId() + " at " + saved.getBuildingName() + " was reopened. Reason: " + reason,
+                    SERVICE_NAME,
+                    "ALERT",
+                    saved.getRequestId()
+            );
         } catch (Exception e) {
             log.error("Notification failed for reopened issue {}: {}", saved.getRequestId(), e.getMessage());
         }
@@ -587,6 +635,7 @@ public class ElectricalIssueService {
 
         LocalDateTime now = LocalDateTime.now();
         String prevAssignee = req.getAssignedElectricianName() != null ? req.getAssignedElectricianName() : "None";
+        String prevElectricianId = req.getAssignedElectricianId();
         req.setAssignedElectricianId(targetElectrician.getUserId());
         req.setAssignedElectricianName(targetElectrician.getName());
         req.setAssignedElectricianPhone(targetElectrician.getPhone());
@@ -621,10 +670,25 @@ public class ElectricalIssueService {
                     saved.getRequestId()
             );
 
-            // Notify reporting technician
+            // Notify previous electrician if different
+            if (prevElectricianId != null && !prevElectricianId.isBlank() && !prevElectricianId.equals(targetElectrician.getUserId())) {
+                notificationService.sendNotification(
+                        "ELECTRICIAN",
+                        null,
+                        prevElectricianId,
+                        "Electrical Issue Reassigned Away",
+                        "Issue " + saved.getRequestId() + " has been reassigned to " + targetElectrician.getName() + " by AO Admin.",
+                        SERVICE_NAME,
+                        "INFO",
+                        saved.getRequestId()
+                );
+            }
+
+            // Notify reporting user with resolved role/department
+            User reporter = resolveReporter(saved.getReportedByUserId());
             notificationService.sendNotification(
-                    "SEMINAR_TECHNICIAN",
-                    saved.getReportedByDepartment(),
+                    resolveReporterRole(reporter),
+                    resolveReporterDepartment(reporter, saved.getReportedByDepartment()),
                     saved.getReportedByUserId(),
                     "Electrician Reassigned",
                     "Electrician for your reported issue " + saved.getRequestId() + " is now " + targetElectrician.getName(),
@@ -723,9 +787,10 @@ public class ElectricalIssueService {
         log.info("Electrical issue {} cancelled by {}", saved.getRequestId(), currentUser.getUserId());
 
         try {
+            User reporter = resolveReporter(saved.getReportedByUserId());
             notificationService.sendNotification(
-                    "SEMINAR_TECHNICIAN",
-                    saved.getReportedByDepartment(),
+                    resolveReporterRole(reporter),
+                    resolveReporterDepartment(reporter, saved.getReportedByDepartment()),
                     saved.getReportedByUserId(),
                     "Electrical Issue Cancelled",
                     "Issue " + saved.getRequestId() + " was cancelled. Reason: " + reason,
@@ -733,6 +798,19 @@ public class ElectricalIssueService {
                     "STATUS_UPDATE",
                     saved.getRequestId()
             );
+
+            if (saved.getAssignedElectricianId() != null && !saved.getAssignedElectricianId().isBlank()) {
+                notificationService.sendNotification(
+                        "ELECTRICIAN",
+                        null,
+                        saved.getAssignedElectricianId(),
+                        "Electrical Issue Cancelled",
+                        "Issue " + saved.getRequestId() + " assigned to you was cancelled by AO Admin. Reason: " + reason,
+                        SERVICE_NAME,
+                        "STATUS_UPDATE",
+                        saved.getRequestId()
+                );
+            }
         } catch (Exception e) {
             log.error("Notification failed for cancelled issue {}: {}", saved.getRequestId(), e.getMessage());
         }
