@@ -166,6 +166,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/api/push/public-key").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/health").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.HEAD, "/api/health").permitAll()
                 .requestMatchers("/error").permitAll()
 
                 // =========================================================================
