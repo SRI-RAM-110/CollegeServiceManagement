@@ -22,6 +22,7 @@ import com.lowagie.text.pdf.PdfWriter;
 import com.nec.collegeservices.model.AccommodationRequest;
 import com.nec.collegeservices.model.MealRequest;
 import com.nec.collegeservices.model.SeminarBooking;
+import com.nec.collegeservices.model.SeminarEventInspection;
 import com.nec.collegeservices.model.StationeryRequest;
 import com.nec.collegeservices.model.TransportRequest;
 import org.slf4j.Logger;
@@ -713,6 +714,366 @@ public class PdfGenerationService {
             logger.warn("Could not load NEClogo.png: " + e.getMessage());
         }
         return null;
+    }
+
+    // =========================================================================
+    // SEMINAR EVENT INSPECTION REPORT (PRE-EVENT & POST-EVENT AUDIT)
+    // =========================================================================
+
+    public byte[] generateInspectionReportPdf(SeminarEventInspection inspection) {
+        Document document = new Document(PageSize.A4, 36, 36, 40, 48);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+        try {
+            PdfWriter writer = PdfWriter.getInstance(document, baos);
+            HeaderFooterPageEvent event = new HeaderFooterPageEvent(inspection.getBookingId());
+            writer.setPageEvent(event);
+
+            document.open();
+
+            // 1. College Header
+            addInspectionHeader(document, inspection);
+
+            // 2. Section A: Event Information
+            addInspectionEventInfo(document, inspection);
+
+            // 3. Section B: Pre-Event Inspection
+            addPreEventInspectionSection(document, inspection);
+
+            // 4. Section C: Post-Event Inspection
+            addPostEventInspectionSection(document, inspection);
+
+            // 5. Section D: Issues & Maintenance
+            addIssuesAndMaintenanceSection(document, inspection);
+
+            // 6. Section E: Final Event Summary
+            addFinalSummarySection(document, inspection);
+
+            // 7. Signatures
+            addInspectionSignaturesSection(document);
+
+            document.close();
+            return baos.toByteArray();
+        } catch (Exception e) {
+            logger.error("Failed to generate inspection report PDF for booking: " + inspection.getBookingId(), e);
+            throw new RuntimeException("Error generating official inspection PDF: " + e.getMessage(), e);
+        }
+    }
+
+    private void addInspectionHeader(Document document, SeminarEventInspection inspection) throws DocumentException {
+        PdfPTable headerTable = new PdfPTable(2);
+        headerTable.setWidthPercentage(100);
+        headerTable.setWidths(new float[]{1.2f, 4.8f});
+        headerTable.getDefaultCell().setBorder(Rectangle.NO_BORDER);
+
+        PdfPCell logoCell = new PdfPCell();
+        logoCell.setBorder(Rectangle.NO_BORDER);
+        logoCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        logoCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+
+        Image logo = loadCollegeLogo();
+        if (logo != null) {
+            logo.scaleToFit(85, 85);
+            logoCell.addElement(logo);
+        } else {
+            Paragraph logoPlaceholder = new Paragraph("[ NEC LOGO ]", FONT_SYSTEM_NAME);
+            logoPlaceholder.setAlignment(Element.ALIGN_CENTER);
+            logoCell.addElement(logoPlaceholder);
+        }
+        headerTable.addCell(logoCell);
+
+        PdfPCell textCell = new PdfPCell();
+        textCell.setBorder(Rectangle.NO_BORDER);
+        textCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+
+        Paragraph collegeName = new Paragraph("NARASARAOPETA ENGINEERING COLLEGE", FONT_COLLEGE_NAME);
+        collegeName.setSpacingAfter(1);
+        textCell.addElement(collegeName);
+
+        Paragraph collegeSub = new Paragraph("(Autonomous) • Approved by AICTE • Permanently Affiliated to JNTUK • Accredited by NAAC with 'A+' Grade", FONT_COLLEGE_SUB);
+        collegeSub.setSpacingAfter(2);
+        textCell.addElement(collegeSub);
+
+        Paragraph systemTitle = new Paragraph("COLLEGE DEPARTMENT SERVICES MANAGEMENT SYSTEM", FONT_SYSTEM_NAME);
+        systemTitle.setSpacingAfter(4);
+        textCell.addElement(systemTitle);
+
+        headerTable.addCell(textCell);
+        document.add(headerTable);
+
+        // Document Banner Bar
+        PdfPTable banner = new PdfPTable(2);
+        banner.setWidthPercentage(100);
+        banner.setWidths(new float[]{3.6f, 1.4f});
+        banner.setSpacingBefore(8);
+        banner.setSpacingAfter(10);
+
+        PdfPCell titleCell = new PdfPCell(new Phrase("NEC - SEMINAR EVENT INSPECTION REPORT", FONT_DOC_TITLE));
+        titleCell.setBackgroundColor(BG_HEADER);
+        titleCell.setBorderColor(BORDER_GRAY);
+        titleCell.setPadding(6);
+        titleCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        banner.addCell(titleCell);
+
+        String statusText = inspection.getOverallStatus() != null ? inspection.getOverallStatus().toUpperCase() : "COMPLETED";
+        Color statusBg = "COMPLETED".equals(statusText) ? new Color(240, 253, 244) : new Color(254, 243, 199);
+        Color statusBorder = "COMPLETED".equals(statusText) ? new Color(187, 247, 208) : new Color(253, 230, 138);
+        Color statusTextColor = "COMPLETED".equals(statusText) ? ACCENT_GREEN : new Color(180, 83, 9);
+
+        Font fontStatus = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9.5f, statusTextColor);
+        PdfPCell statusCell = new PdfPCell(new Phrase("STATUS: " + statusText, fontStatus));
+        statusCell.setBackgroundColor(statusBg);
+        statusCell.setBorderColor(statusBorder);
+        statusCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        statusCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        statusCell.setPadding(6);
+        banner.addCell(statusCell);
+
+        document.add(banner);
+    }
+
+    private void addInspectionEventInfo(Document document, SeminarEventInspection inspection) throws DocumentException {
+        addSectionHeader(document, "A. EVENT INFORMATION");
+
+        PdfPTable table = new PdfPTable(4);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{1.3f, 1.7f, 1.3f, 1.7f});
+        table.setSpacingAfter(10);
+
+        String occDate = inspection.getOccurrenceDate() != null ? inspection.getOccurrenceDate() : "—";
+        String occIndex = inspection.getOccurrenceIndex() != null ? " (Session #" + inspection.getOccurrenceIndex() + ")" : "";
+
+        addGridRow(table, "Event Title", inspection.getEventTitle(), "Booking ID", inspection.getBookingId() + occIndex);
+        addGridRow(table, "Event Date", occDate, "Session / Slot", formatSlot(inspection.getSlot()));
+        addGridRow(table, "Seminar Hall", inspection.getHallName(), "Location", inspection.getHallLocation());
+        addGridRow(table, "Department", inspection.getDepartment(), "Booked By", inspection.getRequestedBy() != null ? inspection.getRequestedBy() : "—");
+        addGridRow(table, "Coordinator", inspection.getCoordinatorName() != null ? inspection.getCoordinatorName() : "—",
+                "Assigned Technician", inspection.getTechnicianName() != null ? inspection.getTechnicianName() : "—");
+        addGridRowSpan(table, "Event Purpose", inspection.getPurpose() != null && !inspection.getPurpose().isBlank() ? inspection.getPurpose() : "Institutional Academic Event");
+
+        document.add(table);
+    }
+
+    private void addPreEventInspectionSection(Document document, SeminarEventInspection inspection) throws DocumentException {
+        addSectionHeader(document, "B. PRE-EVENT INSPECTION (VERIFIED BEFORE EVENT)");
+
+        SeminarEventInspection.InspectionChecklist pre = inspection.getPreEventInspection();
+        PdfPTable metaTable = new PdfPTable(4);
+        metaTable.setWidthPercentage(100);
+        metaTable.setWidths(new float[]{1.3f, 1.7f, 1.3f, 1.7f});
+        metaTable.setSpacingAfter(4);
+
+        String inspectTime = pre != null && pre.getInspectedAt() != null ? pre.getInspectedAt().format(DATE_TIME_FORMATTER) : "—";
+        String inspector = pre != null && pre.getInspectedByName() != null ? pre.getInspectedByName() : (inspection.getTechnicianName() != null ? inspection.getTechnicianName() : "—");
+
+        addGridRow(metaTable, "Technician", inspector, "Inspection Time", inspectTime);
+        addGridRow(metaTable, "Pre-Event Status", inspection.getPreEventStatus(), "Issues Found", Boolean.TRUE.equals(pre != null ? pre.getIssuesIdentified() : false) ? "Yes (Defects Noted)" : "None (All Satisfactory)");
+        document.add(metaTable);
+
+        // Checklist Table
+        renderChecklistItemsTable(document, pre != null ? pre.getItems() : null);
+
+        if (pre != null && pre.getOverallNotes() != null && !pre.getOverallNotes().isBlank()) {
+            PdfPTable notesTable = new PdfPTable(1);
+            notesTable.setWidthPercentage(100);
+            notesTable.setSpacingAfter(8);
+            PdfPCell c = new PdfPCell(new Phrase("Pre-Event Technician Notes: " + pre.getOverallNotes(), FONT_VALUE));
+            c.setBackgroundColor(BG_SECTION);
+            c.setBorderColor(BORDER_GRAY);
+            c.setPadding(4);
+            notesTable.addCell(c);
+            document.add(notesTable);
+        }
+    }
+
+    private void addPostEventInspectionSection(Document document, SeminarEventInspection inspection) throws DocumentException {
+        addSectionHeader(document, "C. POST-EVENT INSPECTION (VERIFIED AFTER EVENT CONCLUDED)");
+
+        SeminarEventInspection.InspectionChecklist post = inspection.getPostEventInspection();
+        PdfPTable metaTable = new PdfPTable(4);
+        metaTable.setWidthPercentage(100);
+        metaTable.setWidths(new float[]{1.3f, 1.7f, 1.3f, 1.7f});
+        metaTable.setSpacingAfter(4);
+
+        String inspectTime = post != null && post.getInspectedAt() != null ? post.getInspectedAt().format(DATE_TIME_FORMATTER) : "—";
+        String inspector = post != null && post.getInspectedByName() != null ? post.getInspectedByName() : (inspection.getTechnicianName() != null ? inspection.getTechnicianName() : "—");
+
+        addGridRow(metaTable, "Technician", inspector, "Inspection Time", inspectTime);
+        addGridRow(metaTable, "Post-Event Status", inspection.getPostEventStatus(), "Damages / Defects", Boolean.TRUE.equals(post != null ? post.getIssuesIdentified() : false) ? "Yes (Issues Noted)" : "None (All Normal)");
+        document.add(metaTable);
+
+        // Checklist Table
+        renderChecklistItemsTable(document, post != null ? post.getItems() : null);
+
+        if (post != null && post.getOverallNotes() != null && !post.getOverallNotes().isBlank()) {
+            PdfPTable notesTable = new PdfPTable(1);
+            notesTable.setWidthPercentage(100);
+            notesTable.setSpacingAfter(8);
+            PdfPCell c = new PdfPCell(new Phrase("Post-Event Technician Notes: " + post.getOverallNotes(), FONT_VALUE));
+            c.setBackgroundColor(BG_SECTION);
+            c.setBorderColor(BORDER_GRAY);
+            c.setPadding(4);
+            notesTable.addCell(c);
+            document.add(notesTable);
+        }
+    }
+
+    private void renderChecklistItemsTable(Document document, List<SeminarEventInspection.InspectionItem> items) throws DocumentException {
+        PdfPTable table = new PdfPTable(4);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{1.5f, 2.3f, 1.2f, 2.0f});
+        table.setSpacingAfter(6);
+
+        // Header Row
+        String[] headers = {"Category", "Inspection Item", "Condition / Status", "Technician Remarks"};
+        for (String h : headers) {
+            PdfPCell hc = new PdfPCell(new Phrase(h, FONT_TABLE_HEADER));
+            hc.setBackgroundColor(SECONDARY_BLUE);
+            hc.setBorderColor(BORDER_GRAY);
+            hc.setPadding(4);
+            table.addCell(hc);
+        }
+
+        if (items == null || items.isEmpty()) {
+            PdfPCell empty = new PdfPCell(new Phrase("No checklist items recorded", FONT_VALUE));
+            empty.setColspan(4);
+            empty.setPadding(6);
+            empty.setHorizontalAlignment(Element.ALIGN_CENTER);
+            table.addCell(empty);
+            document.add(table);
+            return;
+        }
+
+        for (SeminarEventInspection.InspectionItem item : items) {
+            PdfPCell catCell = new PdfPCell(new Phrase(item.getCategory() != null ? item.getCategory() : "General", FONT_LABEL));
+            catCell.setBackgroundColor(BG_SECTION);
+            catCell.setBorderColor(BORDER_GRAY);
+            catCell.setPadding(3);
+            table.addCell(catCell);
+
+            PdfPCell nameCell = new PdfPCell(new Phrase(item.getName() != null ? item.getName() : item.getKey(), FONT_VALUE));
+            nameCell.setBorderColor(BORDER_GRAY);
+            nameCell.setPadding(3);
+            table.addCell(nameCell);
+
+            String cond = item.getCondition() != null ? item.getCondition().toUpperCase() : "WORKING";
+            String condDisplay;
+            Color condColor;
+            if ("NOT_WORKING".equals(cond)) {
+                condDisplay = "Not Working";
+                condColor = new Color(185, 28, 28);
+            } else if ("NOT_AVAILABLE".equals(cond)) {
+                condDisplay = "Not Available";
+                condColor = new Color(180, 83, 9);
+            } else if ("NOT_APPLICABLE".equals(cond)) {
+                condDisplay = "Not Applicable";
+                condColor = TEXT_MUTED;
+            } else {
+                condDisplay = "Satisfactory";
+                condColor = ACCENT_GREEN;
+            }
+
+            Font condFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8.5f, condColor);
+            PdfPCell statusCell = new PdfPCell(new Phrase(condDisplay, condFont));
+            statusCell.setBorderColor(BORDER_GRAY);
+            statusCell.setPadding(3);
+            table.addCell(statusCell);
+
+            String remarks = item.getRemarks() != null && !item.getRemarks().isBlank() ? item.getRemarks() : "—";
+            PdfPCell remCell = new PdfPCell(new Phrase(remarks, FONT_VALUE));
+            remCell.setBorderColor(BORDER_GRAY);
+            remCell.setPadding(3);
+            table.addCell(remCell);
+        }
+
+        document.add(table);
+    }
+
+    private void addIssuesAndMaintenanceSection(Document document, SeminarEventInspection inspection) throws DocumentException {
+        addSectionHeader(document, "D. ISSUES AND MAINTENANCE ACTIONS");
+
+        PdfPTable table = new PdfPTable(2);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{2.0f, 4.0f});
+        table.setSpacingAfter(8);
+
+        SeminarEventInspection.InspectionChecklist pre = inspection.getPreEventInspection();
+        SeminarEventInspection.InspectionChecklist post = inspection.getPostEventInspection();
+
+        boolean hasPreMaintenance = pre != null && pre.getMaintenanceRequestId() != null && !pre.getMaintenanceRequestId().isBlank();
+        boolean hasPostMaintenance = post != null && post.getMaintenanceRequestId() != null && !post.getMaintenanceRequestId().isBlank();
+
+        String preMaintenanceVal = hasPreMaintenance
+                ? "Ticket ID: " + pre.getMaintenanceRequestId() + (pre.getMaintenanceNotes() != null ? " — " + pre.getMaintenanceNotes() : "")
+                : "No maintenance action required prior to event.";
+        addGridRow2Col(table, "Pre-Event Maintenance", preMaintenanceVal);
+
+        String postMaintenanceVal = hasPostMaintenance
+                ? "Ticket ID: " + post.getMaintenanceRequestId() + (post.getMaintenanceNotes() != null ? " — " + post.getMaintenanceNotes() : "")
+                : "No maintenance action or repair required after event.";
+        addGridRow2Col(table, "Post-Event Maintenance", postMaintenanceVal);
+
+        document.add(table);
+    }
+
+    private void addFinalSummarySection(Document document, SeminarEventInspection inspection) throws DocumentException {
+        addSectionHeader(document, "E. FINAL EVENT SUMMARY AND OPERATIONAL READINESS");
+
+        PdfPTable table = new PdfPTable(4);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{1.3f, 1.7f, 1.3f, 1.7f});
+        table.setSpacingAfter(10);
+
+        SeminarEventInspection.FinalSummary summary = inspection.getFinalSummary();
+        String conducted = summary != null && Boolean.FALSE.equals(summary.getEventConducted()) ? "No" : "Yes (Successfully Conducted)";
+        String damage = summary != null && Boolean.TRUE.equals(summary.getDamageIdentified()) ? "Yes (Defects Reported)" : "None";
+
+        addGridRow(table, "Event Conducted", conducted, "Damages / Loss", damage);
+        addGridRow(table, "Pre-Event Readiness", "COMPLETED".equals(inspection.getPreEventStatus()) ? "Verified Satisfactory" : inspection.getPreEventStatus(),
+                "Post-Event Handover", "COMPLETED".equals(inspection.getPostEventStatus()) ? "Secured & Cleared" : inspection.getPostEventStatus());
+
+        String remarks = summary != null && summary.getTechnicianFinalRemarks() != null && !summary.getTechnicianFinalRemarks().isBlank()
+                ? summary.getTechnicianFinalRemarks()
+                : "Hall inspected, verified, and secured in ready condition for subsequent institutional activities.";
+        addGridRowSpan(table, "Technician Final Remarks", remarks);
+
+        document.add(table);
+    }
+
+    private void addInspectionSignaturesSection(Document document) throws DocumentException {
+        PdfPTable sigTable = new PdfPTable(3);
+        sigTable.setWidthPercentage(100);
+        sigTable.setWidths(new float[]{1f, 1f, 1f});
+        sigTable.setSpacingBefore(16);
+        sigTable.setKeepTogether(true);
+
+        // 1. Technician
+        PdfPCell c1 = new PdfPCell();
+        c1.setBorder(Rectangle.NO_BORDER);
+        c1.setHorizontalAlignment(Element.ALIGN_LEFT);
+        Paragraph s1 = new Paragraph("\n\n___________________________\nSeminar Equipment Technician\nInspected & Verified", FONT_VALUE);
+        c1.addElement(s1);
+        sigTable.addCell(c1);
+
+        // 2. Coordinator
+        PdfPCell c2 = new PdfPCell();
+        c2.setBorder(Rectangle.NO_BORDER);
+        c2.setHorizontalAlignment(Element.ALIGN_CENTER);
+        Paragraph s2 = new Paragraph("\n\n___________________________\nSeminar Hall Coordinator\nReviewed & Accepted", FONT_VALUE);
+        s2.setAlignment(Element.ALIGN_CENTER);
+        c2.addElement(s2);
+        sigTable.addCell(c2);
+
+        // 3. AO / Authority
+        PdfPCell c3 = new PdfPCell();
+        c3.setBorder(Rectangle.NO_BORDER);
+        c3.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        Paragraph s3 = new Paragraph("\n\n___________________________\nAdministrative Officer\nAuthorised Official Signatory", FONT_VALUE);
+        s3.setAlignment(Element.ALIGN_RIGHT);
+        c3.addElement(s3);
+        sigTable.addCell(c3);
+
+        document.add(sigTable);
     }
 
     // Page Event for Footer: "College Department Services Management System | Request ID: X | Generated On: ... | Page X of Y"

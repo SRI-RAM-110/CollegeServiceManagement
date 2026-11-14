@@ -126,6 +126,9 @@ public class SeminarService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired(required = false)
+    private SeminarInspectionService inspectionService;
+
     public List<SeminarHall> getAllHalls() {
         return getAllHalls(null, false);
     }
@@ -1410,6 +1413,15 @@ public class SeminarService {
         // Notify active Electricians
         notifyElectriciansOnApproval(saved);
 
+        // Automatically initialize pre-event and post-event inspection record(s)
+        if (inspectionService != null) {
+            try {
+                inspectionService.createInspectionsForApprovedBooking(saved);
+            } catch (Exception e) {
+                logger.warn("Could not auto-create inspection records for approved booking {}: {}", saved.getBookingId(), e.getMessage());
+            }
+        }
+
         return saved;
     }
 
@@ -1697,6 +1709,15 @@ public class SeminarService {
 
         // Notify active Electricians
         notifyElectriciansOnCancellation(booking, targetBookings);
+
+        // Update linked inspection status on cancellation
+        if (inspectionService != null) {
+            try {
+                inspectionService.handleBookingCancellation(booking.getBookingId());
+            } catch (Exception e) {
+                logger.warn("Could not cancel inspections for {}: {}", booking.getBookingId(), e.getMessage());
+            }
+        }
 
         return bookingRepository.findById(booking.getId()).orElse(booking);
     }

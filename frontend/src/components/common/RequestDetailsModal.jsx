@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, Download, X, FileText, CheckCircle2, Clock, AlertCircle, Loader2, Ban } from 'lucide-react';
 import { COLLEGE_LOGO } from '../../constants/branding';
-import { requestsApi } from '../../services/api';
+import { requestsApi, seminarInspectionApi } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { StatusBadge } from './StatusBadge';
 import { PdfPreviewModal } from './PdfPreviewModal';
@@ -24,12 +24,15 @@ export const RequestDetailsModal = ({
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelling, setCancelling] = useState(false);
+  const [inspection, setInspection] = useState(null);
+  const [downloadingReport, setDownloadingReport] = useState(false);
 
   const reqId = request?.requestId || request?.bookingId || request?.id;
 
   useEffect(() => {
     if (!isOpen || !reqId) {
       setCachedPdfBlob(null);
+      setInspection(null);
       return;
     }
 
@@ -52,6 +55,20 @@ export const RequestDetailsModal = ({
     };
 
     fetchFullDetails();
+
+    // Fetch seminar inspection record if applicable
+    const isSeminar = request?.service === 'Seminar Hall' || request?.serviceCategory === 'SEMINAR';
+    if (isSeminar) {
+      seminarInspectionApi.getInspectionByBooking(reqId, request?.date || request?.rawObject?.date)
+        .then((res) => {
+          if (!isCancelled && res?.data) {
+            setInspection(res.data);
+          }
+        })
+        .catch(() => {
+          if (!isCancelled) setInspection(null);
+        });
+    }
 
     return () => {
       isCancelled = true;
@@ -141,6 +158,21 @@ export const RequestDetailsModal = ({
       alert(err.message || 'Unable to generate or open PDF. Please try again.');
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const handleDownloadInspectionPdf = async () => {
+    if (!inspection || downloadingReport) return;
+    try {
+      setDownloadingReport(true);
+      const res = await seminarInspectionApi.downloadPdf(inspection.id);
+      const filename = `NEC_Inspection_Report_${inspection.bookingId}_${inspection.occurrenceDate}.pdf`;
+      await downloadOrOpenPdf(new Blob([res.data], { type: 'application/pdf' }), filename);
+    } catch (e) {
+      console.error('Failed to download inspection report:', e);
+      alert(e?.response?.data?.message || e?.message || 'Failed to download inspection report');
+    } finally {
+      setDownloadingReport(false);
     }
   };
 
@@ -364,6 +396,60 @@ export const RequestDetailsModal = ({
                       <span className="doc-view-value text-emerald-200 font-mono">
                         New Booking ID: {raw.rescheduledToBookingId}
                       </span>
+                    </div>
+                  )}
+
+                  {/* Seminar Hall Inspection & Readiness Audit Block */}
+                  {inspection && (
+                    <div className="doc-view-cell doc-view-span-full" style={{ backgroundColor: 'rgba(14, 116, 144, 0.1)', borderColor: 'rgba(14, 116, 144, 0.35)' }}>
+                      <div className="flex items-center justify-between pb-2 border-b border-cyan-800/40">
+                        <span className="doc-view-label text-cyan-300 font-bold tracking-wide">
+                          SEMINAR INSPECTION & FACILITY READINESS AUDIT
+                        </span>
+                        {inspection.overallStatus === 'COMPLETED' && (
+                          <button
+                            type="button"
+                            onClick={handleDownloadInspectionPdf}
+                            disabled={downloadingReport}
+                            className="btn btn-primary btn-sm flex items-center gap-1.5"
+                            style={{ padding: '3px 10px', fontSize: '11px', textTransform: 'none' }}
+                          >
+                            <Download size={13} />
+                            <span>{downloadingReport ? 'Downloading...' : 'Download Event Report (PDF)'}</span>
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2.5 text-xs">
+                        <div>
+                          <span className="text-slate-400 block text-[10px]">Pre-Event Audit</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded inline-block mt-0.5 ${
+                            inspection.preEventStatus === 'COMPLETED' ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/30' : 'bg-slate-800 text-slate-300 border border-slate-700'
+                          }`}>
+                            {inspection.preEventStatus === 'COMPLETED' ? 'Completed & Satisfactory' : 'Pending Inspection'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block text-[10px]">Post-Event Audit</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded inline-block mt-0.5 ${
+                            inspection.postEventStatus === 'COMPLETED' ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/30' : 'bg-slate-800 text-slate-400 border border-slate-700'
+                          }`}>
+                            {inspection.postEventStatus === 'COMPLETED' ? 'Completed & Handed Over' : 'Pending Conclusion'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block text-[10px]">Assigned Technician</span>
+                          <span className="text-slate-200 block truncate font-medium mt-0.5">{inspection.technicianName || 'Campus AV Technician'}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block text-[10px]">Overall State</span>
+                          <span className="text-cyan-300 block font-semibold mt-0.5">{inspection.overallStatus}</span>
+                        </div>
+                      </div>
+                      {inspection.finalSummary?.damageIdentified && (
+                        <div className="mt-2.5 pt-2 border-t border-rose-800/40 text-rose-300 text-xs">
+                          <strong>Damages / Faults Noted:</strong> {inspection.finalSummary.damageDescription}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

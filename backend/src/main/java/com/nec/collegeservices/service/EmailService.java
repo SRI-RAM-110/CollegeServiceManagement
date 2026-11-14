@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -1298,5 +1299,71 @@ public class EmailService {
                 +
                 "-------------------------------------------------------\n" +
                 "This is an automated notification. Please do not reply directly.";
+    }
+
+    public boolean sendEmailWithAttachment(String primaryRecipient, List<String> ccRecipients,
+                                           String subject, String htmlBody, String plainText,
+                                           String attachmentFilename, byte[] attachmentBytes, String referenceId) {
+        if (!mailEnabled || primaryRecipient == null || primaryRecipient.isBlank()) {
+            return false;
+        }
+
+        String cleanPrimary = primaryRecipient.trim().toLowerCase();
+        List<String> cleanCcs = ccRecipients != null
+                ? ccRecipients.stream().filter(c -> c != null && !c.isBlank()).map(String::trim).map(String::toLowerCase).toList()
+                : Collections.emptyList();
+
+        EmailLog logEntry = EmailLog.builder()
+                .referenceId(referenceId)
+                .service("Seminar Hall Inspection")
+                .eventCategory("INSPECTION_REPORT")
+                .primaryRecipient(cleanPrimary)
+                .ccRecipients(cleanCcs)
+                .subject(subject)
+                .provider("SMTP")
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        if (!isSmtpConfigured()) {
+            logEntry.setStatus(EmailLog.STATUS_SKIPPED_NO_CREDENTIALS);
+            emailLogRepository.save(logEntry);
+            log.info("Email with attachment simulated [SKIPPED_NO_CREDENTIALS] to: {}", cleanPrimary);
+            return true;
+        }
+
+        try {
+            JavaMailSender sender = (dynamicMailSender != null) ? dynamicMailSender : createMailSender();
+            MimeMessage message = sender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            String senderFrom = (mailFrom != null && !mailFrom.isBlank()) ? mailFrom : mailUsername;
+            helper.setFrom(new InternetAddress(senderFrom, mailFromName));
+            helper.setTo(cleanPrimary);
+            if (!cleanCcs.isEmpty()) {
+                helper.setCc(cleanCcs.toArray(new String[0]));
+            }
+            helper.setSubject(subject);
+            helper.setText(plainText != null ? plainText : htmlBody, htmlBody);
+
+            if (attachmentFilename != null && attachmentBytes != null && attachmentBytes.length > 0) {
+                helper.addAttachment(attachmentFilename, new ByteArrayResource(attachmentBytes));
+            }
+
+            sender.send(message);
+
+            String messageId = message.getMessageID();
+            logEntry.setMessageId(messageId);
+            logEntry.setStatus(EmailLog.STATUS_SMTP_ACCEPTED);
+            logEntry.setErrorMessage(null);
+            emailLogRepository.save(logEntry);
+            log.info("Inspection report email with attachment successfully sent to {}", cleanPrimary);
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to send inspection report email to {}: {}", cleanPrimary, e.getMessage());
+            logEntry.setStatus("FAILED");
+            logEntry.setErrorMessage(e.getMessage());
+            emailLogRepository.save(logEntry);
+            return false;
+        }
     }
 }

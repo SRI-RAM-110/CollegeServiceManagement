@@ -148,6 +148,16 @@ export const seminarApi = {
   getElectricianSchedule: () => api.get('/seminar/electrician/schedule'),
 };
 
+export const seminarInspectionApi = {
+  getInspections: (params = {}) => api.get('/seminar/inspections', { params }),
+  getInspectionById: (id) => api.get(`/seminar/inspections/${id}`),
+  getInspectionByBooking: (bookingId, date) => api.get(`/seminar/inspections/by-booking/${bookingId}`, { params: date ? { date } : {} }),
+  submitPreEvent: (id, data) => api.put(`/seminar/inspections/${id}/pre-event`, data),
+  submitPostEvent: (id, data) => api.put(`/seminar/inspections/${id}/post-event`, data),
+  downloadPdf: (id) => api.get(`/seminar/inspections/${id}/pdf`, { responseType: 'blob' }),
+  retryDistribution: (id) => api.post(`/seminar/inspections/${id}/retry-distribution`),
+};
+
 export const adminUserApi = {
   getStats: () => api.get('/admin/users/stats'),
   getUsers: (params = {}) => api.get('/admin/users', { params }),
