@@ -22,6 +22,7 @@ import {
   Ban,
   Mail,
   Plus,
+  Wrench,
 } from 'lucide-react';
 import StatCard from '../../components/common/StatCard';
 import StatusBadge from '../../components/common/StatusBadge';
@@ -48,6 +49,47 @@ export default function SeminarAdmin() {
   const [ccError, setCcError] = useState('');
   const [savingCc, setSavingCc] = useState(false);
   const canManageHallCc = isAOAdmin || isSeminarAdmin || user?.roles?.includes('CREATOR') || user?.role === 'CREATOR';
+
+  // Condition Modal State for Coordinators & Admins
+  const [conditionModalOpen, setConditionModalOpen] = useState(false);
+  const [conditionModalHall, setConditionModalHall] = useState(null);
+  const [conditionForm, setConditionForm] = useState({
+    status: 'Available',
+    active: true,
+  });
+  const [savingCondition, setSavingCondition] = useState(false);
+
+  const handleOpenConditionModal = (hall) => {
+    setConditionModalHall(hall);
+    setConditionForm({
+      status: hall.status || 'Available',
+      active: hall.active !== false,
+    });
+    setConditionModalOpen(true);
+  };
+
+  const handleSaveCondition = async (e) => {
+    e.preventDefault();
+    if (!conditionModalHall || savingCondition) return;
+
+    try {
+      setSavingCondition(true);
+      const targetHallId = conditionModalHall.hallId || conditionModalHall.id;
+      const payload = {
+        status: conditionForm.status,
+        active: conditionForm.active,
+      };
+
+      await seminarApi.updateHallCondition(targetHallId, payload);
+      addToast(`Operational condition for '${conditionModalHall.name}' updated successfully.`, 'success');
+      setConditionModalOpen(false);
+      fetchData();
+    } catch (err) {
+      addToast(err.response?.data?.message || err.message || 'Failed to update hall condition', 'error');
+    } finally {
+      setSavingCondition(false);
+    }
+  };
 
   const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0, cancellationRequested: 0, rescheduleRequested: 0 });
   const [requests, setRequests] = useState([]);
@@ -416,6 +458,16 @@ export default function SeminarAdmin() {
                   }`}>
                     {hall.status || 'Available'}
                   </span>
+                </div>
+                <div className="pt-2 border-t border-slate-800/60 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenConditionModal(hall)}
+                    className="w-full py-1.5 px-3 rounded-lg text-xs font-semibold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 hover:border-blue-500/50 transition-all duration-200 flex items-center justify-center gap-1.5"
+                  >
+                    <Wrench className="w-3.5 h-3.5 text-blue-400" />
+                    Modify Hall Condition
+                  </button>
                 </div>
               </div>
             ))}
@@ -1296,6 +1348,105 @@ export default function SeminarAdmin() {
               </button>
             </div>
           </div>
+        </Modal>
+      )}
+
+      {/* Modify Hall Condition Modal */}
+      {conditionModalOpen && (
+        <Modal
+          isOpen={conditionModalOpen}
+          onClose={() => !savingCondition && setConditionModalOpen(false)}
+          title={`Modify Hall Condition: ${conditionModalHall?.name || ''}`}
+          maxWidth="500px"
+        >
+          <form onSubmit={handleSaveCondition} className="space-y-4 text-slate-200">
+            {/* Hall Summary Box */}
+            <div className="p-3 bg-slate-900/80 border border-slate-800 rounded-lg text-xs space-y-1.5">
+              <div className="flex justify-between items-center text-slate-300">
+                <span className="text-slate-400">Hall ID:</span>
+                <span className="font-semibold text-white px-2 py-0.5 bg-slate-800 rounded border border-slate-700">
+                  {conditionModalHall?.hallId || conditionModalHall?.id}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-slate-300">
+                <span className="text-slate-400">Location:</span>
+                <span className="text-slate-200">
+                  {conditionModalHall?.location || `${conditionModalHall?.block || ''}, ${conditionModalHall?.floor || ''}`}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-slate-300">
+                <span className="text-slate-400">Seating Capacity:</span>
+                <span className="text-slate-200">{conditionModalHall?.capacity || 0} seats</span>
+              </div>
+            </div>
+
+            {/* Operational Status (Reused from Resource Management) */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-200 block">Operational Status</label>
+              <select
+                value={conditionForm.status}
+                onChange={(e) => setConditionForm({ ...conditionForm, status: e.target.value })}
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+                disabled={savingCondition}
+              >
+                <option value="Available">Available</option>
+                <option value="Under Maintenance">Under Maintenance</option>
+                <option value="Reserved">Reserved</option>
+              </select>
+              <span className="text-[11px] text-slate-400 block">
+                Set whether the hall is currently available for events, undergoing maintenance, or reserved.
+              </span>
+            </div>
+
+            {/* Active State (Reused from Resource Management) */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-200 block">Active State</label>
+              <div className="pt-1">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={conditionForm.active}
+                    onChange={(e) => setConditionForm({ ...conditionForm, active: e.target.checked })}
+                    className="rounded border-slate-700 text-blue-500 focus:ring-blue-500/20 w-4 h-4 cursor-pointer"
+                    disabled={savingCondition}
+                  />
+                  <span className="text-xs text-slate-200 font-medium">Active for Booking Requests</span>
+                </label>
+              </div>
+              <span className="text-[11px] text-slate-400 block">
+                When inactive, faculty cannot select this hall when creating new booking requests.
+              </span>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setConditionModalOpen(false)}
+                disabled={savingCondition}
+                className="btn btn-secondary text-xs px-3 py-1.5"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={savingCondition}
+                className="btn btn-primary text-xs px-4 py-1.5 flex items-center gap-1.5"
+              >
+                {savingCondition ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    Save Changes
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
         </Modal>
       )}
     </div>

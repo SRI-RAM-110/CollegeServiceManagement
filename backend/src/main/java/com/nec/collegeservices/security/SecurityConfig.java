@@ -171,6 +171,12 @@ public class SecurityConfig {
                 .requestMatchers("/error").permitAll()
 
                 // =========================================================================
+                // Seminar Hall Condition Modification (Coordinators & Admins)
+                // =========================================================================
+                .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/seminar/halls/*/condition", "/api/seminar/halls/*/status")
+                    .hasAnyRole("CREATOR", "AO_ADMIN", "SEMINAR_ADMIN", "SEMINAR_COORDINATOR")
+
+                // =========================================================================
                 // Dynamic Resource Management (Strictly AO_ADMIN only)
                 // =========================================================================
                 .requestMatchers("/api/seminar/halls/all").hasRole("AO_ADMIN")
@@ -178,7 +184,7 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/seminar/halls/*").hasRole("AO_ADMIN")
                 .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/seminar/halls/*").hasRole("AO_ADMIN")
                 .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/seminar/halls/*").hasRole("AO_ADMIN")
-                .requestMatchers("/api/seminar/halls/*/status", "/api/seminar/halls/*/toggle-status", "/api/seminar/halls/*/coordinators", "/api/seminar/halls/*/cc-emails").hasRole("AO_ADMIN")
+                .requestMatchers("/api/seminar/halls/*/toggle-status", "/api/seminar/halls/*/coordinators", "/api/seminar/halls/*/cc-emails").hasRole("AO_ADMIN")
 
                 .requestMatchers("/api/accommodation/rooms/all").hasRole("AO_ADMIN")
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/accommodation/rooms").hasRole("AO_ADMIN")

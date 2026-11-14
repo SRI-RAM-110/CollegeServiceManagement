@@ -2141,16 +2141,63 @@ public class SeminarService {
         return hallRepository.save(hall);
     }
 
-    public SeminarHall updateHallStatus(String hallId, String status, User user) {
-        requireAOAdmin(user, "update seminar hall status");
+    public void validateHallCoordinatorOrAdmin(User user, SeminarHall hall) {
+        if (user == null) {
+            throw new AccessDeniedException("Authentication required.");
+        }
+        if (isSuperAdmin(user) || user.hasRole("SEMINAR_ADMIN") || "SEMINAR_ADMIN".equalsIgnoreCase(user.getRole())) {
+            return;
+        }
+        if (user.hasRole("SEMINAR_COORDINATOR") || "SEMINAR_COORDINATOR".equalsIgnoreCase(user.getRole())) {
+            boolean assignedInUser = isHallAssigned(user.getAssignedHallIds(), hall.getHallId())
+                    || isHallAssigned(user.getAssignedHallIds(), hall.getName());
+            boolean assignedInHall = hall.getCoordinatorUserIds() != null
+                    && hall.getCoordinatorUserIds().stream().anyMatch(id -> id != null && id.trim().equalsIgnoreCase(user.getUserId().trim()));
+
+            if (assignedInUser || assignedInHall) {
+                return;
+            }
+            throw new AccessDeniedException("Unauthorized: Coordinator " + user.getUserId() + " is not assigned to seminar hall " + hall.getHallId() + " (" + hall.getName() + ").");
+        }
+        throw new AccessDeniedException("Unauthorized: User " + user.getUserId() + " does not have permission to modify seminar hall conditions.");
+    }
+
+    public SeminarHall updateHallCondition(String hallId, String status, Boolean active, User user) {
+        if (user == null) {
+            throw new AccessDeniedException("Authentication required.");
+        }
         SeminarHall hall = getHallById(hallId)
                 .orElseThrow(() -> new ResourceNotFoundException("Seminar Hall not found: " + hallId));
 
-        hall.setStatus(status);
+        validateHallCoordinatorOrAdmin(user, hall);
+
+        if (status != null && !status.isBlank()) {
+            String trimmedStatus = status.trim();
+            if ("Available".equalsIgnoreCase(trimmedStatus)) {
+                hall.setStatus("Available");
+            } else if ("Under Maintenance".equalsIgnoreCase(trimmedStatus) || "Maintenance".equalsIgnoreCase(trimmedStatus)) {
+                hall.setStatus("Under Maintenance");
+            } else if ("Reserved".equalsIgnoreCase(trimmedStatus)) {
+                hall.setStatus("Reserved");
+            } else if ("Disabled".equalsIgnoreCase(trimmedStatus)) {
+                hall.setStatus("Disabled");
+            } else {
+                throw new BadRequestException("Invalid operational status: '" + trimmedStatus + "'. Allowed options: Available, Under Maintenance, Reserved");
+            }
+        }
+
+        if (active != null) {
+            hall.setActive(active);
+        }
+
         String now = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         hall.setUpdatedAt(now);
-        hall.setUpdatedBy(user != null ? user.getUserId() : "ADMIN");
+        hall.setUpdatedBy(user.getUserId() != null ? user.getUserId() : "ADMIN");
         return hallRepository.save(hall);
+    }
+
+    public SeminarHall updateHallStatus(String hallId, String status, User user) {
+        return updateHallCondition(hallId, status, null, user);
     }
 
     public void deleteHall(String hallId, User user) {

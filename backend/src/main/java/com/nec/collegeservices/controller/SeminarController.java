@@ -227,21 +227,28 @@ public class SeminarController {
         return ResponseEntity.ok(ApiResponse.ok("Seminar hall created successfully", created));
     }
 
-    @PutMapping("/halls/{hallId}/status")
-    @PreAuthorize("hasRole('AO_ADMIN')")
-    public ResponseEntity<ApiResponse<SeminarHall>> updateHallStatus(
+    @PutMapping({"/halls/{hallId}/condition", "/halls/{hallId}/status"})
+    @PreAuthorize("hasAnyRole('CREATOR', 'AO_ADMIN', 'SEMINAR_ADMIN', 'SEMINAR_COORDINATOR')")
+    public ResponseEntity<ApiResponse<SeminarHall>> updateHallCondition(
             @PathVariable String hallId,
-            @RequestBody Object statusBody) {
+            @RequestBody Object conditionBody) {
         User user = authService.getCurrentUser();
-        String status = "Available";
-        if (statusBody instanceof Map<?, ?> map) {
+        String status = null;
+        Boolean active = null;
+        if (conditionBody instanceof Map<?, ?> map) {
             Object s = map.get("status");
-            if (s != null) status = s.toString();
-        } else if (statusBody instanceof String str) {
+            if (s != null) status = s.toString().trim();
+            Object a = map.get("active");
+            if (a instanceof Boolean b) {
+                active = b;
+            } else if (a != null) {
+                active = Boolean.parseBoolean(a.toString().trim());
+            }
+        } else if (conditionBody instanceof String str) {
             status = str.replace("\"", "").trim();
         }
-        SeminarHall updated = seminarService.updateHallStatus(hallId, status, user);
-        return ResponseEntity.ok(ApiResponse.ok("Seminar hall status updated", updated));
+        SeminarHall updated = seminarService.updateHallCondition(hallId, status, active, user);
+        return ResponseEntity.ok(ApiResponse.ok("Seminar hall condition updated successfully", updated));
     }
 
     @PatchMapping("/halls/{hallId}/toggle-status")
