@@ -244,11 +244,11 @@ public class CollegeServicesApplicationTests {
                 .expectedParticipants(50)
                 .build();
 
-        // Either current time is >= 09:00 (so FORENOON throws BadRequestException), or before 09:00
-        if (!java.time.LocalTime.now(SeminarService.COLLEGE_ZONE).isBefore(java.time.LocalTime.of(9, 0))) {
+        // Either current time is >= 10:00 (so FORENOON throws BadRequestException with deadline message), or before 10:00
+        if (!java.time.LocalTime.now(SeminarService.COLLEGE_ZONE).isBefore(java.time.LocalTime.of(10, 0))) {
             BadRequestException ex = assertThrows(BadRequestException.class,
                     () -> seminarService.createBooking(passedSlotDto, cseUser));
-            assertTrue(ex.getMessage().contains("already passed"));
+            assertTrue(ex.getMessage().contains("Forenoon booking closed. Same-day booking deadline was 10:00 AM."));
         }
     }
 

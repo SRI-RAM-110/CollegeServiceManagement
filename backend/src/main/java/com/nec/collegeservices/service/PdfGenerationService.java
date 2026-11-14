@@ -641,7 +641,7 @@ public class PdfGenerationService {
         if (slot == null) return "—";
         return switch (slot.toUpperCase()) {
             case "FORENOON" -> "FORENOON (09:00 AM - 12:00 PM)";
-            case "AFTERNOON" -> "AFTERNOON (12:00 PM - 04:00 PM)";
+            case "AFTERNOON" -> "AFTERNOON (01:00 PM - 04:00 PM)";
             case "FULL_DAY" -> "FULL DAY (09:00 AM - 04:00 PM)";
             default -> slot;
         };

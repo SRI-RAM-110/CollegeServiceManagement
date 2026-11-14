@@ -40,7 +40,7 @@ public class SeminarBooking {
     private String hallName;
     private String hallLocation;
 
-    // Slot: FORENOON (09:00 AM - 12:00 PM), AFTERNOON (12:00 PM - 04:00 PM), FULL_DAY (09:00 AM - 04:00 PM)
+    // Slot: FORENOON (09:00 AM - 12:00 PM), AFTERNOON (01:00 PM - 04:00 PM), FULL_DAY (09:00 AM - 04:00 PM)
     private String slot; 
     private String startTime;
     private String endTime;

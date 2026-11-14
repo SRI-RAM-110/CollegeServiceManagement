@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -39,11 +40,25 @@ public class SeminarService {
 
     public static final ZoneId COLLEGE_ZONE = ZoneId.of("Asia/Kolkata");
 
+    private Clock clock = Clock.system(COLLEGE_ZONE);
+
+    public void setClock(Clock clock) {
+        this.clock = clock != null ? clock : Clock.system(COLLEGE_ZONE);
+    }
+
+    public LocalDate getToday() {
+        return LocalDate.now(clock.getZone().equals(COLLEGE_ZONE) ? clock : clock.withZone(COLLEGE_ZONE));
+    }
+
+    public LocalTime getNowTime() {
+        return LocalTime.now(clock.getZone().equals(COLLEGE_ZONE) ? clock : clock.withZone(COLLEGE_ZONE));
+    }
+
     public static LocalTime getSlotStartTime(String slot) {
         if (slot == null) return null;
         return switch (slot.toUpperCase().trim()) {
             case "FORENOON", "FULL_DAY" -> LocalTime.of(9, 0);
-            case "AFTERNOON" -> LocalTime.of(12, 0);
+            case "AFTERNOON" -> LocalTime.of(13, 0);
             default -> null;
         };
     }
@@ -54,6 +69,25 @@ public class SeminarService {
             case "FORENOON" -> LocalTime.of(12, 0);
             case "AFTERNOON", "FULL_DAY" -> LocalTime.of(16, 0);
             default -> null;
+        };
+    }
+
+    public static LocalTime getSameDayBookingDeadline(String slot) {
+        if (slot == null) return null;
+        return switch (slot.toUpperCase().trim()) {
+            case "FORENOON", "FULL_DAY" -> LocalTime.of(10, 0);
+            case "AFTERNOON" -> LocalTime.of(14, 0);
+            default -> null;
+        };
+    }
+
+    public static String getSameDayDeadlineRejectionMessage(String slot) {
+        if (slot == null) return "This booking time has already passed. Please select a future date and time.";
+        return switch (slot.toUpperCase().trim()) {
+            case "FORENOON" -> "Forenoon booking closed. Same-day booking deadline was 10:00 AM.";
+            case "AFTERNOON" -> "Afternoon booking closed. Same-day booking deadline was 02:00 PM.";
+            case "FULL_DAY" -> "Full Day booking closed. Same-day booking deadline was 10:00 AM.";
+            default -> "This booking time has already passed. Please select a future date and time.";
         };
     }
 
@@ -367,8 +401,8 @@ public class SeminarService {
             slotStatuses.put("FULL_DAY", "AVAILABLE");
         }
 
-        LocalDate today = LocalDate.now(COLLEGE_ZONE);
-        LocalTime now = LocalTime.now(COLLEGE_ZONE);
+        LocalDate today = getToday();
+        LocalTime now = getNowTime();
         LocalDate parsedDate = null;
         try {
             parsedDate = LocalDate.parse(date.trim());
@@ -380,11 +414,11 @@ public class SeminarService {
                 if (!"BOOKED".equals(slotStatuses.get("AFTERNOON"))) slotStatuses.put("AFTERNOON", "PASSED");
                 if (!"BOOKED".equals(slotStatuses.get("FULL_DAY"))) slotStatuses.put("FULL_DAY", "PASSED");
             } else if (parsedDate.isEqual(today)) {
-                if (!now.isBefore(LocalTime.of(9, 0))) {
+                if (!now.isBefore(LocalTime.of(10, 0))) {
                     if (!"BOOKED".equals(slotStatuses.get("FORENOON"))) slotStatuses.put("FORENOON", "PASSED");
                     if (!"BOOKED".equals(slotStatuses.get("FULL_DAY"))) slotStatuses.put("FULL_DAY", "PASSED");
                 }
-                if (!now.isBefore(LocalTime.of(12, 0))) {
+                if (!now.isBefore(LocalTime.of(14, 0))) {
                     if (!"BOOKED".equals(slotStatuses.get("AFTERNOON"))) slotStatuses.put("AFTERNOON", "PASSED");
                 }
             }
@@ -426,8 +460,8 @@ public class SeminarService {
         List<Map<String, Object>> occurrences = new ArrayList<>();
         int availableCount = 0;
 
-        LocalDate today = LocalDate.now(COLLEGE_ZONE);
-        LocalTime now = LocalTime.now(COLLEGE_ZONE);
+        LocalDate today = getToday();
+        LocalTime now = getNowTime();
         LocalTime slotStartTime = getSlotStartTime(requestedSlot);
 
         for (String dateStr : dates) {
@@ -449,10 +483,13 @@ public class SeminarService {
             occ.put("bookingType", bookingType);
 
             boolean isPastDate = parsedDate != null && parsedDate.isBefore(today);
-            boolean isPastTime = parsedDate != null && parsedDate.isEqual(today) && slotStartTime != null && !now.isBefore(slotStartTime);
+            LocalTime deadline = getSameDayBookingDeadline(requestedSlot);
+            boolean isPastDeadline = parsedDate != null && parsedDate.isEqual(today) && deadline != null && !now.isBefore(deadline);
 
-            if (isPastDate || isPastTime) {
-                String passedReason = "This booking time has already passed. Please select a future date and time.";
+            if (isPastDate || isPastDeadline) {
+                String passedReason = isPastDate
+                        ? "This booking time has already passed. Please select a future date and time."
+                        : getSameDayDeadlineRejectionMessage(requestedSlot);
                 occ.put("status", "UNAVAILABLE");
                 occ.put("conflictReason", passedReason);
                 occ.put("isPast", true);
@@ -626,8 +663,8 @@ public class SeminarService {
         List<LocalDate> targetDates = new ArrayList<>();
         String startDateStr;
         String endDateStr;
-        LocalDate today = LocalDate.now(COLLEGE_ZONE);
-        LocalTime now = LocalTime.now(COLLEGE_ZONE);
+        LocalDate today = getToday();
+        LocalTime now = getNowTime();
 
         if (bookingType.equals("RECURRING")) {
             // Weekly Recurring
@@ -753,8 +790,11 @@ public class SeminarService {
             if (start.isBefore(today)) {
                 throw new BadRequestException("This booking time has already passed. Please select a future date and time.");
             }
-            if (start.isEqual(today) && effectiveStartTime != null && !now.isBefore(effectiveStartTime)) {
-                throw new BadRequestException("This booking time has already passed. Please select a future date and time.");
+            if (start.isEqual(today)) {
+                LocalTime deadline = getSameDayBookingDeadline(requestedSlot);
+                if (deadline != null && !now.isBefore(deadline)) {
+                    throw new BadRequestException(getSameDayDeadlineRejectionMessage(requestedSlot));
+                }
             }
             endDateStr = startDateStr;
             targetDates.add(start);
@@ -768,11 +808,14 @@ public class SeminarService {
                         : "This booking time has already passed. Please select a future date and time.";
                 throw new BadRequestException(msg);
             }
-            if (d.isEqual(today) && effectiveStartTime != null && !now.isBefore(effectiveStartTime)) {
-                String msg = targetDates.size() > 1
-                        ? "Occurrence on " + d + " (" + requestedSlot + "): This booking time has already passed. Please select a future date and time."
-                        : "This booking time has already passed. Please select a future date and time.";
-                throw new BadRequestException(msg);
+            if (d.isEqual(today)) {
+                LocalTime deadline = getSameDayBookingDeadline(requestedSlot);
+                if (deadline != null && !now.isBefore(deadline)) {
+                    String msg = targetDates.size() > 1
+                            ? "Occurrence on " + d + " (" + requestedSlot + "): " + getSameDayDeadlineRejectionMessage(requestedSlot)
+                            : getSameDayDeadlineRejectionMessage(requestedSlot);
+                    throw new BadRequestException(msg);
+                }
             }
         }
 
@@ -1742,13 +1785,15 @@ public class SeminarService {
         }
 
         LocalDate targetDate = parseDate(newDate, "Rescheduled date");
-        LocalDate today = LocalDate.now(COLLEGE_ZONE);
+        LocalDate today = getToday();
         if (targetDate.isBefore(today)) {
             throw new BadRequestException("Cannot reschedule to a past date (" + newDate + "). Please select a future date and time.");
         }
-        LocalTime newSlotStartTime = getSlotStartTime(newSlot);
-        if (targetDate.isEqual(today) && newSlotStartTime != null && !LocalTime.now(COLLEGE_ZONE).isBefore(newSlotStartTime)) {
-            throw new BadRequestException("This booking time has already passed. Please select a future date and time.");
+        if (targetDate.isEqual(today)) {
+            LocalTime deadline = getSameDayBookingDeadline(newSlot);
+            if (deadline != null && !getNowTime().isBefore(deadline)) {
+                throw new BadRequestException(getSameDayDeadlineRejectionMessage(newSlot));
+            }
         }
 
         SeminarHall newHall = getHallById(newHallId)

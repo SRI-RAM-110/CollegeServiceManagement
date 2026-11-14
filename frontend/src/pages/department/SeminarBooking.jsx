@@ -34,6 +34,7 @@ import {
   getTodayStr,
   formatDateDisplay,
   isSlotPassedForDate,
+  getSameDayDeadlineRejectionMessage,
   validateSeminarBookingOccurrences,
   WEEKDAYS,
   validateRecurringDateRange,
@@ -288,7 +289,7 @@ export const SeminarBooking = () => {
 
   const handleSlotSelect = (slotName) => {
     if (isSlotPassedForDate(selectedDate, slotName)) {
-      showToast('This booking time has already passed. Please select a future date and time.', 'warning');
+      showToast(getSameDayDeadlineRejectionMessage(slotName), 'warning');
       return;
     }
     if (slotsStatus[slotName] === 'BOOKED') {
@@ -1288,47 +1289,112 @@ export const SeminarBooking = () => {
                     <span className="text-[11px] text-blue-400 font-mono font-medium">Selected: {selectedSlot}</span>
                   </div>
 
+                  {/* Timings and Deadlines Guide */}
+                  <div className="mb-2.5 p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs">
+                    <div className="flex items-center gap-1.5 text-slate-300 font-semibold mb-1.5 text-[11px]">
+                      <Clock size={13} className="text-blue-400" />
+                      <span>Booking Timings & Same-Day Cutoff Rules</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px]">
+                      <div className="p-1.5 rounded bg-slate-950/70 border border-slate-800/90">
+                        <div className="font-semibold text-slate-200">Forenoon</div>
+                        <div className="text-slate-400 font-mono">09:00 AM – 12:00 PM</div>
+                        <div className="text-amber-400 font-medium mt-0.5">Same-day deadline: 10:00 AM</div>
+                      </div>
+                      <div className="p-1.5 rounded bg-slate-950/70 border border-slate-800/90">
+                        <div className="font-semibold text-slate-200">Afternoon</div>
+                        <div className="text-slate-400 font-mono">01:00 PM – 04:00 PM</div>
+                        <div className="text-amber-400 font-medium mt-0.5">Same-day deadline: 02:00 PM</div>
+                      </div>
+                      <div className="p-1.5 rounded bg-slate-950/70 border border-slate-800/90">
+                        <div className="font-semibold text-slate-200">Full Day</div>
+                        <div className="text-slate-400 font-mono">09:00 AM – 04:00 PM</div>
+                        <div className="text-slate-500 text-[9px]">(Lunch: 12:00 PM – 01:00 PM)</div>
+                        <div className="text-amber-400 font-medium mt-0.5">Same-day deadline: 10:00 AM</div>
+                      </div>
+                    </div>
+                  </div>
+
                   {loadingAvail ? (
                     <div className="py-6 text-center text-xs text-slate-400">Loading slot status...</div>
                   ) : (
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       {['FORENOON', 'AFTERNOON', 'FULL_DAY'].map((slotKey) => {
                         const isBooked = slotsStatus[slotKey] === 'BOOKED';
                         const isPassed = slotsStatus[slotKey] === 'PASSED' || isSlotPassedForDate(selectedDate, slotKey);
                         const isUnavailable = isBooked || isPassed;
                         const isSelected = selectedSlot === slotKey;
+                        const isToday = selectedDate === getTodayStr();
+                        const rejectionMsg = isToday && isPassed ? getSameDayDeadlineRejectionMessage(slotKey) : null;
+
                         return (
                           <div
                             key={slotKey}
-                            onClick={() => handleSlotSelect(slotKey)}
-                            className={`p-2.5 rounded-lg border text-center cursor-pointer transition ${isUnavailable
-                              ? 'bg-rose-950/20 border-rose-800/40 text-rose-400 cursor-not-allowed opacity-60'
+                            onClick={() => {
+                              if (!isUnavailable) {
+                                handleSlotSelect(slotKey);
+                              } else if (isPassed) {
+                                showToast(rejectionMsg || 'This booking time has already passed. Please select a future date and time.', 'warning');
+                              } else if (isBooked) {
+                                showToast(`The ${slotKey} slot is already booked for this date!`, 'warning');
+                              }
+                            }}
+                            className={`p-2.5 rounded-lg border text-center transition flex flex-col justify-between ${isUnavailable
+                              ? 'bg-rose-950/20 border-rose-800/40 text-rose-400 cursor-not-allowed opacity-75'
                               : isSelected
-                                ? 'bg-blue-600/20 border-blue-500 text-white shadow'
-                                : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                                ? 'bg-blue-600/20 border-blue-500 text-white shadow ring-1 ring-blue-500 cursor-pointer'
+                                : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700 cursor-pointer'
                               }`}
                           >
-                            <div className="font-semibold text-xs mb-0.5">{slotKey}</div>
-                            <div className="text-[10px] text-slate-400 mb-1.5">
-                              {slotKey === 'FORENOON'
-                                ? '09:00 AM - 12:00 PM'
-                                : slotKey === 'AFTERNOON'
-                                  ? '12:00 PM - 04:00 PM'
-                                  : '09:00 AM - 04:00 PM'}
+                            <div>
+                              <div className="font-semibold text-xs mb-0.5">
+                                {slotKey === 'FULL_DAY' ? 'FULL DAY' : slotKey}
+                              </div>
+                              <div className="text-[10px] text-slate-400 mb-0.5 font-mono">
+                                {slotKey === 'FORENOON'
+                                  ? '09:00 AM – 12:00 PM'
+                                  : slotKey === 'AFTERNOON'
+                                    ? '01:00 PM – 04:00 PM'
+                                    : '09:00 AM – 04:00 PM'}
+                              </div>
+                              {slotKey === 'FULL_DAY' && (
+                                <div className="text-[9px] text-slate-500 mb-1">
+                                  (Lunch: 12:00 PM – 01:00 PM)
+                                </div>
+                              )}
+                              <div className="text-[9px] text-amber-300/80 mb-1.5 font-medium">
+                                {slotKey === 'AFTERNOON' ? 'Same-day deadline: 02:00 PM' : 'Same-day deadline: 10:00 AM'}
+                              </div>
                             </div>
-                            <span
-                              className={`badge text-[10px] ${isBooked
-                                ? 'bg-rose-900/60 text-rose-300'
-                                : isPassed
-                                  ? 'bg-amber-900/40 text-amber-300 border border-amber-800/50'
-                                  : 'bg-emerald-900/40 text-emerald-300'
-                                }`}
-                            >
-                              {isBooked ? 'BOOKED' : isPassed ? 'PASSED' : 'AVAILABLE'}
-                            </span>
+
+                            <div>
+                              <span
+                                className={`badge text-[10px] ${isBooked
+                                  ? 'bg-rose-900/60 text-rose-300'
+                                  : isPassed
+                                    ? 'bg-amber-900/40 text-amber-300 border border-amber-800/50'
+                                    : 'bg-emerald-900/40 text-emerald-300'
+                                  }`}
+                              >
+                                {isBooked ? 'BOOKED' : isPassed ? 'CLOSED' : 'AVAILABLE'}
+                              </span>
+                              {rejectionMsg && (
+                                <div className="text-[9px] text-rose-400 mt-1.5 leading-tight font-medium">
+                                  {rejectionMsg}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+
+                  {/* Inline Alert if selected slot on today has passed */}
+                  {selectedDate === getTodayStr() && isSlotPassedForDate(selectedDate, selectedSlot) && (
+                    <div className="mt-2 p-2 rounded-lg bg-amber-950/40 border border-amber-800/60 text-amber-300 text-xs flex items-center gap-1.5">
+                      <AlertTriangle size={14} className="shrink-0 text-amber-400" />
+                      <span>{getSameDayDeadlineRejectionMessage(selectedSlot)}</span>
                     </div>
                   )}
                 </div>

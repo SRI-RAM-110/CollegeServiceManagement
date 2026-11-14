@@ -46,13 +46,54 @@ export const formatDateDisplay = (dateVal) => {
 export const getSlotTimes = (slot) => {
   switch (slot?.toUpperCase()?.trim()) {
     case 'FORENOON':
-      return { start: '09:00', end: '12:00', startHour: 9, startMinute: 0 };
+      return {
+        label: '09:00 AM – 12:00 PM',
+        start: '09:00',
+        end: '12:00',
+        startHour: 9,
+        startMinute: 0,
+        deadlineLabel: '10:00 AM',
+        deadlineHour: 10,
+        deadlineMinute: 0,
+      };
     case 'AFTERNOON':
-      return { start: '12:00', end: '16:00', startHour: 12, startMinute: 0 };
+      return {
+        label: '01:00 PM – 04:00 PM',
+        start: '13:00',
+        end: '16:00',
+        startHour: 13,
+        startMinute: 0,
+        deadlineLabel: '02:00 PM',
+        deadlineHour: 14,
+        deadlineMinute: 0,
+      };
     case 'FULL_DAY':
-      return { start: '09:00', end: '16:00', startHour: 9, startMinute: 0 };
+      return {
+        label: '09:00 AM – 04:00 PM',
+        subLabel: 'Lunch break: 12:00 PM – 01:00 PM',
+        start: '09:00',
+        end: '16:00',
+        startHour: 9,
+        startMinute: 0,
+        deadlineLabel: '10:00 AM',
+        deadlineHour: 10,
+        deadlineMinute: 0,
+      };
     default:
       return null;
+  }
+};
+
+export const getSameDayDeadlineRejectionMessage = (slot) => {
+  switch (slot?.toUpperCase()?.trim()) {
+    case 'FORENOON':
+      return 'Forenoon booking closed. Same-day booking deadline was 10:00 AM.';
+    case 'AFTERNOON':
+      return 'Afternoon booking closed. Same-day booking deadline was 02:00 PM.';
+    case 'FULL_DAY':
+      return 'Full Day booking closed. Same-day booking deadline was 10:00 AM.';
+    default:
+      return 'This booking time has already passed. Please select a future date and time.';
   }
 };
 
@@ -63,16 +104,16 @@ export const isSlotPassedForDate = (dateStr, slot, now = new Date()) => {
   if (dateStr === todayStr) {
     const slotTimes = getSlotTimes(slot);
     if (!slotTimes) return false;
-    const slotStartTime = new Date(
+    const deadlineTime = new Date(
       now.getFullYear(),
       now.getMonth(),
       now.getDate(),
-      slotTimes.startHour,
-      slotTimes.startMinute,
+      slotTimes.deadlineHour,
+      slotTimes.deadlineMinute,
       0,
       0
     );
-    return now >= slotStartTime;
+    return now >= deadlineTime;
   }
   return false;
 };
@@ -91,10 +132,10 @@ export const validateSeminarBookingOccurrences = (targetDates, slot, now = new D
         ? `Occurrence on ${d}: This booking date has already passed. Please select a future date and time.`
         : 'This booking time has already passed. Please select a future date and time.';
     }
-    if (isSlotPassedForDate(d, slot, now)) {
+    if (d === todayStr && isSlotPassedForDate(d, slot, now)) {
       return targetDates.length > 1
-        ? `Occurrence on ${d} (${slot}): This booking time has already passed. Please select a future date and time.`
-        : 'This booking time has already passed. Please select a future date and time.';
+        ? `Occurrence on ${d} (${slot}): ${getSameDayDeadlineRejectionMessage(slot)}`
+        : getSameDayDeadlineRejectionMessage(slot);
     }
   }
   return null;

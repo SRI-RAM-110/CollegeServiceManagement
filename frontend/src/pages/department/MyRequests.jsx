@@ -30,7 +30,7 @@ import { StatusBadge } from '../../components/common/StatusBadge';
 import { QuickCalendar } from '../../components/calendar/QuickCalendar';
 import { Modal } from '../../components/common/Modal';
 import { RequestDetailsModal } from '../../components/common/RequestDetailsModal';
-import { getTodayStr, getDateOffsetStr, formatDateDisplay } from '../../utils/dateUtils';
+import { getTodayStr, getDateOffsetStr, formatDateDisplay, isSlotPassedForDate, getSameDayDeadlineRejectionMessage } from '../../utils/dateUtils';
 
 const SERVICE_TABS = [
   'All',
@@ -289,6 +289,11 @@ export const MyRequests = () => {
 
       if (rescheduleDate < getTodayStr()) {
         showToast('Target date cannot be in the past', 'warning');
+        setActionLoading(false);
+        return;
+      }
+      if (isSlotPassedForDate(rescheduleDate, rescheduleSlot)) {
+        showToast(getSameDayDeadlineRejectionMessage(rescheduleSlot), 'warning');
         setActionLoading(false);
         return;
       }
@@ -902,7 +907,7 @@ export const MyRequests = () => {
                       className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200"
                     >
                       <option value="FORENOON">Forenoon (09:00 AM - 12:00 PM)</option>
-                      <option value="AFTERNOON">Afternoon (12:00 PM - 04:00 PM)</option>
+                      <option value="AFTERNOON">Afternoon (01:00 PM - 04:00 PM)</option>
                       <option value="FULL_DAY">Full Day (09:00 AM - 04:00 PM)</option>
                     </select>
                   </div>
