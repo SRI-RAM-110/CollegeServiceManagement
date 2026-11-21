@@ -173,7 +173,7 @@ public class ElectricalIssueServiceTest {
 
         // Verify AO_ADMIN alerted
         verify(notificationService, atLeastOnce()).sendNotification(
-                eq("AO_ADMIN"), eq("ADMIN"), isNull(), anyString(), anyString(), eq("Electrical Service"), eq("ALERT"), eq("ECE-ELEC-0001")
+                eq("AO_ADMIN"), eq("ADMIN"), eq("ao"), anyString(), anyString(), eq("Electrical Service"), eq("ALERT"), eq("ECE-ELEC-0001")
         );
     }
 
@@ -191,7 +191,7 @@ public class ElectricalIssueServiceTest {
 
         // Verify AO_ADMIN alerted
         verify(notificationService, atLeastOnce()).sendNotification(
-                eq("AO_ADMIN"), eq("ADMIN"), isNull(), anyString(), anyString(), eq("Electrical Service"), eq("ALERT"), eq("ECE-ELEC-0001")
+                eq("AO_ADMIN"), eq("ADMIN"), eq("ao"), anyString(), anyString(), eq("Electrical Service"), eq("ALERT"), eq("ECE-ELEC-0001")
         );
     }
 

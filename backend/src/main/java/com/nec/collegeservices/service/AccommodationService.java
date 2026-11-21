@@ -423,7 +423,7 @@ public class AccommodationService {
 
         String notifyMsg = user.getDepartment() + " submitted dual accommodation request (Boys & Girls Hostel: " +
                 parentRequestId + ") requiring AO approval.";
-        notificationService.sendNotification("AO_ADMIN", "ADMIN", null, "New Dual Accommodation Request", notifyMsg, "Accommodation", "INFO", parentRequestId);
+        notificationService.sendNotification("AO_ADMIN", "ADMIN", "ao", "New Dual Accommodation Request", notifyMsg, "Accommodation", "INFO", parentRequestId);
 
         // Explicit confirmation to original requester
         notificationService.sendNotification(
@@ -664,7 +664,7 @@ public class AccommodationService {
             if (parentRequestId == null) {
                 String notifyMsg = user.getDepartment() + " requested " + totalOccurrences + " stay occurrences for room " +
                         room.getRoomId() + " (" + room.getHostel() + "). Pending AO approval.";
-                notificationService.sendNotification("AO_ADMIN", "ADMIN", null, "New Accommodation Request", notifyMsg, "Accommodation", "INFO", primary.getRequestId());
+                notificationService.sendNotification("AO_ADMIN", "ADMIN", "ao", "New Accommodation Request", notifyMsg, "Accommodation", "INFO", primary.getRequestId());
 
                 // Explicit confirmation to original requester
                 notificationService.sendNotification(
@@ -738,7 +738,7 @@ public class AccommodationService {
         if (parentRequestId == null) {
             String notifyMsg = user.getDepartment() + " requested " + room.getRoomId() + " (" + room.getHostel() + ") from " +
                     finalCheckIn + " to " + finalCheckOut + " for " + dto.getGuestsCount() + " guest(s). Pending AO approval.";
-            notificationService.sendNotification("AO_ADMIN", "ADMIN", null, "New Accommodation Request", notifyMsg, "Accommodation", "INFO", saved.getRequestId());
+            notificationService.sendNotification("AO_ADMIN", "ADMIN", "ao", "New Accommodation Request", notifyMsg, "Accommodation", "INFO", saved.getRequestId());
 
             // Explicit confirmation to original requester
             notificationService.sendNotification(
@@ -1222,7 +1222,7 @@ public class AccommodationService {
         notificationService.sendNotification(
                 "AO_ADMIN",
                 "ADMIN",
-                null,
+                "ao",
                 "Accommodation Request Approved by Warden",
                 "Accommodation request " + saved.getRequestId() + " (" + req.getHostel() + ", room " + req.getRoomId() + ") has been approved by the hostel warden.",
                 "Accommodation",

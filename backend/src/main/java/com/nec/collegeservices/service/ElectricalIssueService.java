@@ -175,7 +175,7 @@ public class ElectricalIssueService {
                 notificationService.sendNotification(
                         "AO_ADMIN",
                         "ADMIN",
-                        null,
+                        "ao",
                         "Unassigned Electrical Issue (" + saved.getPriority() + ")",
                         "Issue " + saved.getRequestId() + " at " + saved.getBuildingName() + " requires manual electrician assignment.",
                         SERVICE_NAME,
@@ -470,7 +470,7 @@ public class ElectricalIssueService {
             notificationService.sendNotification(
                     "AO_ADMIN",
                     "ADMIN",
-                    null,
+                    "ao",
                     "Electrical Issue Completed",
                     "Issue " + saved.getRequestId() + " at " + saved.getBuildingName() + " resolved by " + currentUser.getName(),
                     SERVICE_NAME,
@@ -589,7 +589,7 @@ public class ElectricalIssueService {
             notificationService.sendNotification(
                     "AO_ADMIN",
                     "ADMIN",
-                    null,
+                    "ao",
                     "Electrical Issue Reopened",
                     "Issue " + saved.getRequestId() + " at " + saved.getBuildingName() + " was reopened. Reason: " + reason,
                     SERVICE_NAME,

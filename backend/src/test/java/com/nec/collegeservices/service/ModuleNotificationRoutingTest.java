@@ -17,6 +17,7 @@ import org.mockito.quality.Strictness;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -247,7 +248,7 @@ class ModuleNotificationRoutingTest {
 
         SeminarBookingRequestDTO dto = new SeminarBookingRequestDTO();
         dto.setHallId("SH-1");
-        dto.setDate("2026-11-20");
+        dto.setDate(LocalDate.now().plusDays(2).toString());
         dto.setSlot("FORENOON");
         dto.setEventTitle("AI Workshop");
 
@@ -306,7 +307,7 @@ class ModuleNotificationRoutingTest {
                 .hallName("Seminar Hall 1")
                 .department("CSE")
                 .requesterUserId("PROF_CSE")
-                .date("2026-11-20")
+                .date(LocalDate.now().plusDays(2).toString())
                 .slot("FORENOON")
                 .status("PENDING")
                 .build();
@@ -375,8 +376,8 @@ class ModuleNotificationRoutingTest {
 
         AccommodationRequestDTO dto = new AccommodationRequestDTO();
         dto.setRoomId("R-101");
-        dto.setCheckInDate("2026-11-20");
-        dto.setCheckOutDate("2026-11-22");
+        dto.setCheckInDate(LocalDate.now().plusDays(2).toString());
+        dto.setCheckOutDate(LocalDate.now().plusDays(4).toString());
         dto.setGuestsCount(1);
         dto.setHostel("Boys Hostel");
         dto.setPurpose("Guest Lecture Accommodations");
@@ -395,11 +396,11 @@ class ModuleNotificationRoutingTest {
                 eq("CSE-ACC-001")
         );
 
-        // 2. AO Admin notification
+        // 2. AO Admin notification (explicitly routed to designated AO account "ao")
         verify(notificationService).sendNotification(
                 eq("AO_ADMIN"),
                 eq("ADMIN"),
-                isNull(),
+                eq("ao"),
                 eq("New Accommodation Request"),
                 anyString(),
                 eq("Accommodation"),
@@ -462,7 +463,7 @@ class ModuleNotificationRoutingTest {
         TransportRequestDTO dto = new TransportRequestDTO();
         dto.setTripType("College Bus");
         dto.setDestination("Industrial Visit");
-        dto.setTripDate("2026-11-20");
+        dto.setTripDate(LocalDate.now().plusDays(2).toString());
         dto.setPickupLocation("Campus Main Gate");
         dto.setPurpose("Student Industrial Tour");
         dto.setDepartureTime("09:00 AM");
@@ -521,7 +522,7 @@ class ModuleNotificationRoutingTest {
                 .requestId("CSE-TRN-001")
                 .vehicleId("V-01")
                 .destination("Industrial Visit")
-                .tripDate("2026-11-20")
+                .tripDate(LocalDate.now().plusDays(2).toString())
                 .department("CSE")
                 .requesterUserId("PROF_CSE")
                 .build();
@@ -631,7 +632,7 @@ class ModuleNotificationRoutingTest {
         MealRequestDTO dto = new MealRequestDTO();
         dto.setEventTitle("Alumni Meet Catering");
         dto.setVenue("Campus Auditorium");
-        dto.setDate("2026-11-20");
+        dto.setDate(LocalDate.now().plusDays(2).toString());
         dto.setMealTypes(List.of("Breakfast", "Lunch"));
         dto.setTotalGuests(50);
 
@@ -680,7 +681,7 @@ class ModuleNotificationRoutingTest {
         MealRequest req = MealRequest.builder()
                 .id("M001")
                 .requestId("CSE-MEAL-001")
-                .date("2026-11-20")
+                .date(LocalDate.now().plusDays(2).toString())
                 .mealTypes(List.of("Lunch"))
                 .totalGuests(100)
                 .department("CSE")
@@ -876,11 +877,11 @@ class ModuleNotificationRoutingTest {
                 eq("ECE-ELEC-0001")
         );
 
-        // 2. AO Admin alerted
+        // 2. AO Admin alerted (explicitly routed to designated AO account "ao")
         verify(notificationService).sendNotification(
                 eq("AO_ADMIN"),
                 eq("ADMIN"),
-                isNull(),
+                eq("ao"),
                 eq("Electrical Issue Reopened"),
                 anyString(),
                 eq("Electrical Service"),

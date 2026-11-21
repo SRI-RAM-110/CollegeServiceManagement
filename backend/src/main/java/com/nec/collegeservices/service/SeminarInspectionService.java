@@ -483,6 +483,12 @@ public class SeminarInspectionService {
         insp.setPostEventStatus("COMPLETED");
         insp.setOverallStatus("COMPLETED");
 
+        // Technician stamp if not already set
+        if (insp.getTechnicianUserId() == null) {
+            insp.setTechnicianUserId(user.getUserId());
+            insp.setTechnicianName(user.getName() != null ? user.getName() : user.getUserId());
+        }
+
         boolean anyDamage = Boolean.TRUE.equals(dto.getDamageIdentified()) || issuesIdentified;
         boolean conducted = dto.getEventConducted() == null || Boolean.TRUE.equals(dto.getEventConducted());
 

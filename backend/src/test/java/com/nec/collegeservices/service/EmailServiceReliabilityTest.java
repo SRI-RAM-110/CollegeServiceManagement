@@ -90,7 +90,7 @@ public class EmailServiceReliabilityTest {
 
         // User with pure AO_ADMIN role
         User aoAdmin = User.builder()
-                .userId("AO001")
+                .userId("ao")
                 .name("AO Admin")
                 .email("ao@nrtec.in")
                 .role("AO_ADMIN")

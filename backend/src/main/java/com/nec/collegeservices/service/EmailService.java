@@ -35,11 +35,16 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 public class EmailService {
+
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+    public static final long MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+    private static final byte[] PDF_MAGIC_BYTES = new byte[] { 0x25, 0x50, 0x44, 0x46, 0x2D }; // %PDF-
 
     @Autowired
     private UserRepository userRepository;
@@ -307,6 +312,12 @@ public class EmailService {
             return;
         }
 
+        // Suppress generic notification email for inspection reports as they are distributed with official PDF attachments
+        if (notification.getTitle() != null && notification.getTitle().startsWith("Seminar Event Inspection Report")) {
+            log.info("Skipping generic HTML notification email for inspection report notification {} - report with PDF attachment is dispatched directly", notification.getId());
+            return;
+        }
+
         String eventCategory = classifyEvent(notification);
         List<String> primaryRecipients = resolvePrimaryRecipients(notification);
         if (primaryRecipients.isEmpty()) {
@@ -332,6 +343,56 @@ public class EmailService {
         return r.endsWith("_ADMIN") || r.equals("CREATOR") || r.equals("SUPER_ADMIN")
                 || r.equals("SEMINAR_COORDINATOR") || r.equals("SEMINAR_TECHNICIAN")
                 || r.equals("GENERATOR_OPERATOR") || r.equals("ELECTRICIAN");
+    }
+
+    /**
+     * Determines whether a notification represents a routine operational facility or logistics workflow
+     * (e.g. Accommodation, Seminar Hall, Electrical, Transport, Stationery, Snacks & Meals)
+     * as opposed to an executive, institutional governance, or Principal-level escalation.
+     */
+    public boolean isOperationalWorkflow(Notification notification) {
+        if (notification == null) return false;
+
+        // 1. Explicit notification type check
+        String type = notification.getType() != null ? notification.getType().trim().toUpperCase() : "";
+        if ("EXECUTIVE".equals(type) || "GOVERNANCE".equals(type) || "POLICY".equals(type) || "AUDIT".equals(type)) {
+            return false;
+        }
+
+        // 2. Explicit service-based operational classification
+        String service = notification.getService() != null ? notification.getService().trim().toUpperCase() : "";
+        if (service.contains("ACCOMMODATION") ||
+            service.contains("SEMINAR") ||
+            service.contains("ELECTRICAL") ||
+            service.contains("TRANSPORT") ||
+            service.contains("STATIONERY") ||
+            service.contains("MEAL") ||
+            service.contains("SNACK") ||
+            service.contains("FACILITY") ||
+            service.contains("MAINTENANCE")) {
+            return true;
+        }
+
+        // 3. Operational reference ID prefix check (ACC-, SEM-, ELC-, TRN-, STN-, MLS-)
+        String refId = notification.getReferenceId() != null ? notification.getReferenceId().trim().toUpperCase() : "";
+        if (refId.startsWith("ACC-") || refId.startsWith("SEM-") || refId.startsWith("ELC-") ||
+            refId.startsWith("TRN-") || refId.startsWith("STN-") || refId.startsWith("MLS-") ||
+            refId.contains("-SEM-") || refId.contains("-ELEC-") || refId.contains("-ACCOM-")) {
+            return true;
+        }
+
+        // 4. Operational event category check
+        String eventCat = classifyEvent(notification);
+        if ("REQUEST_SUBMITTED".equals(eventCat) ||
+            "REQUEST_APPROVED".equals(eventCat) ||
+            "REQUEST_REJECTED".equals(eventCat) ||
+            "REQUEST_CANCELLED".equals(eventCat) ||
+            "REQUEST_RESCHEDULED".equals(eventCat) ||
+            "REQUEST_STATUS_UPDATED".equals(eventCat)) {
+            return true;
+        }
+
+        return false;
     }
 
     public List<String> resolvePrimaryRecipients(Notification notification) {
@@ -367,6 +428,25 @@ public class EmailService {
                     return roleMatch && deptMatch;
                 })
                 .toList();
+
+        // Operational AO_ADMIN defense-in-depth:
+        // The AO_ADMIN role is held in Atlas by the Administrative Officer ("ao"), the Principal, and a developer account.
+        // Routine operational notifications targeting AO_ADMIN must resolve exclusively to the designated
+        // Administrative Officer ("ao"), protecting the Principal and developer from operational noise.
+        // Executive and governance events targeting AO_ADMIN continue to reach executive recipients.
+        if ("AO_ADMIN".equalsIgnoreCase(role.trim())) {
+            if (isOperationalWorkflow(notification)) {
+                targetUsers = targetUsers.stream()
+                        .filter(u -> "ao".equalsIgnoreCase(u.getUserId()))
+                        .toList();
+            } else {
+                // For non-operational / executive alerts, exclude third-party/developer test accounts
+                // while preserving legitimate administrative leadership (ao and Principal)
+                targetUsers = targetUsers.stream()
+                        .filter(u -> !"sriramsriram123654".equalsIgnoreCase(u.getUserId()))
+                        .toList();
+            }
+        }
 
         for (User u : targetUsers) {
             if (u.getEmail() != null && !u.getEmail().isBlank() && u.getEmail().contains("@")) {
@@ -1301,7 +1381,40 @@ public class EmailService {
                 "This is an automated notification. Please do not reply directly.";
     }
 
+    private boolean isValidPdfBytes(byte[] bytes) {
+        if (bytes == null || bytes.length < 5) {
+            return false;
+        }
+        for (int i = 0; i < PDF_MAGIC_BYTES.length; i++) {
+            if (bytes[i] != PDF_MAGIC_BYTES[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean isValidPdfFilename(String filename) {
+        if (filename == null || filename.isBlank()) {
+            return false;
+        }
+        String clean = filename.trim().toLowerCase();
+        return clean.endsWith(".pdf") && clean.length() > 4;
+    }
+
+    private String sanitizeFilename(String filename) {
+        if (filename == null) return "attachment.pdf";
+        String clean = filename.trim().replaceAll("[/\\\\?%*:|\"<>]", "_");
+        return clean.isEmpty() ? "attachment.pdf" : clean;
+    }
+
     public boolean sendEmailWithAttachment(String primaryRecipient, List<String> ccRecipients,
+                                           String subject, String htmlBody, String plainText,
+                                           String attachmentFilename, byte[] attachmentBytes, String referenceId) {
+        return sendEmailWithAttachment(primaryRecipient, ccRecipients, Collections.emptyList(),
+                subject, htmlBody, plainText, attachmentFilename, attachmentBytes, referenceId);
+    }
+
+    public boolean sendEmailWithAttachment(String primaryRecipient, List<String> ccRecipients, List<String> bccRecipients,
                                            String subject, String htmlBody, String plainText,
                                            String attachmentFilename, byte[] attachmentBytes, String referenceId) {
         if (!mailEnabled || primaryRecipient == null || primaryRecipient.isBlank()) {
@@ -1309,25 +1422,119 @@ public class EmailService {
         }
 
         String cleanPrimary = primaryRecipient.trim().toLowerCase();
+        if (!EMAIL_PATTERN.matcher(cleanPrimary).matches()) {
+            EmailLog logEntry = EmailLog.builder()
+                    .referenceId(referenceId)
+                    .service("Seminar Hall Inspection")
+                    .eventCategory("INSPECTION_REPORT")
+                    .primaryRecipient(cleanPrimary)
+                    .subject(subject)
+                    .provider(getActiveProvider().toUpperCase())
+                    .status(EmailLog.STATUS_FAILED)
+                    .errorMessage("Invalid primary recipient email address: " + cleanPrimary)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            emailLogRepository.save(logEntry);
+            log.warn("Inspection report email rejected: invalid email address '{}'", cleanPrimary);
+            return false;
+        }
+
         List<String> cleanCcs = ccRecipients != null
-                ? ccRecipients.stream().filter(c -> c != null && !c.isBlank()).map(String::trim).map(String::toLowerCase).toList()
+                ? ccRecipients.stream()
+                        .filter(c -> c != null && !c.isBlank())
+                        .map(String::trim)
+                        .map(String::toLowerCase)
+                        .filter(c -> !c.equalsIgnoreCase(cleanPrimary) && EMAIL_PATTERN.matcher(c).matches())
+                        .distinct()
+                        .toList()
                 : Collections.emptyList();
+
+        List<String> cleanBccs = bccRecipients != null
+                ? bccRecipients.stream()
+                        .filter(b -> b != null && !b.isBlank())
+                        .map(String::trim)
+                        .map(String::toLowerCase)
+                        .filter(b -> !b.equalsIgnoreCase(cleanPrimary) && !cleanCcs.contains(b) && EMAIL_PATTERN.matcher(b).matches())
+                        .distinct()
+                        .toList()
+                : Collections.emptyList();
+
+        String idempotencyKey = buildDeduplicationKey(referenceId, "INSPECTION_REPORT", cleanPrimary);
+        if (!claimEventKey(idempotencyKey)) {
+            log.info("Inspection report email for {} already sent or in-flight (key={}) - suppressing duplicate", cleanPrimary, idempotencyKey);
+            return true; // Idempotent success: email already distributed
+        }
+
+        String activeProvider = getActiveProvider();
+        String providerName = "apps-script".equalsIgnoreCase(activeProvider) ? "APPS_SCRIPT" : "SMTP";
 
         EmailLog logEntry = EmailLog.builder()
                 .referenceId(referenceId)
+                .deduplicationKey(idempotencyKey)
                 .service("Seminar Hall Inspection")
                 .eventCategory("INSPECTION_REPORT")
                 .primaryRecipient(cleanPrimary)
                 .ccRecipients(cleanCcs)
                 .subject(subject)
-                .provider("SMTP")
+                .provider(providerName)
                 .createdAt(LocalDateTime.now())
                 .build();
 
+        if (!isValidPdfFilename(attachmentFilename)) {
+            releaseEventKey(idempotencyKey);
+            logEntry.setStatus(EmailLog.STATUS_FAILED);
+            logEntry.setErrorMessage("Invalid attachment filename: '" + attachmentFilename + "'. PDF extension (.pdf) is required.");
+            emailLogRepository.save(logEntry);
+            log.warn("Inspection report attachment rejected for {}: invalid filename '{}'", cleanPrimary, attachmentFilename);
+            return false;
+        }
+        String sanitizedFilename = sanitizeFilename(attachmentFilename);
+
+        if (attachmentBytes == null || attachmentBytes.length == 0) {
+            releaseEventKey(idempotencyKey);
+            logEntry.setStatus(EmailLog.STATUS_FAILED);
+            logEntry.setErrorMessage("Attachment content is missing or empty for file: " + sanitizedFilename);
+            emailLogRepository.save(logEntry);
+            log.warn("Inspection report attachment rejected for {}: empty bytes", cleanPrimary);
+            return false;
+        }
+
+        if (attachmentBytes.length > MAX_ATTACHMENT_SIZE_BYTES) {
+            releaseEventKey(idempotencyKey);
+            logEntry.setStatus(EmailLog.STATUS_FAILED);
+            logEntry.setErrorMessage("Attachment exceeds maximum allowed size of 10 MB (" + attachmentBytes.length + " bytes)");
+            emailLogRepository.save(logEntry);
+            log.warn("Inspection report attachment rejected for {}: oversized ({} bytes)", cleanPrimary, attachmentBytes.length);
+            return false;
+        }
+
+        if (!isValidPdfBytes(attachmentBytes)) {
+            releaseEventKey(idempotencyKey);
+            logEntry.setStatus(EmailLog.STATUS_FAILED);
+            logEntry.setErrorMessage("Invalid attachment format: File does not contain a valid PDF magic header (%PDF-)");
+            emailLogRepository.save(logEntry);
+            log.warn("Inspection report attachment rejected for {}: invalid PDF header bytes", cleanPrimary);
+            return false;
+        }
+
+        if ("apps-script".equalsIgnoreCase(activeProvider)) {
+            return dispatchAttachmentViaAppsScript(cleanPrimary, cleanCcs, cleanBccs, subject, htmlBody, plainText,
+                    sanitizedFilename, attachmentBytes, idempotencyKey, logEntry);
+        } else {
+            return dispatchAttachmentViaSmtp(cleanPrimary, cleanCcs, cleanBccs, subject, htmlBody, plainText,
+                    sanitizedFilename, attachmentBytes, idempotencyKey, logEntry);
+        }
+    }
+
+    private boolean dispatchAttachmentViaSmtp(String primaryRecipient, List<String> ccRecipients, List<String> bccRecipients,
+                                              String subject, String htmlBody, String plainText,
+                                              String attachmentFilename, byte[] attachmentBytes,
+                                              String idempotencyKey, EmailLog logEntry) {
         if (!isSmtpConfigured()) {
             logEntry.setStatus(EmailLog.STATUS_SKIPPED_NO_CREDENTIALS);
+            logEntry.setErrorMessage("SMTP credentials not configured in environment. Email logged safely.");
             emailLogRepository.save(logEntry);
-            log.info("Email with attachment simulated [SKIPPED_NO_CREDENTIALS] to: {}", cleanPrimary);
+            log.info("Email with attachment simulated [SKIPPED_NO_CREDENTIALS] via SMTP to: {}", primaryRecipient);
             return true;
         }
 
@@ -1338,16 +1545,17 @@ public class EmailService {
 
             String senderFrom = (mailFrom != null && !mailFrom.isBlank()) ? mailFrom : mailUsername;
             helper.setFrom(new InternetAddress(senderFrom, mailFromName));
-            helper.setTo(cleanPrimary);
-            if (!cleanCcs.isEmpty()) {
-                helper.setCc(cleanCcs.toArray(new String[0]));
+            helper.setTo(primaryRecipient);
+            if (!ccRecipients.isEmpty()) {
+                helper.setCc(ccRecipients.toArray(new String[0]));
+            }
+            if (!bccRecipients.isEmpty()) {
+                helper.setBcc(bccRecipients.toArray(new String[0]));
             }
             helper.setSubject(subject);
             helper.setText(plainText != null ? plainText : htmlBody, htmlBody);
 
-            if (attachmentFilename != null && attachmentBytes != null && attachmentBytes.length > 0) {
-                helper.addAttachment(attachmentFilename, new ByteArrayResource(attachmentBytes));
-            }
+            helper.addAttachment(attachmentFilename, new ByteArrayResource(attachmentBytes));
 
             sender.send(message);
 
@@ -1356,13 +1564,128 @@ public class EmailService {
             logEntry.setStatus(EmailLog.STATUS_SMTP_ACCEPTED);
             logEntry.setErrorMessage(null);
             emailLogRepository.save(logEntry);
-            log.info("Inspection report email with attachment successfully sent to {}", cleanPrimary);
+            log.info("Inspection report email with attachment successfully sent via SMTP to {}", primaryRecipient);
             return true;
         } catch (Exception e) {
-            log.error("Failed to send inspection report email to {}: {}", cleanPrimary, e.getMessage());
-            logEntry.setStatus("FAILED");
+            releaseEventKey(idempotencyKey);
+            log.error("Failed to send inspection report email via SMTP to {}: {}", primaryRecipient, e.getMessage());
+            logEntry.setStatus(EmailLog.STATUS_FAILED);
             logEntry.setErrorMessage(e.getMessage());
             emailLogRepository.save(logEntry);
+            return false;
+        }
+    }
+
+    private boolean dispatchAttachmentViaAppsScript(String primaryRecipient, List<String> ccRecipients, List<String> bccRecipients,
+                                                    String subject, String htmlBody, String plainText,
+                                                    String attachmentFilename, byte[] attachmentBytes,
+                                                    String idempotencyKey, EmailLog logEntry) {
+        if (!isAppsScriptConfigured()) {
+            logEntry.setStatus(EmailLog.STATUS_SKIPPED_NO_CREDENTIALS);
+            logEntry.setErrorMessage("Apps Script URL or secret not configured in environment. Email logged safely.");
+            emailLogRepository.save(logEntry);
+            log.info("Email with attachment simulated [SKIPPED_NO_CREDENTIALS] via Apps Script to: {}", primaryRecipient);
+            return true;
+        }
+
+        try {
+            String base64Content = Base64.getEncoder().encodeToString(attachmentBytes);
+
+            Map<String, Object> attachmentMap = new LinkedHashMap<>();
+            attachmentMap.put("filename", attachmentFilename);
+            attachmentMap.put("mimeType", "application/pdf");
+            attachmentMap.put("base64Data", base64Content);
+
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("secret", appsScriptSecret);
+            payload.put("to", primaryRecipient);
+            payload.put("cc", ccRecipients != null ? ccRecipients : Collections.emptyList());
+            if (bccRecipients != null && !bccRecipients.isEmpty()) {
+                payload.put("bcc", bccRecipients);
+            }
+            payload.put("subject", subject);
+            payload.put("htmlBody", htmlBody);
+            payload.put("textBody", plainText);
+            payload.put("senderName",
+                    (mailFromName != null && !mailFromName.isBlank()) ? mailFromName.trim() : "NEC Service Management");
+            payload.put("idempotencyKey", idempotencyKey);
+            payload.put("attachments", List.of(attachmentMap));
+
+            String jsonPayload = objectMapper.writeValueAsString(payload);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(appsScriptUrl.trim()))
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json")
+                    .timeout(Duration.ofSeconds(30))
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonPayload, StandardCharsets.UTF_8))
+                    .build();
+
+            HttpClient client = (this.httpClient != null) ? this.httpClient : createHttpClient();
+            HttpResponse<String> response = client.send(request,
+                    HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+
+            int statusCode = response.statusCode();
+            String responseBody = response.body() != null ? response.body().trim() : "";
+
+            if (statusCode >= 200 && statusCode < 300) {
+                boolean success = false;
+                String errorDetail = null;
+                JsonNode root = null;
+                try {
+                    root = objectMapper.readTree(responseBody);
+                    success = root.path("success").asBoolean(false);
+                    if (!success) {
+                        errorDetail = root.has("error") ? root.get("error").asText()
+                                : (root.has("message") ? root.get("message").asText() : "Apps Script rejected request");
+                    }
+                } catch (Exception parseEx) {
+                    errorDetail = "Invalid JSON response from Apps Script: " + responseBody;
+                }
+
+                if (success) {
+                    logEntry.setStatus(EmailLog.STATUS_SMTP_ACCEPTED);
+                    if (root != null && root.has("messageId") && !root.get("messageId").isNull()) {
+                        logEntry.setMessageId(root.get("messageId").asText());
+                    }
+                    logEntry.setErrorMessage(null);
+                    emailLogRepository.save(logEntry);
+                    log.info("Inspection report email with attachment accepted by Apps Script relay [SMTP_ACCEPTED] for {}", primaryRecipient);
+                    return true;
+                } else {
+                    releaseEventKey(idempotencyKey);
+                    String sanitized = sanitizeErrorMessage(errorDetail, appsScriptSecret);
+                    logEntry.setStatus(EmailLog.STATUS_FAILED);
+                    logEntry.setErrorMessage(sanitized);
+                    emailLogRepository.save(logEntry);
+                    log.warn("Apps Script relay reported attachment failure for {}: {}", primaryRecipient, sanitized);
+                    return false;
+                }
+            } else {
+                releaseEventKey(idempotencyKey);
+                String sanitized = sanitizeErrorMessage("HTTP " + statusCode + ": " + responseBody, appsScriptSecret);
+                logEntry.setStatus(EmailLog.STATUS_FAILED);
+                logEntry.setErrorMessage(sanitized);
+                emailLogRepository.save(logEntry);
+                log.warn("Apps Script HTTP failure for attachment dispatch to {}: {}", primaryRecipient, sanitized);
+                return false;
+            }
+        } catch (HttpTimeoutException te) {
+            // Under timeout, keep event key to prevent double dispatch of the same inspection report email
+            String sanitized = sanitizeErrorMessage("Apps Script request timed out: " + te.getMessage(), appsScriptSecret);
+            logEntry.setStatus(EmailLog.STATUS_FAILED);
+            logEntry.setErrorMessage(sanitized);
+            emailLogRepository.save(logEntry);
+            log.warn("Apps Script timeout for attachment dispatch to {}: {}", primaryRecipient, sanitized);
+            return false;
+        } catch (Exception e) {
+            releaseEventKey(idempotencyKey);
+            String sanitized = sanitizeErrorMessage(
+                    e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName(), appsScriptSecret);
+            logEntry.setStatus(EmailLog.STATUS_FAILED);
+            logEntry.setErrorMessage(sanitized);
+            emailLogRepository.save(logEntry);
+            log.warn("Apps Script attachment delivery error for {}: {}", primaryRecipient, sanitized);
             return false;
         }
     }

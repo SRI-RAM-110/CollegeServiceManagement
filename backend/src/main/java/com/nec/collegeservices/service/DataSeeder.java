@@ -4,6 +4,7 @@ import com.nec.collegeservices.model.*;
 import com.nec.collegeservices.repository.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -37,8 +38,15 @@ public class DataSeeder implements CommandLineRunner {
 
     private static final String SYSTEM_ACTOR = "SYSTEM_SEEDER";
 
+    @Value("${app.seeder.enabled:false}")
+    private boolean seederEnabled;
+
     @Override
     public void run(String... args) {
+        if (!seederEnabled) {
+            log.info("Database Seeder is disabled (app.seeder.enabled=false). Skipping default seeding against MongoDB Atlas.");
+            return;
+        }
         String now = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         seedHallsIfEmpty(now);
         seedRoomsIfEmpty(now);
