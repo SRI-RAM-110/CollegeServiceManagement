@@ -689,7 +689,7 @@ public class EmailService {
             return false;
         }
 
-        // 2. Check MongoDB for existing sent/accepted/skipped logs
+        // 2. Check MongoDB for existing sent/accepted/skipped/ambiguous logs
         try {
             boolean existsInDb = emailLogRepository.existsByDeduplicationKeyAndStatusIn(
                     dedupKey, List.of(
@@ -699,6 +699,16 @@ public class EmailService {
                             EmailLog.STATUS_SKIPPED_LOCAL_DOMAIN));
             if (existsInDb) {
                 return false;
+            }
+
+            // Check if an ambiguous timeout occurred for this deduplication key
+            Optional<EmailLog> failedLog = emailLogRepository.findFirstByDeduplicationKeyAndStatus(dedupKey, EmailLog.STATUS_FAILED);
+            if (failedLog.isPresent()) {
+                String err = failedLog.get().getErrorMessage();
+                if (err != null && (err.toLowerCase().contains("timed out") || err.toLowerCase().contains("timeout"))) {
+                    log.warn("Deduplication claim blocked: previous ambiguous timeout recorded in MongoDB for {}", dedupKey);
+                    return false;
+                }
             }
         } catch (Exception e) {
             log.warn("Error checking deduplication in repository for {}: {}", dedupKey, e.getMessage());

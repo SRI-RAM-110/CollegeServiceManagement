@@ -262,6 +262,9 @@ public class SecurityConfig {
                 .requestMatchers("/api/ao/**", "/api/admin/users/**")
                     .hasAnyRole("CREATOR", "AO_ADMIN")
 
+                // Production Email Attachment Test Endpoint: Strictly AO_ADMIN only
+                .requestMatchers("/api/admin/email/**").hasRole("AO_ADMIN")
+
                 // Electrical Issue Management: Accessible strictly by AO_ADMIN, SEMINAR_TECHNICIAN, ELECTRICIAN
                 .requestMatchers("/api/electrical-issues/**")
                     .hasAnyRole("AO_ADMIN", "SEMINAR_TECHNICIAN", "ELECTRICIAN")
