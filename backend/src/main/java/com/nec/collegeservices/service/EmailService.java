@@ -58,6 +58,9 @@ public class EmailService {
     @Autowired(required = false)
     private SeminarHallRepository seminarHallRepository;
 
+    @Autowired(required = false)
+    private EmailDeduplicationService deduplicationService;
+
     @Value("${spring.mail.host:smtp.gmail.com}")
     private String mailHost;
 
@@ -228,6 +231,24 @@ public class EmailService {
         return sanitized;
     }
 
+    /**
+     * Sanitizes email recipient strings before logging to prevent log injection
+     * (CRLF stripping), caps length, and redacts sensitive credentials.
+     *
+     * @param input the raw recipient or parameter string
+     * @return safe loggable string
+     */
+    public String sanitizeForLog(String input) {
+        if (input == null) {
+            return "null";
+        }
+        String clean = input.replaceAll("[\\r\\n\\t]", "_").trim();
+        if (clean.length() > 100) {
+            clean = clean.substring(0, 100) + "...";
+        }
+        return sanitizeErrorMessage(clean, appsScriptSecret, mailPassword);
+    }
+
     private JavaMailSender createMailSender() {
         JavaMailSenderImpl sender = new JavaMailSenderImpl();
         String host = (mailHost != null && !mailHost.isBlank()) ? mailHost.trim().replaceAll("^[\"']|[\"']$", "")
@@ -321,7 +342,23 @@ public class EmailService {
         String eventCategory = classifyEvent(notification);
         List<String> primaryRecipients = resolvePrimaryRecipients(notification);
         if (primaryRecipients.isEmpty()) {
-            log.debug("No valid primary email recipients found for notification {}", notification.getId());
+            log.warn("No valid primary email recipients found for notification {} (role={}, dept={}, uid={}). Recording auditable skip log.",
+                    notification.getId(), notification.getRecipientRole(), notification.getRecipientDept(), notification.getRecipientUserId());
+            try {
+                EmailLog skipLog = EmailLog.builder()
+                        .notificationId(notification.getId())
+                        .referenceId(notification.getReferenceId())
+                        .service(notification.getService() != null ? notification.getService() : "General")
+                        .eventCategory(eventCategory)
+                        .status(EmailLog.STATUS_SKIPPED_NO_RECIPIENTS)
+                        .errorMessage(String.format("No active registered recipient matching role='%s', dept='%s', userId='%s'",
+                                notification.getRecipientRole(), notification.getRecipientDept(), notification.getRecipientUserId()))
+                        .createdAt(LocalDateTime.now())
+                        .build();
+                emailLogRepository.save(skipLog);
+            } catch (Exception ex) {
+                log.error("Failed to save SKIPPED_NO_RECIPIENTS log for notification {}: {}", notification.getId(), ex.getMessage());
+            }
             return;
         }
 
@@ -343,6 +380,17 @@ public class EmailService {
         return r.endsWith("_ADMIN") || r.equals("CREATOR") || r.equals("SUPER_ADMIN")
                 || r.equals("SEMINAR_COORDINATOR") || r.equals("SEMINAR_TECHNICIAN")
                 || r.equals("GENERATOR_OPERATOR") || r.equals("ELECTRICIAN");
+    }
+
+    public static String normalizeDepartmentCode(String dept) {
+        if (dept == null) return null;
+        String trimmed = dept.trim();
+        if (trimmed.isEmpty()) return trimmed;
+        String upper = trimmed.toUpperCase();
+        if ("MECH".equals(upper) || "MECHANICAL".equals(upper)) {
+            return "ME";
+        }
+        return upper;
     }
 
     /**
@@ -424,7 +472,7 @@ public class EmailService {
                     boolean roleMatch = isRoleAll || u.hasRole(role.trim());
                     boolean deptMatch = isDeptAll
                             || (isAdminRole && "ADMIN".equalsIgnoreCase(dept.trim()))
-                            || (u.getDepartment() != null && u.getDepartment().trim().equalsIgnoreCase(dept.trim()));
+                            || (u.getDepartment() != null && normalizeDepartmentCode(u.getDepartment()).equalsIgnoreCase(normalizeDepartmentCode(dept)));
                     return roleMatch && deptMatch;
                 })
                 .toList();
@@ -531,10 +579,11 @@ public class EmailService {
             return Collections.emptyList();
         }
         String deptTrimmed = department.trim();
+        String normDept = normalizeDepartmentCode(deptTrimmed);
         return userRepository.findAll().stream()
                 .filter(u -> Boolean.TRUE.equals(u.getActive()))
                 .filter(u -> u.hasRole("DEPARTMENT_HOD"))
-                .filter(u -> u.getDepartment() != null && u.getDepartment().trim().equalsIgnoreCase(deptTrimmed))
+                .filter(u -> u.getDepartment() != null && normalizeDepartmentCode(u.getDepartment()).equalsIgnoreCase(normDept))
                 .map(User::getEmail)
                 .filter(e -> e != null && !e.isBlank() && e.contains("@"))
                 .map(String::trim)
@@ -650,20 +699,26 @@ public class EmailService {
         for (String email : rawCcEmails) {
             if (email == null)
                 continue;
-            String clean = email.trim().replaceAll("^[\"']|[\"']$", "").toLowerCase();
-            if (clean.isEmpty())
+            if (!EmailRecipientValidator.isValidRecipient(email)) {
+                log.warn("Ignored invalid CC email '{}' in hall '{}' configuration.", sanitizeForLog(email), hall.getHallId());
                 continue;
-            if (clean.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
-                validCcEmails.add(clean);
-            } else {
-                log.warn("Ignored invalid CC email '{}' in hall '{}' configuration.", email, hall.getHallId());
             }
+            validCcEmails.add(EmailRecipientValidator.normalizeEmail(email));
         }
 
         return new ArrayList<>(validCcEmails);
     }
 
     private final java.util.concurrent.ConcurrentHashMap<String, Long> activeDeduplicationKeys = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.ConcurrentHashMap<String, EmailClaimHandle> activeClaimHandles = new java.util.concurrent.ConcurrentHashMap<>();
+
+    public EmailDeduplicationService getDeduplicationService() {
+        return deduplicationService;
+    }
+
+    public void setDeduplicationService(EmailDeduplicationService deduplicationService) {
+        this.deduplicationService = deduplicationService;
+    }
 
     public String buildDeduplicationKey(String referenceId, String eventCategory, String email) {
         String ref = (referenceId != null && !referenceId.isBlank()) ? referenceId.trim() : "GEN";
@@ -681,37 +736,59 @@ public class EmailService {
         if (activeDeduplicationKeys.size() > 5000) {
             long cutoff = System.currentTimeMillis() - 7200000L;
             activeDeduplicationKeys.entrySet().removeIf(entry -> entry.getValue() < cutoff);
+            activeClaimHandles.entrySet().removeIf(entry -> {
+                LocalDateTime exp = entry.getValue().getLeaseExpiresAt();
+                return exp != null && exp.isBefore(LocalDateTime.now().minusHours(2));
+            });
         }
 
-        // 1. Check in-memory active claims (atomic putIfAbsent)
+        // 1. Fast in-memory check (within this JVM)
         Long existingTime = activeDeduplicationKeys.putIfAbsent(dedupKey, System.currentTimeMillis());
         if (existingTime != null) {
             return false;
         }
 
-        // 2. Check MongoDB for existing sent/accepted/skipped/ambiguous logs
-        try {
-            boolean existsInDb = emailLogRepository.existsByDeduplicationKeyAndStatusIn(
-                    dedupKey, List.of(
-                            EmailLog.STATUS_SENT,
-                            EmailLog.STATUS_SMTP_ACCEPTED,
-                            EmailLog.STATUS_SENDING,
-                            EmailLog.STATUS_SKIPPED_LOCAL_DOMAIN));
-            if (existsInDb) {
+        // 2. Distributed atomic claim via EmailDeduplicationService
+        if (deduplicationService != null) {
+            ClaimAcquisitionResult claimResult = deduplicationService.acquireClaim(dedupKey);
+            if (!claimResult.isAcquired()) {
+                activeDeduplicationKeys.remove(dedupKey);
+                log.info("Distributed claim acquisition failed for key {}: status={}", dedupKey, claimResult.getStatus());
                 return false;
             }
+            activeClaimHandles.put(dedupKey, claimResult.getHandle());
+        }
 
-            // Check if an ambiguous timeout occurred for this deduplication key
-            Optional<EmailLog> failedLog = emailLogRepository.findFirstByDeduplicationKeyAndStatus(dedupKey, EmailLog.STATUS_FAILED);
-            if (failedLog.isPresent()) {
-                String err = failedLog.get().getErrorMessage();
-                if (err != null && (err.toLowerCase().contains("timed out") || err.toLowerCase().contains("timeout"))) {
-                    log.warn("Deduplication claim blocked: previous ambiguous timeout recorded in MongoDB for {}", dedupKey);
+        // 3. Historical check against email_logs repository (preserves pre-Phase 2 historical logs)
+        if (emailLogRepository != null) {
+            try {
+                boolean existsInDb = emailLogRepository.existsByDeduplicationKeyAndStatusIn(
+                        dedupKey, List.of(
+                                EmailLog.STATUS_SENT,
+                                EmailLog.STATUS_SMTP_ACCEPTED,
+                                EmailLog.STATUS_SENDING,
+                                EmailLog.STATUS_SKIPPED_LOCAL_DOMAIN));
+                if (existsInDb) {
+                    completeEventKey(dedupKey);
+                    activeDeduplicationKeys.remove(dedupKey);
                     return false;
                 }
+
+                // Check if an ambiguous timeout occurred historically for this deduplication key
+                Optional<EmailLog> failedLog = emailLogRepository.findFirstByDeduplicationKeyAndStatus(dedupKey, EmailLog.STATUS_FAILED);
+                if (failedLog.isPresent()) {
+                    String err = failedLog.get().getErrorMessage();
+                    if (err != null && (err.toLowerCase().contains("timed out") || err.toLowerCase().contains("timeout"))) {
+                        log.warn("Deduplication claim blocked: previous ambiguous timeout recorded in MongoDB for {}", dedupKey);
+                        markEventKeyAmbiguous(dedupKey, "Historical ambiguous timeout in email_logs");
+                        return false;
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Fail-closed: Error checking deduplication in emailLogRepository for {}: {}", dedupKey, e.getMessage());
+                releaseEventKey(dedupKey);
+                return false; // FAIL CLOSED
             }
-        } catch (Exception e) {
-            log.warn("Error checking deduplication in repository for {}: {}", dedupKey, e.getMessage());
         }
 
         return true;
@@ -720,11 +797,50 @@ public class EmailService {
     public void releaseEventKey(String dedupKey) {
         if (dedupKey != null) {
             activeDeduplicationKeys.remove(dedupKey);
+            EmailClaimHandle handle = activeClaimHandles.remove(dedupKey);
+            if (handle != null && deduplicationService != null) {
+                deduplicationService.releaseClaim(handle);
+            }
         }
+    }
+
+    public void completeEventKey(String dedupKey) {
+        if (dedupKey != null) {
+            // Keep in activeDeduplicationKeys to block immediate duplicate calls in the same JVM
+            EmailClaimHandle handle = activeClaimHandles.remove(dedupKey);
+            if (handle != null && deduplicationService != null) {
+                deduplicationService.completeClaim(handle);
+            }
+        }
+    }
+
+    public void markEventKeyAmbiguous(String dedupKey, String reason) {
+        if (dedupKey != null) {
+            // Keep in activeDeduplicationKeys to block duplicate calls in the same JVM
+            EmailClaimHandle handle = activeClaimHandles.remove(dedupKey);
+            if (handle != null && deduplicationService != null) {
+                deduplicationService.markAmbiguous(handle, reason);
+            }
+        }
+    }
+
+    public boolean validateClaimOwnership(String dedupKey) {
+        if (dedupKey == null) {
+            return false;
+        }
+        if (deduplicationService != null) {
+            EmailClaimHandle handle = activeClaimHandles.get(dedupKey);
+            if (handle == null) {
+                return false;
+            }
+            return deduplicationService.validateOwnership(handle);
+        }
+        return activeDeduplicationKeys.containsKey(dedupKey);
     }
 
     public void clearDeduplicationCache() {
         activeDeduplicationKeys.clear();
+        activeClaimHandles.clear();
     }
 
     private void sendSingleEmail(Notification notification, String eventCategory,
@@ -732,9 +848,31 @@ public class EmailService {
         if (primaryRecipient == null || primaryRecipient.isBlank()) {
             return;
         }
-        String cleanPrimary = primaryRecipient.trim().toLowerCase();
+        String cleanPrimary = EmailRecipientValidator.normalizeEmail(primaryRecipient);
         String referenceId = notification.getReferenceId() != null ? notification.getReferenceId()
                 : notification.getId();
+
+        if (!EmailRecipientValidator.isValidRecipient(cleanPrimary)) {
+            String activeProvider = getActiveProvider();
+            String providerName = "apps-script".equalsIgnoreCase(activeProvider) ? "APPS_SCRIPT" : "SMTP";
+            EmailLog logEntry = EmailLog.builder()
+                    .notificationId(notification.getId())
+                    .referenceId(referenceId)
+                    .service(notification.getService() != null ? notification.getService() : "General")
+                    .eventCategory(eventCategory)
+                    .primaryRecipient(cleanPrimary != null ? cleanPrimary : primaryRecipient.trim())
+                    .subject("[NEC Services] " + (notification.getTitle() != null ? notification.getTitle() : "Notification")
+                            + (referenceId != null ? " (" + referenceId + ")" : ""))
+                    .provider(providerName)
+                    .status(EmailLog.STATUS_FAILED)
+                    .errorMessage("Invalid primary recipient email address: " + (cleanPrimary != null ? cleanPrimary : primaryRecipient))
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            emailLogRepository.save(logEntry);
+            log.warn("Email notification rejected before dispatch: invalid recipient address '{}'", primaryRecipient);
+            return;
+        }
+
         String primaryDedupKey = buildDeduplicationKey(referenceId, eventCategory, cleanPrimary);
 
         // Deduplicate primary recipient by normalized email
@@ -743,21 +881,26 @@ public class EmailService {
             return;
         }
 
-        // Filter CCs: exclude primary, deduplicate, and claim event keys
-        List<String> claimedCcs = new ArrayList<>();
-        if (ccRecipients != null) {
-            for (String cc : ccRecipients) {
-                if (cc == null || cc.isBlank())
-                    continue;
-                String cleanCc = cc.trim().toLowerCase();
-                if (cleanCc.equalsIgnoreCase(cleanPrimary)) continue;
+        // Filter CCs: validate, log failures, exclude primary, deduplicate, and claim event keys
+        EmailRecipientValidator.SecondaryValidationResult ccValidation =
+                EmailRecipientValidator.validateSecondaryRecipients(ccRecipients, cleanPrimary);
 
-                String ccDedupKey = buildDeduplicationKey(referenceId, eventCategory, cleanCc);
-                if (claimEventKey(ccDedupKey)) {
-                    claimedCcs.add(cleanCc);
-                } else {
-                    log.info("CC recipient {} already received event {} - excluded from CC", cleanCc, ccDedupKey);
-                }
+        for (String invalidCc : ccValidation.getInvalidRecipients()) {
+            log.warn("Invalid CC recipient '{}' rejected for notification {} (ref: {})",
+                    sanitizeForLog(invalidCc), notification.getId(), referenceId);
+        }
+        for (String dupCc : ccValidation.getPrimaryDuplicates()) {
+            log.info("CC recipient '{}' excluded because it matches primary recipient for notification {} (ref: {})",
+                    sanitizeForLog(dupCc), notification.getId(), referenceId);
+        }
+
+        List<String> claimedCcs = new ArrayList<>();
+        for (String cleanCc : ccValidation.getValidRecipients()) {
+            String ccDedupKey = buildDeduplicationKey(referenceId, eventCategory, cleanCc);
+            if (claimEventKey(ccDedupKey)) {
+                claimedCcs.add(cleanCc);
+            } else {
+                log.info("CC recipient {} already received event {} - excluded from CC", cleanCc, ccDedupKey);
             }
         }
 
@@ -784,12 +927,35 @@ public class EmailService {
         String htmlBody = buildHtmlEmailBody(notification, eventCategory, referenceId, cleanPrimary);
         String plainText = buildPlainTextEmailBody(notification, eventCategory, referenceId, cleanPrimary);
 
+        if (!validateClaimOwnership(primaryDedupKey)) {
+            log.error("Lost claim ownership or lease expired before dispatch for primary recipient {}", cleanPrimary);
+            releaseEventKey(primaryDedupKey);
+            for (String cc : claimedCcs) {
+                releaseEventKey(buildDeduplicationKey(referenceId, eventCategory, cc));
+            }
+            return;
+        }
+
         try {
             dispatchEmail(cleanPrimary, claimedCcs, subject, htmlBody, plainText, logEntry);
             if (EmailLog.STATUS_FAILED.equals(logEntry.getStatus())) {
-                releaseEventKey(primaryDedupKey);
+                String err = logEntry.getErrorMessage();
+                boolean isAmbiguous = err != null && (err.toLowerCase().contains("timed out") || err.toLowerCase().contains("timeout"));
+                if (isAmbiguous) {
+                    markEventKeyAmbiguous(primaryDedupKey, err);
+                    for (String cc : claimedCcs) {
+                        markEventKeyAmbiguous(buildDeduplicationKey(referenceId, eventCategory, cc), err);
+                    }
+                } else {
+                    releaseEventKey(primaryDedupKey);
+                    for (String cc : claimedCcs) {
+                        releaseEventKey(buildDeduplicationKey(referenceId, eventCategory, cc));
+                    }
+                }
+            } else {
+                completeEventKey(primaryDedupKey);
                 for (String cc : claimedCcs) {
-                    releaseEventKey(buildDeduplicationKey(referenceId, eventCategory, cc));
+                    completeEventKey(buildDeduplicationKey(referenceId, eventCategory, cc));
                 }
             }
         } catch (Exception e) {
@@ -967,8 +1133,8 @@ public class EmailService {
             return result;
         }
 
-        String recipient = targetEmail.trim().replaceAll("^[\"']|[\"']$", "").toLowerCase();
-        if (!recipient.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
+        String recipient = EmailRecipientValidator.normalizeEmail(targetEmail);
+        if (!EmailRecipientValidator.isValidRecipient(recipient)) {
             result.put("status", "VALIDATION_ERROR");
             result.put("message", "Invalid recipient email address format: " + targetEmail);
             return result;
@@ -1431,43 +1597,56 @@ public class EmailService {
             return false;
         }
 
-        String cleanPrimary = primaryRecipient.trim().toLowerCase();
-        if (!EMAIL_PATTERN.matcher(cleanPrimary).matches()) {
+        String cleanPrimary = EmailRecipientValidator.normalizeEmail(primaryRecipient);
+        if (!EmailRecipientValidator.isValidRecipient(cleanPrimary)) {
             EmailLog logEntry = EmailLog.builder()
                     .referenceId(referenceId)
                     .service("Seminar Hall Inspection")
                     .eventCategory("INSPECTION_REPORT")
-                    .primaryRecipient(cleanPrimary)
+                    .primaryRecipient(cleanPrimary != null ? cleanPrimary : (primaryRecipient != null ? primaryRecipient.trim() : "null"))
                     .subject(subject)
                     .provider(getActiveProvider().toUpperCase())
                     .status(EmailLog.STATUS_FAILED)
-                    .errorMessage("Invalid primary recipient email address: " + cleanPrimary)
+                    .errorMessage("Invalid primary recipient email address: " + (cleanPrimary != null ? cleanPrimary : primaryRecipient))
                     .createdAt(LocalDateTime.now())
                     .build();
             emailLogRepository.save(logEntry);
-            log.warn("Inspection report email rejected: invalid email address '{}'", cleanPrimary);
+            log.warn("Inspection report email rejected: invalid email address '{}'", primaryRecipient);
             return false;
         }
 
-        List<String> cleanCcs = ccRecipients != null
-                ? ccRecipients.stream()
-                        .filter(c -> c != null && !c.isBlank())
-                        .map(String::trim)
-                        .map(String::toLowerCase)
-                        .filter(c -> !c.equalsIgnoreCase(cleanPrimary) && EMAIL_PATTERN.matcher(c).matches())
-                        .distinct()
-                        .toList()
-                : Collections.emptyList();
+        EmailRecipientValidator.SecondaryValidationResult ccValidation =
+                EmailRecipientValidator.validateSecondaryRecipients(ccRecipients, cleanPrimary);
+        for (String invalidCc : ccValidation.getInvalidRecipients()) {
+            log.warn("Invalid CC recipient '{}' rejected for inspection email (ref: {})",
+                    sanitizeForLog(invalidCc), referenceId);
+        }
+        for (String dupCc : ccValidation.getPrimaryDuplicates()) {
+            log.info("CC recipient '{}' excluded because it matches primary recipient for inspection email (ref: {})",
+                    sanitizeForLog(dupCc), referenceId);
+        }
+        List<String> cleanCcs = ccValidation.getValidRecipients();
 
-        List<String> cleanBccs = bccRecipients != null
-                ? bccRecipients.stream()
-                        .filter(b -> b != null && !b.isBlank())
-                        .map(String::trim)
-                        .map(String::toLowerCase)
-                        .filter(b -> !b.equalsIgnoreCase(cleanPrimary) && !cleanCcs.contains(b) && EMAIL_PATTERN.matcher(b).matches())
-                        .distinct()
-                        .toList()
-                : Collections.emptyList();
+        EmailRecipientValidator.SecondaryValidationResult bccValidation =
+                EmailRecipientValidator.validateSecondaryRecipients(bccRecipients, cleanPrimary);
+        for (String invalidBcc : bccValidation.getInvalidRecipients()) {
+            log.warn("Invalid BCC recipient '{}' rejected for inspection email (ref: {})",
+                    sanitizeForLog(invalidBcc), referenceId);
+        }
+        for (String dupBcc : bccValidation.getPrimaryDuplicates()) {
+            log.info("BCC recipient '{}' excluded because it matches primary recipient for inspection email (ref: {})",
+                    sanitizeForLog(dupBcc), referenceId);
+        }
+        List<String> cleanBccs = bccValidation.getValidRecipients().stream()
+                .filter(b -> {
+                    if (cleanCcs.contains(b)) {
+                        log.info("BCC recipient '{}' excluded because it is already in CC list for inspection email (ref: {})",
+                                sanitizeForLog(b), referenceId);
+                        return false;
+                    }
+                    return true;
+                })
+                .toList();
 
         String idempotencyKey = buildDeduplicationKey(referenceId, "INSPECTION_REPORT", cleanPrimary);
         if (!claimEventKey(idempotencyKey)) {
@@ -1527,6 +1706,12 @@ public class EmailService {
             return false;
         }
 
+        if (!validateClaimOwnership(idempotencyKey)) {
+            log.error("Lost claim ownership or lease expired before dispatch for inspection email {}", cleanPrimary);
+            releaseEventKey(idempotencyKey);
+            return false;
+        }
+
         if ("apps-script".equalsIgnoreCase(activeProvider)) {
             return dispatchAttachmentViaAppsScript(cleanPrimary, cleanCcs, cleanBccs, subject, htmlBody, plainText,
                     sanitizedFilename, attachmentBytes, idempotencyKey, logEntry);
@@ -1545,6 +1730,7 @@ public class EmailService {
             logEntry.setErrorMessage("SMTP credentials not configured in environment. Email logged safely.");
             emailLogRepository.save(logEntry);
             log.info("Email with attachment simulated [SKIPPED_NO_CREDENTIALS] via SMTP to: {}", primaryRecipient);
+            completeEventKey(idempotencyKey);
             return true;
         }
 
@@ -1575,6 +1761,7 @@ public class EmailService {
             logEntry.setErrorMessage(null);
             emailLogRepository.save(logEntry);
             log.info("Inspection report email with attachment successfully sent via SMTP to {}", primaryRecipient);
+            completeEventKey(idempotencyKey);
             return true;
         } catch (Exception e) {
             releaseEventKey(idempotencyKey);
@@ -1595,6 +1782,7 @@ public class EmailService {
             logEntry.setErrorMessage("Apps Script URL or secret not configured in environment. Email logged safely.");
             emailLogRepository.save(logEntry);
             log.info("Email with attachment simulated [SKIPPED_NO_CREDENTIALS] via Apps Script to: {}", primaryRecipient);
+            completeEventKey(idempotencyKey);
             return true;
         }
 
@@ -1661,6 +1849,7 @@ public class EmailService {
                     logEntry.setErrorMessage(null);
                     emailLogRepository.save(logEntry);
                     log.info("Inspection report email with attachment accepted by Apps Script relay [SMTP_ACCEPTED] for {}", primaryRecipient);
+                    completeEventKey(idempotencyKey);
                     return true;
                 } else {
                     releaseEventKey(idempotencyKey);
@@ -1687,6 +1876,7 @@ public class EmailService {
             logEntry.setErrorMessage(sanitized);
             emailLogRepository.save(logEntry);
             log.warn("Apps Script timeout for attachment dispatch to {}: {}", primaryRecipient, sanitized);
+            markEventKeyAmbiguous(idempotencyKey, sanitized);
             return false;
         } catch (Exception e) {
             releaseEventKey(idempotencyKey);

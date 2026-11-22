@@ -1,6 +1,7 @@
 import urllib.request
 import urllib.parse
 import json
+import os
 import hashlib
 import secrets
 import datetime
@@ -26,7 +27,10 @@ def req(url, method="GET", data=None, token=None):
 
 def main():
     print("=== TEST SUITE: FORGOT & RESET PASSWORD FEATURE ===")
-    client = MongoClient("mongodb://127.0.0.1:27017/")
+    mongo_uri = os.environ.get("MONGODB_URI")
+    if not mongo_uri:
+        raise RuntimeError("CRITICAL ERROR: MONGODB_URI environment variable is mandatory.")
+    client = MongoClient(mongo_uri)
     db = client["collegeservices_db"]
 
     # 1. Test Submission for Non-Existent Email (Anti-Enumeration)

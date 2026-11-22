@@ -442,9 +442,9 @@ public class MealService {
                                 saved.getRequestId()
                         ),
                         () -> notificationService.sendNotification(
-                                "CANTEEN_INCHARGE",
+                                "AO_ADMIN",
                                 "ADMIN",
-                                null,
+                                "ao",
                                 "New Catering Arrangement Order",
                                 "Approved catering arrangement order " + saved.getRequestId() + " for " + saved.getDate() + " (" + (saved.getMealTypes() != null ? String.join(", ", saved.getMealTypes()) : "") + "). Total guests: " + saved.getTotalGuests(),
                                 "Snacks & Meals",

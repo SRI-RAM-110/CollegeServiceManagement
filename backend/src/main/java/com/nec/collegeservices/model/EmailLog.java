@@ -45,4 +45,5 @@ public class EmailLog {
     public static final String STATUS_BOUNCED = "BOUNCED";
     public static final String STATUS_SKIPPED_NO_CREDENTIALS = "SKIPPED_NO_CREDENTIALS";
     public static final String STATUS_SKIPPED_LOCAL_DOMAIN = "SKIPPED_LOCAL_DOMAIN";
+    public static final String STATUS_SKIPPED_NO_RECIPIENTS = "SKIPPED_NO_RECIPIENTS";
 }

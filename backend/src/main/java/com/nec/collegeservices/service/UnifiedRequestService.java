@@ -655,33 +655,21 @@ public class UnifiedRequestService {
                     saved.getRequestId()
             );
 
-            // Notify catering/canteen in-charge
+            // Notify catering/canteen in-charge if registered (AO already notified as MEALS_ADMIN above)
             userRepository.findAll().stream()
                     .filter(u -> Boolean.TRUE.equals(u.getActive()))
                     .filter(u -> u.hasRole("CANTEEN_INCHARGE") || u.hasRole("CATERING_INCHARGE") || "CANTEEN".equalsIgnoreCase(u.getDepartment()))
                     .findFirst()
-                    .ifPresentOrElse(
-                            canteenUser -> notificationService.sendNotification(
-                                    canteenUser.getRole() != null ? canteenUser.getRole() : "CANTEEN_INCHARGE",
-                                    canteenUser.getDepartment() != null ? canteenUser.getDepartment() : "ADMIN",
-                                    canteenUser.getUserId(),
-                                    "Catering Arrangement Cancelled",
-                                    "Catering order " + saved.getRequestId() + " for " + saved.getDate() + " was cancelled.",
-                                    "Snacks & Meals",
-                                    "WARNING",
-                                    saved.getRequestId()
-                            ),
-                            () -> notificationService.sendNotification(
-                                    "CANTEEN_INCHARGE",
-                                    "ADMIN",
-                                    null,
-                                    "Catering Arrangement Cancelled",
-                                    "Catering order " + saved.getRequestId() + " for " + saved.getDate() + " was cancelled.",
-                                    "Snacks & Meals",
-                                    "WARNING",
-                                    saved.getRequestId()
-                            )
-                    );
+                    .ifPresent(canteenUser -> notificationService.sendNotification(
+                            canteenUser.getRole() != null ? canteenUser.getRole() : "CANTEEN_INCHARGE",
+                            canteenUser.getDepartment() != null ? canteenUser.getDepartment() : "ADMIN",
+                            canteenUser.getUserId(),
+                            "Catering Arrangement Cancelled",
+                            "Catering order " + saved.getRequestId() + " for " + saved.getDate() + " was cancelled.",
+                            "Snacks & Meals",
+                            "WARNING",
+                            saved.getRequestId()
+                    ));
 
             return fromMeal(saved);
         }

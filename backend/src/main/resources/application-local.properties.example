@@ -1,5 +1,5 @@
 # ============================================================
-# Local SMTP Development Configuration Template
+# Local Development Configuration Template (Atlas-Only Architecture)
 # ============================================================
 # Copy this file to 'application-local.properties' (in this same directory)
 # and supply your local credentials.
@@ -9,11 +9,21 @@
 # automatically take precedence.
 # ============================================================
 
+# MongoDB Atlas Connection URI (MANDATORY - Local MongoDB is eliminated)
+# Replace with your secure MongoDB Atlas connection string:
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/collegeservices_db?retryWrites=true&w=majority
+
 # Provider selection: 'local' uses local SMTP; 'apps-script' uses Google Apps Script HTTPS relay
 app.mail.provider=local
 
 # Local development frontend URL override (defaults to http://localhost:5173 if omitted)
 # app.frontend.url=http://localhost:5173
+
+# Local development JWT secret override (minimum 32 bytes for HS256 validation)
+app.jwt.secret=nec_college_local_dev_atlas_secure_jwt_token_secret_key_2026_xyz
+
+# Local development CORS allowed origins (permits local Vite frontend at localhost:5173)
+app.cors.allowed-origins=http://localhost:5173,http://localhost:3000
 
 local.mail.username=collegeservice2026@gmail.com
 local.mail.password=your_16_character_app_password_here

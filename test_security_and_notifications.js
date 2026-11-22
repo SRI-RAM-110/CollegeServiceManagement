@@ -6,7 +6,11 @@ async function runTests() {
   console.log('STARTING NOTIFICATION CLEAR & SECURITY TESTS');
   console.log('====================================================\n');
 
-  const uri = 'mongodb://127.0.0.1:27017/collegeservices_db';
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    console.error('CRITICAL ERROR: MONGODB_URI environment variable is mandatory. Localhost MongoDB has been eliminated.');
+    process.exit(1);
+  }
   const client = new MongoClient(uri);
   await client.connect();
   const db = client.db('collegeservices_db');

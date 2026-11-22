@@ -316,7 +316,10 @@ public class AdminUserService {
             user.setName(dto.getName().trim());
         }
         if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
-            String cleanEmail = dto.getEmail().trim().toLowerCase();
+            if (!EmailRecipientValidator.isValidRecipient(dto.getEmail())) {
+                throw new BadRequestException("Please enter a valid email address: " + dto.getEmail().trim());
+            }
+            String cleanEmail = EmailRecipientValidator.normalizeEmail(dto.getEmail());
             Optional<User> existingEmailUser = userRepository.findByEmailIgnoreCase(cleanEmail);
             if (existingEmailUser.isPresent() && !existingEmailUser.get().getId().equals(user.getId())) {
                 throw new BadRequestException("Email '" + cleanEmail + "' is already in use by another user.");

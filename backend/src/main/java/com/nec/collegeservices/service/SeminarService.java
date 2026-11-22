@@ -1010,23 +1010,12 @@ public class SeminarService {
                 primary.getBookingId()
         );
 
-        // 5. Notify Administrators
+        // 5. Notify Administrative Officer (ao)
         String notificationSummary = bookingType.equals("RECURRING")
                 ? user.getDepartment() + " requested recurring booking (" + totalOccurrences + " occurrences) for " + hall.getName() + " (" + startDateStr + " to " + endDateStr + ")"
                 : isSeries
                 ? user.getDepartment() + " requested " + totalOccurrences + " bookings for " + hall.getName() + " (" + startDateStr + " to " + endDateStr + ")"
                 : user.getDepartment() + " requested " + hall.getName() + " on " + startDateStr + " (" + requestedSlot + ")";
-
-        notificationService.sendNotification(
-                "SEMINAR_ADMIN",
-                "ADMIN",
-                null,
-                "New Seminar Hall Request",
-                notificationSummary,
-                "Seminar Hall",
-                "INFO",
-                primary.getBookingId()
-        );
 
         notificationService.sendNotification(
                 "AO_ADMIN",
@@ -1415,7 +1404,7 @@ public class SeminarService {
         );
 
         // Notify assigned Seminar Coordinator(s) for the specific hall
-        SeminarHall hall = hallRepository.findById(booking.getHallId()).orElse(null);
+        SeminarHall hall = getHallById(booking.getHallId()).orElse(null);
         if (hall != null) {
             for (String coordUserId : getCoordinatorUserIdsForHall(hall)) {
                 notificationService.sendNotification(
@@ -1519,7 +1508,7 @@ public class SeminarService {
         );
 
         // Notify assigned Seminar Coordinator(s) for the specific hall
-        SeminarHall hall = hallRepository.findById(booking.getHallId()).orElse(null);
+        SeminarHall hall = getHallById(booking.getHallId()).orElse(null);
         if (hall != null) {
             for (String coordUserId : getCoordinatorUserIdsForHall(hall)) {
                 notificationService.sendNotification(
@@ -1621,9 +1610,9 @@ public class SeminarService {
 
         if (!directCancel) {
             notificationService.sendNotification(
-                    "SEMINAR_ADMIN",
+                    "AO_ADMIN",
                     "ADMIN",
-                    null,
+                    "ao",
                     "Seminar Cancellation Requested",
                     user.getDepartment() + " requested cancellation for " + booking.getHallName() + " on " + booking.getDate() + ". Reason: " + reason,
                     "Seminar Hall",
@@ -1708,7 +1697,7 @@ public class SeminarService {
         );
 
         // Notify assigned Seminar Coordinator(s) for the hall
-        SeminarHall cancelHall = hallRepository.findById(booking.getHallId()).orElse(null);
+        SeminarHall cancelHall = getHallById(booking.getHallId()).orElse(null);
         if (cancelHall != null) {
             for (String coordUserId : getCoordinatorUserIdsForHall(cancelHall)) {
                 notificationService.sendNotification(
@@ -1890,9 +1879,9 @@ public class SeminarService {
         SeminarBooking saved = bookingRepository.save(booking);
 
         notificationService.sendNotification(
-                "SEMINAR_ADMIN",
+                "AO_ADMIN",
                 "ADMIN",
-                null,
+                "ao",
                 "Seminar Reschedule Requested",
                 user.getDepartment() + " requested reschedule for " + booking.getBookingId() + " to " + newHall.getName() + " on " + newDate,
                 "Seminar Hall",

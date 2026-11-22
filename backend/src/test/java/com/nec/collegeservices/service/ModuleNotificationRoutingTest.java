@@ -278,16 +278,26 @@ class ModuleNotificationRoutingTest {
                 eq("CSE-SEM-0101")
         );
 
-        // 3. Seminar admin notification
+        // 3. AO admin notification (redundant SEMINAR_ADMIN was removed)
         verify(notificationService).sendNotification(
-                eq("SEMINAR_ADMIN"),
+                eq("AO_ADMIN"),
                 eq("ADMIN"),
-                isNull(),
+                eq("ao"),
                 eq("New Seminar Hall Request"),
                 anyString(),
                 eq("Seminar Hall"),
                 eq("INFO"),
                 eq("CSE-SEM-0101")
+        );
+        verify(notificationService, never()).sendNotification(
+                eq("SEMINAR_ADMIN"),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
         );
     }
 

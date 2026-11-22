@@ -62,6 +62,13 @@ public class AdminEmailTestController {
     private final String allowedRecipient;
     private final AtomicBoolean alreadyDispatched = new AtomicBoolean(false);
 
+    @Autowired(required = false)
+    private com.nec.collegeservices.service.EmailDeduplicationService deduplicationService;
+
+    public void setDeduplicationService(com.nec.collegeservices.service.EmailDeduplicationService deduplicationService) {
+        this.deduplicationService = deduplicationService;
+    }
+
     @Autowired
     public AdminEmailTestController(
             EmailService emailService,
@@ -149,6 +156,23 @@ public class AdminEmailTestController {
                 log.warn("[EMAIL-TEST] Preflight check blocked dispatch: active/completed/ambiguous claim exists in MongoDB for key '{}'", dedupKey);
                 return ResponseEntity.status(HttpStatus.CONFLICT)
                         .body(ApiResponse.error("Test email attachment has an existing dispatched or ambiguous outcome recorded in production email logs (key: " + dedupKey + "). Further dispatches are permanently prevented."));
+            }
+        }
+
+        // Also check MongoDB distributed claims collection
+        if (deduplicationService != null) {
+            com.nec.collegeservices.model.EmailDeduplicationClaim claim = deduplicationService.getClaim(dedupKey);
+            if (claim != null) {
+                if (com.nec.collegeservices.model.EmailDeduplicationClaim.STATUS_COMPLETED.equals(claim.getStatus())
+                        || com.nec.collegeservices.model.EmailDeduplicationClaim.STATUS_AMBIGUOUS.equals(claim.getStatus())
+                        || (com.nec.collegeservices.model.EmailDeduplicationClaim.STATUS_IN_PROGRESS.equals(claim.getStatus())
+                            && claim.getLeaseExpiresAt() != null
+                            && claim.getLeaseExpiresAt().isAfter(java.time.LocalDateTime.now()))) {
+                    log.warn("[EMAIL-TEST] Preflight check blocked dispatch: claim exists in email_deduplication_claims with status '{}' for key '{}'",
+                            claim.getStatus(), dedupKey);
+                    return ResponseEntity.status(HttpStatus.CONFLICT)
+                            .body(ApiResponse.error("Test email attachment has an existing dispatched or ambiguous outcome recorded in production email logs (key: " + dedupKey + "). Further dispatches are permanently prevented."));
+                }
             }
         }
 

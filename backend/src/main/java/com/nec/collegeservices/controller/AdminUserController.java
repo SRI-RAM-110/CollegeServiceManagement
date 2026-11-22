@@ -55,7 +55,7 @@ public class AdminUserController {
     @PutMapping("/{userId}")
     public ResponseEntity<ApiResponse<UserDTO>> updateUser(
             @PathVariable String userId,
-            @RequestBody UpdateUserRequestDTO dto) {
+            @Valid @RequestBody UpdateUserRequestDTO dto) {
         com.nec.collegeservices.model.User caller = authService.getCurrentUser();
         UserDTO updated = adminUserService.updateUser(userId, dto, caller);
         return ResponseEntity.ok(ApiResponse.ok("User updated successfully", updated));

@@ -721,13 +721,24 @@ public class TransportService {
                             .filter(u -> (v.getDriverPhone() != null && v.getDriverPhone().equals(u.getPhone()))
                                     || (v.getDriverName() != null && v.getDriverName().equalsIgnoreCase(u.getName())))
                             .findFirst()
-                            .ifPresent(driverUser -> {
+                            .ifPresentOrElse(driverUser -> {
                                 notificationService.sendNotification(
                                         "DRIVER",
                                         "ADMIN",
                                         driverUser.getUserId(),
                                         "Transport Trip Assigned",
                                         "You have been assigned to trip " + saved.getRequestId() + " to " + saved.getDestination() + " on " + saved.getTripDate() + ".",
+                                        "Transport",
+                                        "INFO",
+                                        saved.getRequestId()
+                                );
+                            }, () -> {
+                                notificationService.sendNotification(
+                                        "AO_ADMIN",
+                                        "ADMIN",
+                                        "ao",
+                                        "Transport Driver Dispatch Required",
+                                        "Trip " + saved.getRequestId() + " to " + saved.getDestination() + " on " + saved.getTripDate() + " has driver assigned (" + (v.getDriverName() != null ? v.getDriverName() : "N/A") + " / " + (v.getDriverPhone() != null ? v.getDriverPhone() : "N/A") + ") requiring manual dispatch.",
                                         "Transport",
                                         "INFO",
                                         saved.getRequestId()

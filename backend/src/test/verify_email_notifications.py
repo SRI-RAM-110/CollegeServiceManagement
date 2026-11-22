@@ -33,8 +33,12 @@ def main():
     print("[PASS] Logged in as AO Admin")
 
     # 2. Check Database: Verify primary recipient sriramsriram123654@gmail.com exists in user records
+    import os
     from pymongo import MongoClient
-    client = MongoClient("mongodb://127.0.0.1:27017/")
+    mongo_uri = os.environ.get("MONGODB_URI")
+    if not mongo_uri:
+        raise RuntimeError("CRITICAL ERROR: MONGODB_URI environment variable is mandatory.")
+    client = MongoClient(mongo_uri)
     db = client["collegeservices_db"]
 
     primary_user = db.users.find_one({"email": "sriramsriram123654@gmail.com"})
